@@ -57,6 +57,10 @@ public static class EmailService
 
   public static void Configure(string postmarkServerToken, string postmarkInboundAuthKey)
   {
+    if (string.IsNullOrEmpty(postmarkServerToken) || string.IsNullOrEmpty(postmarkInboundAuthKey))
+    {
+      throw new InvalidOperationException("Postmark server token and inbound auth key must be provided.");
+    }
     _serverToken = postmarkServerToken;
     _authKey = postmarkInboundAuthKey;
   }
