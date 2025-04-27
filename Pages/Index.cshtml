@@ -1,0 +1,12 @@
+﻿@page
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@inject IWebHostEnvironment Environment
+
+
+
+@section Scripts {
+  <script>
+    const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
+  </script>
+  <script src="/js/site.js"></script>
+}
