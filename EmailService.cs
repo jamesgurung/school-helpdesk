@@ -1,4 +1,5 @@
 ﻿using PostmarkDotNet;
+using PostmarkDotNet.Model;
 using PostmarkDotNet.Webhooks;
 
 namespace SchoolHelpdesk;
@@ -11,46 +12,58 @@ public static class EmailService
   public static async Task ProcessInboundAsync(PostmarkInboundWebhookMessage message, string authKey)
   {
     if (authKey != _authKey || message is null) return;
+    var messageId = message.GetHeader("message-id");
+    var replySubject = GetReplySubject(message.Subject);
 
     if (!School.Instance.StudentsByParentEmail.Contains(message.From))
     {
-      var spamHeader = message.Headers.FirstOrDefault(h => h.Name == "X-Spam-Status")?.Value;
+      var spamHeader = message.Headers.FirstOrDefault(o => o.Name == "x-spam-status")?.Value;
       if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
 
-      await Send(School.Instance.AdminUsers[0], GetReplySubject(message.Subject), "Not found: " + message.From, EmailTag.Unknown);
+      await SendAsync(message.From, replySubject,
+        "Email address not recognised.",
+        "This mailbox is only for use by parents and carers of current students, and we do not have your email address in our records.\n\nIf you have an enquiry, please contact reception.",
+        EmailTag.Unknown, messageId);
+
       return;
     }
-    await Send(School.Instance.AdminUsers[0], GetReplySubject(message.Subject), "Found: " + message.From, EmailTag.Parent);
+
+    return;
   }
 
-  public static async Task Send(string to, string subject, string markdownBody, string tag)
+  public static async Task SendAsync(string to, string subject, string heading, string body, string tag, string threadId = null)
   {
     var client = new PostmarkClient(_serverToken);
     var message = new PostmarkMessage
     {
       To = to,
       Subject = subject,
-      HtmlBody = ComposeHtmlEmail(markdownBody),
-      TextBody = ComposeTextEmail(markdownBody),
-      From = School.Instance.HelpdeskEmail,
+      HtmlBody = ComposeHtmlEmail(heading, body),
+      TextBody = ComposeTextEmail(heading, body),
+      From = $"\"{School.Instance.Name}\" <{School.Instance.HelpdeskEmail}>",
       Tag = tag,
       MessageStream = "outbound",
       TrackOpens = false,
       TrackLinks = LinkTrackingOptions.None
     };
+    if (!string.IsNullOrEmpty(threadId))
+    {
+      message.Headers.Add(new MailHeader("In-Reply-To", threadId));
+      message.Headers.Add(new MailHeader("References", threadId));
+    }
     await client.SendMessageAsync(message);
   }
 
-  public static string ComposeHtmlEmail(string markdownBody)
+  public static string ComposeHtmlEmail(string heading, string body)
   {
-    var css = "";
-    var html = $"<html><body><style>{css}</style>{Markdown.ToHtml(markdownBody)}</body></html>";
+    var mainBody = string.IsNullOrEmpty(heading) ? body : $"<h2 class=\"email-header\">{heading}</h2>\n{body}";
+    var html = School.Instance.EmailTemplate.Replace("{{BODY}}", Markdown.ToHtml(mainBody));
     return PreMailer.Net.PreMailer.MoveCssInline(html).Html;
   }
 
-  public static string ComposeTextEmail(string markdownBody)
+  public static string ComposeTextEmail(string heading, string body)
   {
-    return markdownBody;
+    return string.IsNullOrEmpty(heading) ? body : $"{heading.ToUpperInvariant()}\n\n{body}";
   }
 
   public static string GetReplySubject(string messageSubject)
@@ -66,6 +79,11 @@ public static class EmailService
     }
     _serverToken = postmarkServerToken;
     _authKey = postmarkInboundAuthKey;
+  }
+
+  private static string GetHeader(this PostmarkInboundWebhookMessage message, string name)
+  {
+    return message.Headers.FirstOrDefault(o => string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase))?.Value;
   }
 }
 

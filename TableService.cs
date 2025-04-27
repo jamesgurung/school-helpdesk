@@ -49,6 +49,7 @@ public class Ticket : ITableEntity
   public string ParentFirstName { get; set; }
   public string ParentLastName { get; set; }
   public string ParentRelationship { get; set; }
+  public string ThreadId { get; set; }
 }
 
 public class Comment : ITableEntity

@@ -19,12 +19,12 @@ builder.Services.AddDataProtection().PersistKeysToAzureBlobStorage(new Uri(build
 var storageAccountName = builder.Configuration["Azure:StorageAccountName"];
 var storageAccountKey = builder.Configuration["Azure:StorageAccountKey"];
 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAccountName};AccountKey={storageAccountKey};EndpointSuffix=core.windows.net";
-TableService.Configure(connectionString);
-BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
-
-EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"]);
 
 School.Instance = builder.Configuration.GetSection(nameof(School)).Get<School>();
+TableService.Configure(connectionString);
+BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
+EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"]);
+
 await BlobService.LoadConfigAsync();
 
 builder.ConfigureAuth();

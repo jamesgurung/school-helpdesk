@@ -60,5 +60,9 @@ public static class BlobService
     }
     School.Instance.StudentsByParentEmail = School.Instance.Students.ToLookup(s => s.ParentEmailAddress, s => s, StringComparer.OrdinalIgnoreCase);
     School.Instance.StaffByEmail = School.Instance.Staff.ToDictionary(s => s.Email, s => s, StringComparer.OrdinalIgnoreCase);
+
+    var templateBlob = configClient.GetBlobClient("template.html");
+    var templateResponse = await templateBlob.DownloadContentAsync();
+    School.Instance.EmailTemplate = templateResponse.Value.Content.ToString();
   }
 }

@@ -14,6 +14,8 @@ public class School
 
   public Dictionary<string, Staff> StaffByEmail { get; set; }
   public ILookup<string, Student> StudentsByParentEmail { get; set; }
+
+  public string EmailTemplate { get; set; }
 }
 
 public class Student

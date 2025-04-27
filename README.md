@@ -6,26 +6,33 @@ School Helpdesk is a free, open-source web application that that makes it easy f
 
 ### Setup
 
-1. Create a Postmark server.
+1. Create a [Postmark](https://account.postmarkapp.com) account.
+    * Add a sender signature for your school's email domain and verify it using DNS
+    * Add a server called `Helpdesk`
 
-2. Create an OpenAI account and generate an API key.
+2. Create an [OpenAI](https://platform.openai.com) account and generate an API key.
 
-3. Create a general purpose v2 storage account in Microsoft Azure, and within it create:
+3. Create a general purpose v2 storage account in [Microsoft Azure](http://portal.azure.com), and within it create:
     * Tables: `tickets` and `comments`
     * Blob containers: `config` and `attachments`
 
-4. Within the `config` blob container, upload a blank file `keys.xml`. Generate a SAS URL for this file with read/write permissions and a distant expiry. This will be used to store the application's data protection keys so that auth cookies persist across app restarts.
+4. Within the `config` blob container:
 
-5. Within the `config` blob container, create a file `students.csv` with the following headers and populate it with all students in your school. Where a student has more than one parent, repeat the student details across multiple rows. To correctly represent accented characters in student names, save the file as 'CSV UTF-8'.
+    * Upload a blank file `keys.xml`. Generate a SAS URL for this file with read/write permissions and a distant expiry. This will be used to store the application's data protection keys so that auth cookies persist across app restarts.
 
-    ```csv
-    FirstName,LastName,TutorGroup,Relationship,ParentTitle,ParentFirstName,ParentLastName,ParentEmailAddress
-    ```
+    * Upload a file `students.csv` with the following headers and populate it with all students in your school. Where a student has more than one parent, repeat the student details across multiple rows. To correctly represent accented characters in student names, save the file as 'CSV UTF-8'.
 
-6. Within the `config` blob container, create a file `staff.csv` with the following headers and populate it with all staff in your school who should have access to the helpdesk.
-    ```csv
-    Email,Title,FirstName,LastName
-    ```
+        ```csv
+        FirstName,LastName,TutorGroup,Relationship,ParentTitle,ParentFirstName,ParentLastName,ParentEmailAddress
+        ```
+
+    * Upload a file `staff.csv` with the following headers and populate it with all staff in your school who should have access to the helpdesk.
+    
+        ```csv
+        Email,Title,FirstName,LastName
+        ```
+    
+    * Upload a file `template.html` with an HTML template to use for all outgoing emails. There is a sample file in the [examples](examples) folder. Use the token `{{BODY}}` as a placeholder for the email body.
 
 7. Create an Azure app registration.
     * Name - `School Helpdesk`
@@ -57,6 +64,10 @@ School Helpdesk is a free, open-source web application that that makes it easy f
     * `School__AppWebsite` - the host name where this app will be hosted, e.g. `example.com`
     * `School__HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
     * `School__Name` - the name of your school
+
+10. Configure your Postmark server's Default Inbound Stream settings:
+    * Set the webhook to `https://<app-website-domain>/inbound?auth=<authkey>`
+    * On your school's main email server, configure your helpdesk email address to auto-forward to the Postmark inbound email address shown on the settings page
 
 ### Contributing
 
