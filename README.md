@@ -55,6 +55,7 @@ School Helpdesk is a free, open-source web application that that makes it easy f
     * `Postmark__ServerToken` - the token for your Postmark server
     * `School__AdminUsers__0` - the email address of the first admin user (subsequent admins can be configured by adding items with incrementing indices)
     * `School__AppWebsite` - the host name where this app will be hosted, e.g. `example.com`
+    * `School__HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
     * `School__Name` - the name of your school
 
 ### Contributing

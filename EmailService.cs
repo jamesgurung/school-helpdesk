@@ -10,20 +10,20 @@ public static class EmailService
 
   public static async Task ProcessInboundAsync(PostmarkInboundWebhookMessage message, string authKey)
   {
-    if (authKey != _authKey) return;
+    if (authKey != _authKey || message is null) return;
 
     if (!School.Instance.StudentsByParentEmail.Contains(message.From))
     {
       var spamHeader = message.Headers.FirstOrDefault(h => h.Name == "X-Spam-Status")?.Value;
       if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
 
-      await Send(School.Instance.AdminUsers[0], GetReplySubject(message.Subject), "Not found: " + message.From);
+      await Send(School.Instance.AdminUsers[0], GetReplySubject(message.Subject), "Not found: " + message.From, EmailTag.Unknown);
       return;
     }
-    await Send(School.Instance.AdminUsers[0], GetReplySubject(message.Subject), "Found: " + message.From);
+    await Send(School.Instance.AdminUsers[0], GetReplySubject(message.Subject), "Found: " + message.From, EmailTag.Parent);
   }
 
-  public static async Task Send(string to, string subject, string markdownBody)
+  public static async Task Send(string to, string subject, string markdownBody, string tag)
   {
     var client = new PostmarkClient(_serverToken);
     var message = new PostmarkMessage
@@ -32,8 +32,11 @@ public static class EmailService
       Subject = subject,
       HtmlBody = ComposeHtmlEmail(markdownBody),
       TextBody = ComposeTextEmail(markdownBody),
-      From = School.Instance.AppWebsite,
-      Tag = "Helpdesk"
+      From = School.Instance.HelpdeskEmail,
+      Tag = tag,
+      MessageStream = "outbound",
+      TrackOpens = false,
+      TrackLinks = LinkTrackingOptions.None
     };
     await client.SendMessageAsync(message);
   }
@@ -64,4 +67,11 @@ public static class EmailService
     _serverToken = postmarkServerToken;
     _authKey = postmarkInboundAuthKey;
   }
+}
+
+public class EmailTag
+{
+  public const string Unknown = "Unknown";
+  public const string Parent = "Parent";
+  public const string Staff = "Staff";
 }

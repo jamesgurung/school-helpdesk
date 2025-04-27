@@ -6,6 +6,7 @@ public class School
 
   public string Name { get; set; }
   public string AppWebsite { get; set; }
+  public string HelpdeskEmail { get; set; }
   public IList<string> AdminUsers { get; set; }
 
   public List<Student> Students { get; set; }
