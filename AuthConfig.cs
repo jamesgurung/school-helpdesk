@@ -78,7 +78,7 @@ public static class AuthConfig
 
   private static bool RefreshIdentity(ClaimsIdentity identity, string email)
   {
-    if (email is null || true)
+    if (email is null || !School.Instance.StaffByEmail.TryGetValue(email, out var staff))
     {
       return false;
     }
@@ -86,7 +86,7 @@ public static class AuthConfig
     {
       identity.RemoveClaim(identity.Claims.ElementAt(i));
     }
-    identity.AddClaim(new Claim(ClaimTypes.Name, email));
+    identity.AddClaim(new Claim(ClaimTypes.Name, staff.Email));
     if (School.Instance.AdminUsers.Contains(email, StringComparer.OrdinalIgnoreCase))
     {
       identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Administrator));

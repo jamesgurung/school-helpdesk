@@ -22,6 +22,9 @@ var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAcco
 TableService.Configure(connectionString);
 BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
 
+EmailService.Configure(builder.Configuration["PostmarkServerToken"], builder.Configuration["PostmarkInboundAuthKey"]);
+
+School.Instance = builder.Configuration.GetSection(nameof(School)).Get<School>();
 await BlobService.LoadConfigAsync();
 
 builder.ConfigureAuth();
@@ -30,8 +33,6 @@ builder.Services.AddAntiforgery(options => { options.HeaderName = "X-XSRF-TOKEN"
 builder.Services.Configure<RouteOptions>(options => { options.LowercaseUrls = true; });
 builder.Services.Configure<JsonOptions>(options => { options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase; });
 builder.Services.AddRazorPages(options => { options.Conventions.AllowAnonymousToFolder("/auth"); });
-
-School.Instance = builder.Configuration.GetSection(nameof(School)).Get<School>();
 
 var minify = !builder.Environment.IsDevelopment();
 builder.Services.AddWebOptimizer(pipeline =>

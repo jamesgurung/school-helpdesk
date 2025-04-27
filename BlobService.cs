@@ -1,6 +1,10 @@
 ﻿using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
+using CsvHelper;
+using CsvHelper.Configuration;
+using System.Globalization;
+using System.Text;
 
 namespace SchoolHelpdesk;
 
@@ -35,5 +39,26 @@ public static class BlobService
 
   public static async Task LoadConfigAsync()
   {
+    var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture) { Encoding = Encoding.UTF8 };
+
+    var studentsBlob = configClient.GetBlobClient("students.csv");
+    using (var stream = await studentsBlob.OpenReadAsync())
+    using (var reader = new StreamReader(stream))
+    using (var csv = new CsvReader(reader, csvConfig))
+    {
+      var records = csv.GetRecords<Student>().ToList();
+      School.Instance.Students = records;
+    }
+
+    var staffBlob = configClient.GetBlobClient("staff.csv");
+    using (var stream = await staffBlob.OpenReadAsync())
+    using (var reader = new StreamReader(stream))
+    using (var csv = new CsvReader(reader, csvConfig))
+    {
+      var records = csv.GetRecords<Staff>().ToList();
+      School.Instance.Staff = records;
+    }
+    School.Instance.StudentsByParentEmail = School.Instance.Students.ToLookup(s => s.ParentEmailAddress, s => s, StringComparer.OrdinalIgnoreCase);
+    School.Instance.StaffByEmail = School.Instance.Staff.ToDictionary(s => s.Email, s => s, StringComparer.OrdinalIgnoreCase);
   }
 }
