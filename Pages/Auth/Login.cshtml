@@ -3,7 +3,7 @@
   var returnUrl = Request.Query["path"].FirstOrDefault();
 }
 <div class="landing">
-  <img src="/apple-touch-icon.png" class="logo" />
+  <img src="/img/logo.png" class="logo" />
   <h1>Helpdesk</h1>
   <p>Strengthening our community partnership</p>
   <a href="/auth/login/challenge@(string.IsNullOrEmpty(returnUrl) ? string.Empty : $"?path={returnUrl}")" class="login-btn">

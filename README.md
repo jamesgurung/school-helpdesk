@@ -13,8 +13,8 @@ School Helpdesk is a free, open-source web application that that makes it easy f
 2. Create an [OpenAI](https://platform.openai.com) account and generate an API key.
 
 3. Create a general purpose v2 storage account in [Microsoft Azure](http://portal.azure.com), and within it create:
-    * Tables: `tickets` and `comments`
-    * Blob containers: `config` and `attachments`
+    * Table: `tickets`
+    * Blob containers: `config`, `messages`, and `attachments`
 
 4. Within the `config` blob container:
 
@@ -32,7 +32,7 @@ School Helpdesk is a free, open-source web application that that makes it easy f
         Email,Title,FirstName,LastName
         ```
     
-    * Upload a file `template.html` with an HTML template to use for all outgoing emails. There is a sample file in the [examples](examples) folder. Use the token `{{BODY}}` as a placeholder for the email body.
+    * Upload `template.html` and `template.txt` templates to use for all outgoing emails. There are sample files in the [examples](examples) folder. Use the token `{{BODY}}` as a placeholder for the email body.
 
 7. Create an Azure app registration.
     * Name - `School Helpdesk`

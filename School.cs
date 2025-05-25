@@ -1,4 +1,6 @@
-﻿namespace SchoolHelpdesk;
+﻿using Microsoft.AspNetCore.Html;
+
+namespace SchoolHelpdesk;
 
 public class School
 {
@@ -9,16 +11,17 @@ public class School
   public string HelpdeskEmail { get; set; }
   public IList<string> AdminUsers { get; set; }
 
-  public List<Student> Students { get; set; }
-  public List<Staff> Staff { get; set; }
-
+  public Dictionary<string, Parent> ParentsByEmail { get; set; }
   public Dictionary<string, Staff> StaffByEmail { get; set; }
-  public ILookup<string, Student> StudentsByParentEmail { get; set; }
 
-  public string EmailTemplate { get; set; }
+  public HtmlString ParentsJson { get; set; }
+  public HtmlString StaffJson { get; set; }
+
+  public string HtmlEmailTemplate { get; set; }
+  public string TextEmailTemplate { get; set; }
 }
 
-public class Student
+public class CsvStudent
 {
   public string FirstName { get; set; }
   public string LastName { get; set; }
@@ -30,10 +33,31 @@ public class Student
   public string ParentEmailAddress { get; set; }
 }
 
-public class Staff
+public class CsvStaff
 {
   public string Email { get; set; }
   public string Title { get; set; }
   public string FirstName { get; set; }
   public string LastName { get; set; }
+}
+
+public class Parent
+{
+  public string Email { get; set; }
+  public string Name { get; set; }
+  public string Relationship { get; set; }
+  public List<Student> Children { get; set; }
+}
+
+public class Student
+{
+  public string FirstName { get; set; }
+  public string LastName { get; set; }
+  public string TutorGroup { get; set; }
+}
+
+public class Staff
+{
+  public string Email { get; set; }
+  public string Name { get; set; }
 }

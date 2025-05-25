@@ -2,11 +2,255 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject IWebHostEnvironment Environment
 
+<header>
+  <div class="header-container">
+    <div class="logo-section">
+      <img src="/img/logo.png" alt="Logo" class="header-logo">
+      <h1>Parent/Carer Helpdesk</h1>
+    </div>
+    <div class="user-actions">
+      <button class="new-ticket-button" id="new-ticket-button">
+        <span class="material-symbols-rounded">add</span>
+        <span>New Ticket</span>
+      </button>
+      <button class="logout-button">
+        <span class="material-symbols-rounded">logout</span>
+        <span>Logout</span>
+      </button>
+    </div>
+  </div>
+</header>
 
+<div class="container">
+  <div class="ticket-list">
+    <div class="tabs">
+      <div class="tab active" data-tab="open">Open</div>
+      <div class="tab" data-tab="closed">Closed</div>
+    </div>
+    <div id="tickets-container"></div>
+  </div>
 
-@section Scripts {
-  <script>
-    const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
-  </script>
-  <script src="/js/site.js"></script>
-}
+  <div class="ticket-details" id="ticket-details">
+    <div class="back-button" id="back-button">
+      <span class="material-symbols-rounded">arrow_back</span>
+    </div>
+    <div class="details-empty">
+      <span class="material-symbols-rounded">confirmation_number</span>
+      <p>Select a ticket to view details</p>
+    </div>
+    <div class="details-content" style="display: none;">
+      <div class="details-header">
+        <div class="details-title">
+          <div id="ticket-title" contenteditable="true" data-placeholder="Ticket title"></div>
+        </div>
+        <div class="info-section" id="parent-info-section">
+        </div>
+        <div class="info-section" id="student-info-section">
+        </div>
+        <div class="info-section" id="assignee-info-section">
+        </div>
+
+        <div class="hidden-selects">
+          <select id="student-select" class="hidden-select">
+            <option value="">Select Student</option>
+          </select>
+          <select id="assignee-select" class="hidden-select">
+            <option value="">Select Assignee</option>
+          </select>
+        </div>
+        <div class="hidden-autocompletes">
+          <div class="parent-selection-container" style="width: 100%">
+            <div class="autocomplete-container" id="assignee-edit-container" style="display:none; width: 100%;">
+              <input type="text" id="assignee-edit-input" placeholder="Search staff member" style="width: 100%;">
+              <div id="assignee-edit-autocomplete-results" class="autocomplete-results"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-heading">Conversation</h3>
+      <div class="conversation" id="conversation"></div>
+
+      <div class="new-message">
+        <textarea id="new-message" placeholder="Type your message here..."></textarea>
+        <div class="action-buttons">
+          <button class="btn-secondary" id="close-ticket">Close Ticket</button>
+          <button class="btn-primary" id="send-message">Send Message</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<template id="ticket-item-template">
+  <div class="ticket-item">
+    <div class="ticket-header">
+      <div class="ticket-title"></div>
+    </div>
+
+    <div class="ticket-info-grid">
+      <div class="ticket-info-item">
+        <div class="ticket-info-label">Student</div>
+        <div class="ticket-info-value student-value">
+          <span class="material-symbols-rounded">school</span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="ticket-info-item">
+        <div class="ticket-info-label">Parent/Carer</div>
+        <div class="ticket-info-value parent-value">
+          <span class="material-symbols-rounded">person</span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="ticket-info-item">
+        <div class="ticket-info-label">Assigned To</div>
+        <div class="ticket-info-value assignee-value">
+          <span class="material-symbols-rounded">support_agent</span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="ticket-info-item">
+        <div class="ticket-info-label">Timeline</div>
+        <div class="ticket-info-value">
+          <span class="material-symbols-rounded">calendar_month</span>
+          <div class="ticket-timeline">
+            <span class="timeline-date created-date"></span>
+            <span class="material-symbols-rounded">timer</span>
+            <span class="timeline-date elapsed-time"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="message-template">
+  <div class="message">
+    <div class="message-header">
+      <div class="message-author">
+        <span class="message-icon material-symbols-rounded"></span>
+        <span class="author-name"></span>
+      </div>
+      <div class="message-date"></div>
+    </div>
+    <div class="message-content"></div>
+  </div>
+</template>
+
+<template id="empty-tickets-template">
+  <div class="ticket-item">
+    <p style="text-align: center; color: var(--text-light);">No <span class="status-text"></span> tickets</p>
+  </div>
+</template>
+
+<template id="info-section-template">
+  <h4 class="info-heading">
+    <span class="heading-text"></span>
+    <span class="material-symbols-rounded edit-icon"></span>
+  </h4>
+  <div class="info-container compact">
+    <span class="material-symbols-rounded info-icon"></span>
+    <span class="info-name"></span>
+    <span class="info-detail"></span>
+  </div>
+</template>
+
+<svg style="position: absolute; width: 0; height: 0">
+  <defs>
+    <filter id="auto-stroke">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="dilated" />
+      <feFlood flood-color="white" result="white-fill" />
+      <feComposite in="white-fill" in2="dilated" operator="in" result="outline" />
+      <feMerge>
+        <feMergeNode in="outline" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+</svg>
+
+<div class="modal" id="new-ticket-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Create New Ticket</h2>
+      <span class="close-modal material-symbols-rounded">close</span>
+    </div>
+    <div class="modal-body">
+      <form id="new-ticket-form">
+        <div class="form-group">
+          <label for="parent-info">Parent/Carer <span class="material-symbols-rounded edit-icon"
+              id="parent-edit-icon">edit</span></label>
+          <div class="parent-selection-container">
+            <div class="autocomplete-container" id="parent-search-container">
+              <input type="text" id="parent-search-input" placeholder="Search by name or email" required autocomplete="off" data-lpignore="true" data-form-type="other">
+              <div id="parent-autocomplete-results" class="autocomplete-results"></div>
+            </div>
+            <div class="parent-info-display" id="parent-info" style="display: none;">
+              <span class="material-symbols-rounded">person</span>
+              <span id="parent-name-display">No parent selected</span>
+              <span id="parent-relationship-display"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="student-select-input">Student</label>
+          <select id="student-select-input" required disabled>
+            <option value="" disabled selected>Select a student</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="ticket-title-input">Ticket Title</label>
+          <input type="text" id="ticket-title-input" placeholder="Enter a descriptive title" required autocomplete="off" data-lpignore="true" data-form-type="other">
+        </div>
+
+        <div class="form-group">
+          <label for="assignee-info">Assign To <span class="material-symbols-rounded edit-icon"
+              id="assignee-edit-icon">edit</span></label>
+          <div class="parent-selection-container">
+            <div class="autocomplete-container" id="assignee-search-container">
+              <input type="text" id="assignee-search-input" placeholder="Search staff member" required autocomplete="off" data-lpignore="true" data-form-type="other">
+              <div id="assignee-autocomplete-results" class="autocomplete-results"></div>
+            </div>
+            <div class="parent-info-display" id="assignee-info" style="display: none;">
+              <span class="material-symbols-rounded">support_agent</span>
+              <span id="assignee-name-display" class="no-parent">No assignee selected</span>
+              <span id="assignee-role-display"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="message-input">Initial Message</label>
+          <textarea id="message-input" rows="4" placeholder="Describe the issue or request" required></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-new-ticket">Cancel</button>
+      <button class="btn-primary" id="create-new-ticket">Create Ticket</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
+  const parents = @School.Instance.ParentsJson;
+  const staff = @School.Instance.StaffJson;
+  const tickets = [];
+</script>
+<script src="/js/core.js"></script>
+<script src="/js/date-utils.js"></script>
+<script src="/js/utils.js"></script>
+<script src="/js/search.js"></script>
+<script src="/js/conversation.js"></script>
+<script src="/js/ticket-list.js"></script>
+<script src="/js/ticket-details.js"></script>
+<script src="/js/ticket-edit.js"></script>
+<script src="/js/modal.js"></script>
+<script src="/js/event-handlers.js"></script>

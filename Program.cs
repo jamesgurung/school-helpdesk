@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.ResponseCompression;
 using SchoolHelpdesk;
 using System.Text.Json;
 
@@ -28,7 +27,7 @@ EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Co
 await BlobService.LoadConfigAsync();
 
 builder.ConfigureAuth();
-builder.Services.AddResponseCompression(options => { options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["text/javascript"]); });
+builder.Services.AddResponseCompression();
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-XSRF-TOKEN"; });
 builder.Services.Configure<RouteOptions>(options => { options.LowercaseUrls = true; });
 builder.Services.Configure<JsonOptions>(options => { options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase; });

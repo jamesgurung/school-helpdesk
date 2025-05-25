@@ -15,15 +15,15 @@ public static class EmailService
     var messageId = message.GetHeader("message-id");
     var replySubject = GetReplySubject(message.Subject);
 
-    if (!School.Instance.StudentsByParentEmail.Contains(message.From))
+    if (!School.Instance.ParentsByEmail.TryGetValue(message.From, out var parent))
     {
       var spamHeader = message.Headers.FirstOrDefault(o => o.Name == "x-spam-status")?.Value;
       if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
 
       await SendAsync(message.From, replySubject,
-        "Email address not recognised.",
-        "This mailbox is only for use by parents and carers of current students, and we do not have your email address in our records.\n\nIf you have an enquiry, please contact reception.",
-        EmailTag.Unknown, messageId);
+        "Sorry, your email could not be delivered. This mailbox is only for use by parents and carers of current students, and we do not have your email address in our records.\n\n" +
+        "If you have an enquiry, please contact reception.",
+        null, EmailTag.Unknown, messageId);
 
       return;
     }
@@ -31,15 +31,15 @@ public static class EmailService
     return;
   }
 
-  public static async Task SendAsync(string to, string subject, string heading, string body, string tag, string threadId = null)
+  public static async Task SendAsync(string to, string subject, string body, string signature, string tag, string threadId = null)
   {
     var client = new PostmarkClient(_serverToken);
     var message = new PostmarkMessage
     {
       To = to,
       Subject = subject,
-      HtmlBody = ComposeHtmlEmail(heading, body),
-      TextBody = ComposeTextEmail(heading, body),
+      HtmlBody = ComposeHtmlEmail(body, signature),
+      TextBody = ComposeTextEmail(body, signature),
       From = $"\"{School.Instance.Name}\" <{School.Instance.HelpdeskEmail}>",
       Tag = tag,
       MessageStream = "outbound",
@@ -54,16 +54,18 @@ public static class EmailService
     await client.SendMessageAsync(message);
   }
 
-  public static string ComposeHtmlEmail(string heading, string body)
+  public static string ComposeHtmlEmail(string body, string senderName)
   {
-    var mainBody = string.IsNullOrEmpty(heading) ? body : $"<h2 class=\"email-header\">{heading}</h2>\n{body}";
-    var html = School.Instance.EmailTemplate.Replace("{{BODY}}", Markdown.ToHtml(mainBody));
-    return PreMailer.Net.PreMailer.MoveCssInline(html).Html;
+    var message = TextFormatting.ToParagraphs(TextFormatting.AppendSignature(body, senderName));
+    var html = School.Instance.HtmlEmailTemplate.Replace("{{BODY}}", message, StringComparison.OrdinalIgnoreCase);
+
+    return PreMailer.Net.PreMailer.MoveCssInline(html, true, stripIdAndClassAttributes: true, removeComments: true).Html;
   }
 
-  public static string ComposeTextEmail(string heading, string body)
+  public static string ComposeTextEmail(string body, string senderName)
   {
-    return string.IsNullOrEmpty(heading) ? body : $"{heading.ToUpperInvariant()}\n\n{body}";
+    var message = TextFormatting.AppendSignature(body, senderName);
+    return School.Instance.TextEmailTemplate.Replace("{{BODY}}", message, StringComparison.OrdinalIgnoreCase);
   }
 
   public static string GetReplySubject(string messageSubject)
