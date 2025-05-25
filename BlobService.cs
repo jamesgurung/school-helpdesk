@@ -3,8 +3,8 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using CsvHelper;
 using CsvHelper.Configuration;
-using Microsoft.AspNetCore.Html;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -25,6 +25,33 @@ public static class BlobService
   private static BlobContainerClient attachmentsClient;
   private static BlobContainerClient configClient;
   private static StorageSharedKeyCredential sharedKeyCredential;
+
+  public static async Task<List<Message>> GetMessagesAsync(string ticketId)
+  {
+    ArgumentNullException.ThrowIfNull(ticketId);
+    var blobClient = messagesClient.GetBlobClient($"{ticketId}.json");
+    var content = await blobClient.DownloadContentAsync();
+    return JsonSerializer.Deserialize<List<Message>>(content.Value.Content.ToString(), JsonSerializerOptions.Web) ?? [];
+  }
+
+  public static async Task InsertMessageAsync(string ticketId, Message message)
+  {
+    var blobClient = messagesClient.GetBlobClient($"{ticketId}.json");
+    var json = JsonSerializer.Serialize(new[] { message }, JsonSerializerOptions.Web);
+    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+    await blobClient.UploadAsync(stream);
+  }
+
+  public static async Task AppendMessageAsync(string ticketId, Message message)
+  {
+    var blobClient = messagesClient.GetBlobClient($"{ticketId}.json");
+    var existingContent = await blobClient.DownloadContentAsync();
+    var existingMessages = JsonSerializer.Deserialize<List<Message>>(existingContent.Value.Content.ToString(), JsonSerializerOptions.Web) ?? [];
+    existingMessages.Add(message);
+    var json = JsonSerializer.Serialize(existingMessages, JsonSerializerOptions.Web);
+    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+    await blobClient.UploadAsync(stream, overwrite: true);
+  }
 
   public static string GetAttachmentSasUrl(string id)
   {
@@ -51,7 +78,9 @@ public static class BlobService
     using (var reader = new StreamReader(stream))
     using (var csv = new CsvReader(reader, csvConfig))
     {
-      students = csv.GetRecords<CsvStudent>().ToList();
+      students = csv.GetRecords<CsvStudent>()
+        .Where(s => !string.IsNullOrWhiteSpace(s.ParentEmailAddress))
+        .OrderBy(s => s.ParentLastName).ThenBy(s => s.ParentFirstName).ThenBy(s => s.TutorGroup).ThenBy(s => s.LastName).ThenBy(s => s.FirstName).ToList();
     }
 
     List<CsvStaff> staff;
@@ -60,7 +89,7 @@ public static class BlobService
     using (var reader = new StreamReader(stream))
     using (var csv = new CsvReader(reader, csvConfig))
     {
-      staff = csv.GetRecords<CsvStaff>().ToList();
+      staff = csv.GetRecords<CsvStaff>().Where(s => !string.IsNullOrWhiteSpace(s.Email)).OrderBy(s => s.LastName).ThenBy(s => s.FirstName).ThenBy(s => s.Email).ToList();
     }
 
     School.Instance.StaffByEmail = staff.ToDictionary(s => s.Email, s => new Staff { Email = s.Email, Name = $"{s.Title} {s.FirstName[0]} {s.LastName}" }, StringComparer.OrdinalIgnoreCase);
@@ -69,7 +98,7 @@ public static class BlobService
       .GroupBy(s => s.ParentEmailAddress, StringComparer.OrdinalIgnoreCase)
       .Select(g =>
       {
-        var parentNames = g.Select(s => $"{s.ParentTitle} {s.ParentFirstName} {s.ParentLastName}").Distinct().ToList();
+        var parentNames = g.Select(s => $"{s.ParentTitle} {(string.IsNullOrEmpty(s.ParentFirstName) ? string.Empty : $"{s.ParentFirstName[0]} ")}{s.ParentLastName}".Trim()).Distinct().ToList();
         var name = parentNames.Count > 1 ? string.Join(" and ", parentNames) : parentNames.FirstOrDefault() ?? "Parent/Carer";
         var parentRelationships = g.Select(s => s.Relationship).Distinct().ToList();
         var relationship = parentRelationships.Count > 1 ? "Parents" : parentRelationships.FirstOrDefault() ?? "Parent/Carer";
@@ -82,13 +111,25 @@ public static class BlobService
         };
       }).ToDictionary(o => o.Email);
 
-    School.Instance.ParentsJson = new HtmlString(JsonSerializer.Serialize(School.Instance.ParentsByEmail.Values, JsonSerializerOptions.Web));
-    School.Instance.StaffJson = new HtmlString(JsonSerializer.Serialize(School.Instance.StaffByEmail.Values, JsonSerializerOptions.Web));
+    var users = new
+    {
+      Parents = School.Instance.ParentsByEmail.Values,
+      Staff = School.Instance.StaffByEmail.Values
+    };
+    School.Instance.UsersJson = JsonSerializer.Serialize(users, JsonSerializerOptions.Web);
+    School.Instance.UsersJsonHash = ComputeHash(School.Instance.UsersJson);
 
     var htmlTemplate = await configClient.GetBlobClient("template.html").DownloadContentAsync();
     School.Instance.HtmlEmailTemplate = htmlTemplate.Value.Content.ToString().ReplaceLineEndings("\n");
 
     var textTemplate = await configClient.GetBlobClient("template.txt").DownloadContentAsync();
     School.Instance.TextEmailTemplate = textTemplate.Value.Content.ToString().ReplaceLineEndings("\n");
+  }
+
+  private static string ComputeHash(string input)
+  {
+    var bytes = Encoding.UTF8.GetBytes(input);
+    var hashBytes = SHA256.HashData(bytes);
+    return Convert.ToHexString(hashBytes).ToLowerInvariant();
   }
 }

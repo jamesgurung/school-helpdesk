@@ -6,8 +6,6 @@ public class Message
 {
   [JsonPropertyName("timestamp")]
   public DateTime Timestamp { get; set; }
-  [JsonPropertyName("authorEmail")]
-  public string AuthorEmail { get; set; }
   [JsonPropertyName("authorName")]
   public string AuthorName { get; set; }
   [JsonPropertyName("isEmployee")]

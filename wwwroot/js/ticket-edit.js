@@ -3,9 +3,8 @@ function saveTicketChanges() {
   if (!state.activeTicket) return;
   
   updateTicket({
-    title: elements.ticketTitleInput.innerText,
-    assigneeEmail: elements.assigneeSelect.value,
-    assigneeName: elements.assigneeSelect.options[elements.assigneeSelect.selectedIndex].text.split(' (')[0]
+    title: elements.ticketTitleInput.innerText
+    // Removed assigneeEmail and assigneeName handling as it's now handled by autocomplete
   });
 }
 
@@ -21,6 +20,9 @@ function saveStudentChanges() {
 }
 
 function toggleEdit(type, saveFunction) {
+  // We only handle student selection now as assignee uses autocomplete
+  if (type !== 'student') return;
+  
   const infoSection = elements[`${type}InfoSection`];
   const infoContainer = infoSection.querySelector('.info-container');
   const selectEl = elements[`${type}Select`];

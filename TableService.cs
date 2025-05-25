@@ -21,6 +21,35 @@ public static class TableService
     await ticketsClient.QueryAsync<TableEntity>(o => o.PartitionKey == nonExistentKey).ToListAsync();
     await commentsClient.QueryAsync<TableEntity>(o => o.PartitionKey == nonExistentKey).ToListAsync();
   }
+
+  public static async Task<List<TicketEntity>> GetAllTicketsAsync()
+  {
+    return await ticketsClient.QueryAsync<TicketEntity>().ToListAsync();
+  }
+
+  public static async Task<List<TicketEntity>> GetTicketsByAssigneeAsync(string assigneeEmail)
+  {
+    ArgumentNullException.ThrowIfNull(assigneeEmail);
+    return await ticketsClient.QueryAsync<TicketEntity>(o => o.PartitionKey == assigneeEmail).ToListAsync();
+  }
+
+  public static async Task<bool> TicketExistsAsync(string assigneeEmail, string id)
+  {
+    ArgumentNullException.ThrowIfNull(assigneeEmail);
+    ArgumentNullException.ThrowIfNull(id);
+    var ticket = await ticketsClient.GetEntityIfExistsAsync<TicketEntity>(assigneeEmail, id, select: ["RowKey"]);
+    return ticket.HasValue;
+  }
+
+  public static async Task<TicketEntity> InsertTicketAsync(TicketEntity ticket)
+  {
+    ArgumentNullException.ThrowIfNull(ticket);
+    ticket.CreatedDate = DateTime.UtcNow;
+    ticket.UpdatedDate = ticket.CreatedDate;
+    ticket.RowKey = Guid.NewGuid().ToString("N");
+    await ticketsClient.AddEntityAsync(ticket);
+    return ticket;
+  }
 }
 
 public class TicketEntity : ITableEntity
@@ -58,6 +87,12 @@ public class TicketEntity : ITableEntity
   public string ParentRelationship { get; set; }
   [JsonIgnore]
   public string ThreadId { get; set; }
+}
+
+public class NewTicketEntity : TicketEntity
+{
+  [JsonPropertyName("message")]
+  public string InitialMessage { get; set; }
 }
 
 public static class QueryExtensions

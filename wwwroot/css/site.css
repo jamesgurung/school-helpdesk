@@ -145,10 +145,12 @@ header {
   padding: 0 1rem;
 }
 
-.logo-section {
+.logo-section, .logo-section:visited, .logo-section:active, .logo-section:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+  color: var(--white);
+  text-decoration: none;
 }
 
 .header-logo {
@@ -266,13 +268,19 @@ h1 {
   grid-gap: 6px;
 }
 
-.ticket-item:hover {
+.ticket-item:not(.ticket-item-empty):hover {
   background-color: var(--primary-bg-light);
 }
 
 .ticket-item.selected {
   background-color: var(--primary-bg-medium);
   border-left: 4px solid var(--primary);
+}
+
+.ticket-item-empty {
+  text-align: center;
+  color: var(--text-light);
+  cursor: default;
 }
 
 .ticket-header {
@@ -333,6 +341,10 @@ h1 {
 .ticket-timeline {
   display: flex;
   gap: 6px;
+}
+
+.created-date {
+  margin-right: 8px;
 }
 
 .timeline-arrow .material-symbols-rounded {
@@ -615,8 +627,6 @@ h1 {
 
 .info-detail {
   color: var(--text-light);
-  font-style: italic;
-  font-size: 0.85rem;
 }
 
 .hidden-selects {
@@ -634,8 +644,7 @@ h1 {
   color: var(--text);
 }
 
-#student-select:not(.hidden-select),
-#assignee-select:not(.hidden-select) {
+#student-select:not(.hidden-select) {
   display: block;
   width: 100%;
   margin: 0.25rem 0;
@@ -644,6 +653,15 @@ h1 {
   border-radius: 4px;
   box-shadow: 0 0 0 2px var(--primary-bg-light);
   font-size: 0.9rem;
+}
+
+.auto-selected {
+  animation: highlight-selection 1s ease;
+}
+
+@keyframes highlight-selection {
+  0% { background-color: var(--primary-bg-medium); }
+  100% { background-color: inherit; }
 }
 
 .message-attachments {
@@ -904,9 +922,9 @@ button {
 @media (min-width: 1001px) {
   .ticket-details.open .back-button {
     display: block;
-    top: 17px;
-    right: 1rem;
-    background-color: var(--text-light);
+    top: 16px;
+    right: 20px;
+    background-color: var(--shadow);
     color: white;
   }
   
@@ -926,8 +944,8 @@ button {
 @media (max-width: 1000px) {
   .back-button {
     display: block;
-    top: 10px;
-    left: 20px;
+    top: 20px;
+    left: 24px;
     background-color: var(--primary);
     color: white;
   }
@@ -938,10 +956,6 @@ button {
   .container {
     flex-direction: column;
     height: calc(100vh - 60px);
-  }
-  
-  .details-title {
-    margin-top: 15px;
   }
 
   .ticket-list {
@@ -963,7 +977,7 @@ button {
   }
   
   .details-title {
-    margin-top: 40px;
+    margin-top: 60px;
   }
 
   .ticket-details.open {
@@ -1027,6 +1041,9 @@ button {
   font-size: 0.8rem;
   color: var(--text-light);
   margin-top: 2px;
+  line-height: 1.4;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 #assignee-edit-input {

@@ -1,10 +1,10 @@
 // Conversation and Messaging
 function renderConversation() {
-  if (!state.activeTicket || !state.activeTicketMessages) return;
+  if (!state.activeTicket || !state.conversation) return;
   
   elements.conversationContainer.innerHTML = '';
   
-  state.activeTicketMessages.forEach(message => {
+  state.conversation.forEach((message, index) => {
     const messageClone = document.getElementById('message-template').content.cloneNode(true);
     const messageElement = messageClone.querySelector('.message');
     const messageIconElement = messageClone.querySelector('.message-icon');
@@ -13,7 +13,7 @@ function renderConversation() {
     const isEmployee = message.isEmployee;
     const config = {
       class: isEmployee ? 'employee' : 'parent',
-      icon: isEmployee ? 'support_agent' : 'person',
+      icon: isEmployee ? (index === 0 ? 'support_agent' : 'school') : 'person',
       colorVar: isEmployee ? '--primary' : '--secondary',
       colorDarkVar: isEmployee ? '--primary-dark' : '--secondary-dark'
     };
@@ -85,7 +85,7 @@ function sendMessage() {
     attachments: []
   };
   
-  state.activeTicketMessages.push(newMessage);
+  state.conversation.push(newMessage);
   updateTicket();
   
   elements.newMessageInput.value = '';

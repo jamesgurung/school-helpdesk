@@ -19,7 +19,6 @@ function closeNewTicketModal() {
   elements.parentRelationshipDisplay.textContent = '';
   elements.assigneeNameDisplay.textContent = 'No assignee selected';
   elements.assigneeNameDisplay.classList.add('no-parent');
-  elements.assigneeRoleDisplay.textContent = '';
   
   elements.studentSelectInput.disabled = true;
   elements.studentSelectInput.innerHTML = '<option value="" disabled selected>Select a student</option>';
@@ -52,7 +51,6 @@ function resetNewTicketForm() {
   state.activeAssignee = null;
   elements.assigneeNameDisplay.textContent = 'No assignee selected';
   elements.assigneeNameDisplay.classList.add('no-parent');
-  elements.assigneeRoleDisplay.textContent = '';
   elements.assigneeInfoDisplay.style.display = 'flex';
   elements.assigneeSearchContainer.style.display = 'none';
   elements.assigneeEditIcon.style.display = 'none';
@@ -84,10 +82,8 @@ function createNewTicket() {
   }
   
   const now = new Date().toISOString();
-  const newTicketId = `ticket-${1000 + tickets.length + 1}`;
   
-  const newTicket = {
-    id: newTicketId,
+  const newTicketData = {
     title: title,
     closed: false,
     created: now,
@@ -99,24 +95,45 @@ function createNewTicket() {
     assigneeEmail: assigneeStaff.email,
     parentName: state.activeParent.name,
     parentEmail: state.activeParent.email,
-    parentRelationship: state.activeParent.relationship
+    parentRelationship: state.activeParent.relationship,
+    message: message
   };
   
-  tickets.unshift(newTicket);
-  
-  customConversations[newTicketId] = {
-    messages: [{
+  fetch('/api/tickets', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-XSRF-TOKEN': antiforgeryToken
+    },
+    body: JSON.stringify(newTicketData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    const newTicketId = data.id;
+    
+    const newTicket = {
+      ...newTicketData,
+      id: newTicketId
+    };
+    
+    delete newTicket.message;
+    tickets.unshift(newTicket);
+    
+    state.conversation = [{
       timestamp: now,
       authorEmail: state.activeParent.email,
       authorName: state.activeParent.name,
       isEmployee: false,
       content: message,
       attachments: []
-    }],
-    children: [{ firstName, lastName, tutorGroup }]
-  };
-  
-  closeNewTicketModal();
-  renderTickets('open');
-  openTicketDetails(newTicketId);
+    }];
+    
+    closeNewTicketModal();
+    renderTickets('open');
+    openTicketDetails(newTicketId);
+  })
+  .catch(error => {
+    console.error('Error creating new ticket:', error);
+    alert('Failed to create ticket. Please try again.');
+  });
 }

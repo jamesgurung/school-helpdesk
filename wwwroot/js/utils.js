@@ -1,10 +1,5 @@
 function populateSelectOptions() {
-  staff.forEach(person => {
-    const option = document.createElement('option');
-    option.value = person.email;
-    option.textContent = `${person.name} (${person.role})`;
-    elements.assigneeSelect.appendChild(option);
-  });
+  // Removed assigneeSelect population as it's replaced by autocomplete functionality
 }
 
 function updateBackButtonIcon() {
@@ -23,7 +18,6 @@ function populateNewTicketForm() {
   state.activeAssignee = null;
   elements.assigneeNameDisplay.textContent = 'No assignee selected';
   elements.assigneeNameDisplay.classList.add('no-parent');
-  elements.assigneeRoleDisplay.textContent = '';
   elements.assigneeSearchContainer.style.display = 'block';
   elements.assigneeInfoDisplay.style.display = 'none';
   elements.assigneeEditIcon.style.display = 'none';

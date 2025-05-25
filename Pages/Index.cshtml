@@ -1,19 +1,23 @@
 ﻿@page
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject IWebHostEnvironment Environment
+@{
+  var isAdmin = User.IsInRole(AuthConstants.Administrator);
+  var tickets = isAdmin ? await TableService.GetAllTicketsAsync() : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name);
+}
 
 <header>
   <div class="header-container">
-    <div class="logo-section">
+    <a class="logo-section" href="/">
       <img src="/img/logo.png" alt="Logo" class="header-logo">
       <h1>Parent/Carer Helpdesk</h1>
-    </div>
+    </a>
     <div class="user-actions">
       <button class="new-ticket-button" id="new-ticket-button">
         <span class="material-symbols-rounded">add</span>
         <span>New Ticket</span>
       </button>
-      <button class="logout-button">
+      <button class="logout-button" id="logout-button">
         <span class="material-symbols-rounded">logout</span>
         <span>Logout</span>
       </button>
@@ -54,9 +58,6 @@
           <select id="student-select" class="hidden-select">
             <option value="">Select Student</option>
           </select>
-          <select id="assignee-select" class="hidden-select">
-            <option value="">Select Assignee</option>
-          </select>
         </div>
         <div class="hidden-autocompletes">
           <div class="parent-selection-container" style="width: 100%">
@@ -92,7 +93,7 @@
       <div class="ticket-info-item">
         <div class="ticket-info-label">Student</div>
         <div class="ticket-info-value student-value">
-          <span class="material-symbols-rounded">school</span>
+          <span class="material-symbols-rounded">child_care</span>
           <span></span>
         </div>
       </div>
@@ -100,7 +101,7 @@
       <div class="ticket-info-item">
         <div class="ticket-info-label">Parent/Carer</div>
         <div class="ticket-info-value parent-value">
-          <span class="material-symbols-rounded">person</span>
+          <span class="material-symbols-rounded">supervisor_account</span>
           <span></span>
         </div>
       </div>
@@ -108,13 +109,13 @@
       <div class="ticket-info-item">
         <div class="ticket-info-label">Assigned To</div>
         <div class="ticket-info-value assignee-value">
-          <span class="material-symbols-rounded">support_agent</span>
+          <span class="material-symbols-rounded">school</span>
           <span></span>
         </div>
       </div>
 
       <div class="ticket-info-item">
-        <div class="ticket-info-label">Timeline</div>
+        <div class="ticket-info-label">Created and Updated</div>
         <div class="ticket-info-value">
           <span class="material-symbols-rounded">calendar_month</span>
           <div class="ticket-timeline">
@@ -142,8 +143,8 @@
 </template>
 
 <template id="empty-tickets-template">
-  <div class="ticket-item">
-    <p style="text-align: center; color: var(--text-light);">No <span class="status-text"></span> tickets</p>
+  <div class="ticket-item ticket-item-empty">
+    <p>No <span class="status-text"></span> tickets</p>
   </div>
 </template>
 
@@ -190,7 +191,7 @@
               <div id="parent-autocomplete-results" class="autocomplete-results"></div>
             </div>
             <div class="parent-info-display" id="parent-info" style="display: none;">
-              <span class="material-symbols-rounded">person</span>
+              <span class="material-symbols-rounded">supervisor_account</span>
               <span id="parent-name-display">No parent selected</span>
               <span id="parent-relationship-display"></span>
             </div>
@@ -218,7 +219,7 @@
               <div id="assignee-autocomplete-results" class="autocomplete-results"></div>
             </div>
             <div class="parent-info-display" id="assignee-info" style="display: none;">
-              <span class="material-symbols-rounded">support_agent</span>
+              <span class="material-symbols-rounded">school</span>
               <span id="assignee-name-display" class="no-parent">No assignee selected</span>
               <span id="assignee-role-display"></span>
             </div>
@@ -227,7 +228,7 @@
 
         <div class="form-group">
           <label for="message-input">Initial Message</label>
-          <textarea id="message-input" rows="4" placeholder="Describe the issue or request" required></textarea>
+          <textarea id="message-input" rows="6" placeholder="Describe the issue or request" required></textarea>
         </div>
       </form>
     </div>
@@ -238,11 +239,10 @@
   </div>
 </div>
 
-<script>
+<script nonce="@HttpContext.Items["csp-nonce"]">
   const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
-  const parents = @School.Instance.ParentsJson;
-  const staff = @School.Instance.StaffJson;
-  const tickets = [];
+  const usersHash = '@School.Instance.UsersJsonHash';
+  const tickets = @Html.Raw(Json.Serialize(tickets));
 </script>
 <script src="/js/core.js"></script>
 <script src="/js/date-utils.js"></script>

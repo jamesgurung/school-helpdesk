@@ -4,7 +4,7 @@ function selectAssignee(assignee) {
   elements.assigneeEditInput.value = assignee.name;
   elements.assigneeEditAutocompleteResults.style.display = 'none';
   elements.assigneeEditContainer.style.display = 'none';
-  updateTicket({ assigneeEmail: assignee.email, assigneeName: assignee.name, assigneeRole: assignee.role });
+  updateTicket({ assigneeEmail: assignee.email, assigneeName: assignee.name });
 }
 
 function selectNewTicketAssignee(assignee) {
@@ -12,7 +12,6 @@ function selectNewTicketAssignee(assignee) {
   elements.assigneeSearchInput.value = assignee.name;
   elements.assigneeNameDisplay.textContent = assignee.name;
   elements.assigneeNameDisplay.classList.remove('no-parent');
-  elements.assigneeRoleDisplay.textContent = ` (${assignee.role})`;
   elements.assigneeAutocompleteResults.style.display = 'none';
   
   elements.assigneeSearchContainer.style.display = 'none';
@@ -34,7 +33,16 @@ function filterParents(query) {
       if (parent.email === exactMatch.email) return false;
       const nameMatch = parent.name.toLowerCase().includes(query);
       const emailMatch = parent.email.toLowerCase().includes(query);
-      return nameMatch || emailMatch;
+      
+      // Check for matches in children's names
+      const childrenMatch = parent.children && parent.children.some(child => {
+        const fullName = `${child.firstName} ${child.lastName}`.toLowerCase();
+        return fullName.includes(query) || 
+               child.firstName.toLowerCase().includes(query) || 
+               child.lastName.toLowerCase().includes(query);
+      });
+      
+      return nameMatch || emailMatch || childrenMatch;
     });
     
     return [exactMatch, ...otherMatches];
@@ -43,7 +51,16 @@ function filterParents(query) {
   return parents.filter(parent => {
     const nameMatch = parent.name.toLowerCase().includes(query);
     const emailMatch = parent.email.toLowerCase().includes(query);
-    return nameMatch || emailMatch;
+    
+    // Check for matches in children's names
+    const childrenMatch = parent.children && parent.children.some(child => {
+      const fullName = `${child.firstName} ${child.lastName}`.toLowerCase();
+      return fullName.includes(query) || 
+             child.firstName.toLowerCase().includes(query) || 
+             child.lastName.toLowerCase().includes(query);
+    });
+    
+    return nameMatch || emailMatch || childrenMatch;
   });
 }
 
@@ -56,6 +73,7 @@ function displayParentAutocompleteResults(results, selectedParent = null) {
   }
   
   let selectedItem = null;
+  const query = elements.parentSearchInput.value.toLowerCase().trim();
   
   results.forEach(parent => {
     const item = document.createElement('div');
@@ -66,9 +84,27 @@ function displayParentAutocompleteResults(results, selectedParent = null) {
       selectedItem = item;
     }
     
+    // Generate a string of the children's names, highlighting matches
+    let childrenInfo = 'No children';
+    if (parent.children && parent.children.length > 0) {
+      const childrenStrings = parent.children.map(child => {
+        const fullName = `${child.firstName} ${child.lastName}`;
+        const fullNameLower = fullName.toLowerCase();
+        
+        // If this child's name matches the search query, make it bold
+        if (query && (fullNameLower.includes(query) || 
+            child.firstName.toLowerCase().includes(query) || 
+            child.lastName.toLowerCase().includes(query))) {
+          return `<strong>${child.firstName} ${child.lastName}</strong> (${child.tutorGroup})`;
+        }
+        return `${child.firstName} ${child.lastName} (${child.tutorGroup})`;
+      });
+      childrenInfo = childrenStrings.join(', ');
+    }
+    
     item.innerHTML = `
       <div class="autocomplete-name">${parent.name}</div>
-      <div class="autocomplete-email">${parent.email}</div>
+      <div class="autocomplete-email">${parent.email} - ${childrenInfo}</div>
     `;
     
     item.addEventListener('click', () => {
@@ -87,6 +123,17 @@ function displayParentAutocompleteResults(results, selectedParent = null) {
   }
 }
 
+// Focus on the next appropriate input after parent selection
+function focusNextInputAfterParentSelection(parent) {
+  if (parent.children && parent.children.length === 1) {
+    // Focus on ticket title since student is already selected
+    setTimeout(() => elements.ticketTitleFormInput.focus(), 50);
+  } else if (parent.children && parent.children.length > 1) {
+    // Focus on student dropdown for multiple children
+    setTimeout(() => elements.studentSelectInput.focus(), 50);
+  }
+}
+
 function selectParent(parent) {
   state.activeParent = parent;
   elements.parentSearchInput.value = parent.name;
@@ -101,6 +148,24 @@ function selectParent(parent) {
   document.getElementById('parent-edit-icon').style.display = 'inline-block';
   
   updateStudentOptions(parent.children);
+  
+  // Auto-select the student if there's only one child
+  if (parent.children && parent.children.length === 1) {
+    const child = parent.children[0];
+    const studentValue = `${child.firstName}-${child.lastName}-${child.tutorGroup}`;
+    elements.studentSelectInput.value = studentValue;
+    
+    // Add visual feedback to indicate auto-selection
+    setTimeout(() => {
+      elements.studentSelectInput.classList.add('auto-selected');
+      setTimeout(() => {
+        elements.studentSelectInput.classList.remove('auto-selected');
+      }, 1000);
+    }, 0);
+  }
+  
+  // Focus on the appropriate next input field
+  focusNextInputAfterParentSelection(parent);
 }
 
 function updateStudentOptions(children) {

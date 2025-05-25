@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.HttpOverrides;
 using SchoolHelpdesk;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -63,6 +64,17 @@ if (!app.Environment.IsDevelopment())
     {
       await next();
     }
+  });
+
+  app.Use(async (context, next) =>
+  {
+    var cspNonce = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
+    context.Items["csp-nonce"] = cspNonce;
+    var csp = $"default-src 'self'; script-src 'self' 'nonce-{cspNonce}'; img-src 'self' https://{storageAccountName}.blob.core.windows.net; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; " +
+      "frame-ancestors 'none'; form-action 'self'; connect-src 'self'; upgrade-insecure-requests;";
+    context.Response.Headers.ContentSecurityPolicy = csp;
+    await next();
   });
 }
 

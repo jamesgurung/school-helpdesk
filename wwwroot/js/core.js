@@ -7,7 +7,6 @@ const elements = {
   tabs: document.querySelectorAll('.tab'),
   ticketTitleInput: document.getElementById('ticket-title'),
   studentSelect: document.getElementById('student-select'),
-  assigneeSelect: document.getElementById('assignee-select'),
   parentInfoSection: document.getElementById('parent-info-section'),
   studentInfoSection: document.getElementById('student-info-section'),
   assigneeInfoSection: document.getElementById('assignee-info-section'),
@@ -18,6 +17,7 @@ const elements = {
   newMessageInput: document.getElementById('new-message'),
   sendMessageBtn: document.getElementById('send-message'),
   closeTicketBtn: document.getElementById('close-ticket'),
+  logoutBtn: document.getElementById('logout-button'),
   newTicketButton: document.getElementById('new-ticket-button'),
   newTicketModal: document.getElementById('new-ticket-modal'),
   closeModalBtn: document.querySelector('.close-modal'),
@@ -38,32 +38,117 @@ const elements = {
   parentInfo: document.getElementById('parent-info'),
   assigneeInfoDisplay: document.getElementById('assignee-info'),
   assigneeNameDisplay: document.getElementById('assignee-name-display'),
-  assigneeRoleDisplay: document.getElementById('assignee-role-display'),
   assigneeEditIcon: document.getElementById('assignee-edit-icon')
 };
 
 const state = {
   activeTicket: null,
   activeTab: 'open',
-  activeTicketMessages: [],
   activeTicketChildren: [],
   timeUpdateInterval: null,
   parentInfo: null,
   activeParent: null,
   activeAssignee: null,
-  activeEditAssignee: null
+  activeEditAssignee: null,
+  conversation: []
 };
 
-const customConversations = {};
+let parents;
+let staff;
 
-function init() {
-  populateSelectOptions();
-  renderTickets(state.activeTab);
-  setupEventListeners();
-  updateBackButtonIcon();
-  populateNewTicketForm();
-  window.addEventListener('resize', updateBackButtonIcon);
-  state.timeUpdateInterval = setInterval(updateAllElapsedTimes, 1000);
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('helpdesk', 1);
+    
+    request.onerror = event => reject(event.target.error);
+    
+    request.onupgradeneeded = event => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('users')) {
+        db.createObjectStore('users');
+      }
+    };
+    
+    request.onsuccess = event => resolve(event.target.result);
+  });
+}
+
+async function getUsersData() {
+  try {
+    const db = await openDatabase();
+    const transaction = db.transaction('users', 'readonly');
+    const store = transaction.objectStore('users');
+    
+    const parentsRequest = store.get('parents');
+    const staffRequest = store.get('staff');
+    const hashRequest = store.get('hash');
+    
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => {
+        resolve({
+          parents: parentsRequest.result,
+          staff: staffRequest.result,
+          usersHash: hashRequest.result
+        });
+      };
+      transaction.onerror = event => reject(event.target.error);
+    });
+  } catch (error) {
+    console.error('Failed to get users data:', error);
+    return { parents: null, staff: null, usersHash: null };
+  }
+}
+
+async function fetchUsers() {
+  const response = await fetch('/api/users');
+  const users = await response.json();
+  
+  parents = users.parents;
+  staff = users.staff;
+  
+  try {
+    const db = await openDatabase();
+    const transaction = db.transaction('users', 'readwrite');
+    const store = transaction.objectStore('users');
+
+    store.put(parents, 'parents');
+    store.put(staff, 'staff');
+    store.put(usersHash, 'hash');
+
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = event => reject(event.target.error);
+    });
+  } catch (error) {
+    console.error('Failed to store users data:', error);
+    return false;
+  }
+
+  return users;
+}
+
+async function init() {
+  try {
+    const storedData = await getUsersData();
+    
+    if (storedData?.usersHash === usersHash) {
+      parents = storedData.parents;
+      staff = storedData.staff;
+    } else {
+      await fetchUsers();
+    }
+    
+    populateSelectOptions();
+    renderTickets(state.activeTab);
+    setupEventListeners();
+    updateBackButtonIcon();
+    populateNewTicketForm();
+    window.addEventListener('resize', updateBackButtonIcon);
+    state.timeUpdateInterval = setInterval(updateAllElapsedTimes, 1000);
+  } catch (error) {
+    console.error('Failed to initialize the app:', error);
+    await fetchUsers();
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

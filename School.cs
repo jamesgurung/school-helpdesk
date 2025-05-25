@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Html;
-
-namespace SchoolHelpdesk;
+﻿namespace SchoolHelpdesk;
 
 public class School
 {
@@ -14,8 +12,8 @@ public class School
   public Dictionary<string, Parent> ParentsByEmail { get; set; }
   public Dictionary<string, Staff> StaffByEmail { get; set; }
 
-  public HtmlString ParentsJson { get; set; }
-  public HtmlString StaffJson { get; set; }
+  public string UsersJson { get; set; }
+  public string UsersJsonHash { get; set; }
 
   public string HtmlEmailTemplate { get; set; }
   public string TextEmailTemplate { get; set; }
