@@ -31,7 +31,7 @@ function renderTickets(status) {
 }
 
 function resetDetailsView() {
-  state.activeTicket = null;
+  state.currentTicketId = null;
   state.conversation = [];
   elements.detailsEmpty.style.display = 'flex';
   elements.detailsContent.style.display = 'none';

@@ -22,15 +22,25 @@ public static class TableService
     await commentsClient.QueryAsync<TableEntity>(o => o.PartitionKey == nonExistentKey).ToListAsync();
   }
 
+  public static async Task<TicketEntity> GetTicketAsync(string assigneeEmail, string id)
+  {
+    ArgumentNullException.ThrowIfNull(assigneeEmail);
+    ArgumentNullException.ThrowIfNull(id);
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    return ticket.Value;
+  }
+
   public static async Task<List<TicketEntity>> GetAllTicketsAsync()
   {
-    return await ticketsClient.QueryAsync<TicketEntity>().ToListAsync();
+    var tickets = await ticketsClient.QueryAsync<TicketEntity>().ToListAsync();
+    return tickets.OrderByDescending(t => t.CreatedDate).ToList();
   }
 
   public static async Task<List<TicketEntity>> GetTicketsByAssigneeAsync(string assigneeEmail)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
-    return await ticketsClient.QueryAsync<TicketEntity>(o => o.PartitionKey == assigneeEmail).ToListAsync();
+    var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.PartitionKey == assigneeEmail).ToListAsync();
+    return tickets.OrderByDescending(t => t.CreatedDate).ToList();
   }
 
   public static async Task<bool> TicketExistsAsync(string assigneeEmail, string id)
@@ -49,6 +59,49 @@ public static class TableService
     ticket.RowKey = Guid.NewGuid().ToString("N");
     await ticketsClient.AddEntityAsync(ticket);
     return ticket;
+  }
+
+  public static async Task ReassignTicketAsync(string assigneeEmail, string id, string newAssigneeEmail, string newAssigneeName)
+  {
+    ArgumentNullException.ThrowIfNull(assigneeEmail);
+    ArgumentNullException.ThrowIfNull(id);
+    ArgumentNullException.ThrowIfNull(newAssigneeEmail);
+
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    ticket.Value.PartitionKey = newAssigneeEmail;
+    ticket.Value.AssigneeName = newAssigneeName;
+    await ticketsClient.AddEntityAsync(ticket.Value);
+    await ticketsClient.DeleteEntityAsync(assigneeEmail, id);
+  }
+
+  public static async Task RenameTicketAsync(string assigneeEmail, string id, string newTitle)
+  {
+    ArgumentNullException.ThrowIfNull(assigneeEmail);
+    ArgumentNullException.ThrowIfNull(id);
+    ArgumentNullException.ThrowIfNull(newTitle);
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    ticket.Value.Title = newTitle;
+    await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
+  }
+
+  public static async Task CloseTicketAsync(string assigneeEmail, string id, bool isClosed)
+  {
+    ArgumentNullException.ThrowIfNull(assigneeEmail);
+    ArgumentNullException.ThrowIfNull(id);
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    ticket.Value.IsClosed = isClosed;
+    ticket.Value.UpdatedDate = DateTime.UtcNow;
+    await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
+  }
+
+  public static async Task ChangeTicketStudentAsync(TicketEntity ticket, Student student)
+  {
+    ArgumentNullException.ThrowIfNull(ticket);
+    ArgumentNullException.ThrowIfNull(student);
+    ticket.StudentFirstName = student.FirstName;
+    ticket.StudentLastName = student.LastName;
+    ticket.TutorGroup = student.TutorGroup;
+    await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
   }
 }
 

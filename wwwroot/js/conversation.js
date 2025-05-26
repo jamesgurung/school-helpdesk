@@ -1,6 +1,7 @@
 // Conversation and Messaging
 function renderConversation() {
-  if (!state.activeTicket || !state.conversation) return;
+  const currentTicket = getCurrentTicket();
+  if (!currentTicket || !state.conversation) return;
   
   elements.conversationContainer.innerHTML = '';
   
@@ -9,23 +10,26 @@ function renderConversation() {
     const messageElement = messageClone.querySelector('.message');
     const messageIconElement = messageClone.querySelector('.message-icon');
     const authorNameElement = messageClone.querySelector('.author-name');
-    
-    const isEmployee = message.isEmployee;
+
+    const isOnBehalfOfParent = message.isEmployee && index === 0;
+    const isEmployee = message.isEmployee && index > 0;
     const config = {
       class: isEmployee ? 'employee' : 'parent',
-      icon: isEmployee ? (index === 0 ? 'support_agent' : 'school') : 'person',
-      colorVar: isEmployee ? '--primary' : '--secondary',
-      colorDarkVar: isEmployee ? '--primary-dark' : '--secondary-dark'
+      icon: isOnBehalfOfParent ? 'support_agent' : (isEmployee ? 'school' : 'person'),
+      iconColorVar: isEmployee || isOnBehalfOfParent ? '--primary-dark' : '--secondary-dark',
+      colorVar: isEmployee ? '--primary-dark' : '--secondary-dark'
     };
     
     messageElement.classList.add(config.class);
     messageIconElement.textContent = config.icon;
-    messageIconElement.style.color = `var(${config.colorVar})`;
-    authorNameElement.style.color = `var(${config.colorDarkVar})`;
+    messageIconElement.style.color = `var(${config.iconColorVar})`;
+    authorNameElement.style.color = `var(${config.colorVar})`;
+
+    const content = isOnBehalfOfParent ? `${message.content}<p class="reply-note">Note that you are replying directly to the ${currentTicket.parentRelationship.toLowerCase()}.</p>` : message.content;
     
-    authorNameElement.textContent = message.authorName;
+    authorNameElement.innerHTML = isOnBehalfOfParent ? `<span class="agent">${message.authorName}</span> <span>on behalf of</span> ${currentTicket.parentName}` : message.authorName;
     messageClone.querySelector('.message-date').textContent = formatDateTime(message.timestamp);
-    messageClone.querySelector('.message-content').textContent = message.content;
+    messageClone.querySelector('.message-content').innerHTML = content;
     
     if (message.attachments?.length) {
       renderMessageAttachments(messageElement, message.attachments);
@@ -66,13 +70,13 @@ function renderMessageAttachments(messageElement, attachments) {
 }
 
 function sendMessage() {
-  if (!state.activeTicket || !elements.newMessageInput.value.trim()) return;
+  const currentTicket = getCurrentTicket();
+  if (!currentTicket || !elements.newMessageInput.value.trim()) return;
   
-  const assigneeStaff = staff.find(s => s.email === state.activeTicket.assigneeEmail);
+  const assigneeStaff = staff.find(s => s.email === currentTicket.assigneeEmail);
   
-  // If no assignee is selected, alert the user and don't send the message
   if (!assigneeStaff) {
-    alert('Please assign this ticket to a staff member before sending a message.');
+    showToast('Please assign this ticket to a staff member before sending a message.', 'error');
     return;
   }
   
@@ -84,10 +88,7 @@ function sendMessage() {
     content: elements.newMessageInput.value.trim(),
     attachments: []
   };
-  
   state.conversation.push(newMessage);
-  updateTicket();
-  
   elements.newMessageInput.value = '';
   renderConversation();
 }

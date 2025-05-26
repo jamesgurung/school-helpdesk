@@ -115,7 +115,7 @@
       </div>
 
       <div class="ticket-info-item">
-        <div class="ticket-info-label">Created and Updated</div>
+        <div class="ticket-info-label">Date Created & Wait Time</div>
         <div class="ticket-info-value">
           <span class="material-symbols-rounded">calendar_month</span>
           <div class="ticket-timeline">
@@ -183,7 +183,7 @@
     <div class="modal-body">
       <form id="new-ticket-form">
         <div class="form-group">
-          <label for="parent-info">Parent/Carer <span class="material-symbols-rounded edit-icon"
+          <label for="parent-search-input">Parent/Carer <span class="material-symbols-rounded edit-icon"
               id="parent-edit-icon">edit</span></label>
           <div class="parent-selection-container">
             <div class="autocomplete-container" id="parent-search-container">
@@ -211,7 +211,7 @@
         </div>
 
         <div class="form-group">
-          <label for="assignee-info">Assign To <span class="material-symbols-rounded edit-icon"
+          <label for="assignee-search-input">Assign To <span class="material-symbols-rounded edit-icon"
               id="assignee-edit-icon">edit</span></label>
           <div class="parent-selection-container">
             <div class="autocomplete-container" id="assignee-search-container">
@@ -221,7 +221,6 @@
             <div class="parent-info-display" id="assignee-info" style="display: none;">
               <span class="material-symbols-rounded">school</span>
               <span id="assignee-name-display" class="no-parent">No assignee selected</span>
-              <span id="assignee-role-display"></span>
             </div>
           </div>
         </div>
@@ -247,6 +246,7 @@
 <script src="/js/core.js"></script>
 <script src="/js/date-utils.js"></script>
 <script src="/js/utils.js"></script>
+<script src="/js/api.js"></script>
 <script src="/js/search.js"></script>
 <script src="/js/conversation.js"></script>
 <script src="/js/ticket-list.js"></script>

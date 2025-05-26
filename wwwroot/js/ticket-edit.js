@@ -1,43 +1,121 @@
 // Edit Functionality for Tickets
-function saveTicketChanges() {
-  if (!state.activeTicket) return;
-  
-  updateTicket({
-    title: elements.ticketTitleInput.innerText
-    // Removed assigneeEmail and assigneeName handling as it's now handled by autocomplete
-  });
+function getTicketChildren() {
+  const ticket = getCurrentTicket();
+  if (!ticket) return [];
+  return parents.find(p => p.email === ticket.parentEmail)?.children || [];
 }
 
-function saveStudentChanges() {
-  if (!state.activeTicket) return;
-  
+async function updateTicketTitle() {
+  const ticket = getCurrentTicket();
+  if (!ticket) return;
+
+  const newTitle = elements.ticketTitleInput.innerText.trim();
+  if (newTitle === ticket.title) return;
+
+  try {
+    await apiUpdateTicketTitle(ticket.id, ticket.assigneeEmail, newTitle);
+    ticket.title = newTitle;
+    renderTicketInList(ticket);
+  } catch (error) {
+    console.error('Failed to update title:', error);
+    elements.ticketTitleInput.innerText = ticket.title;
+  }
+}
+
+async function updateTicketStudent() {
+  const ticket = getCurrentTicket();
+  if (!ticket) return;
+
   const [firstName, lastName] = elements.studentSelect.value.split('-');
-  
-  updateTicket({
-    studentFirstName: firstName,
-    studentLastName: lastName
-  });
+  const children = getTicketChildren();
+  const student = children.find(child =>
+    child.firstName === firstName && child.lastName === lastName
+  );
+
+  if (!student) return;
+
+  try {
+    await apiUpdateTicketStudent(ticket.id, ticket.assigneeEmail, firstName, lastName, student.tutorGroup);
+    ticket.studentFirstName = firstName;
+    ticket.studentLastName = lastName;
+    ticket.tutorGroup = student.tutorGroup;
+    renderTicketInList(ticket);
+    renderStudentInfo(ticket, children);
+  } catch (error) {
+    console.error('Failed to update student:', error);
+    elements.studentSelect.value = `${ticket.studentFirstName}-${ticket.studentLastName}`;
+  }
 }
 
-function toggleEdit(type, saveFunction) {
-  // We only handle student selection now as assignee uses autocomplete
-  if (type !== 'student') return;
+async function updateTicketAssignee() {
+  const ticket = getCurrentTicket();
+  if (!ticket || !state.activeEditAssignee) return;
+
+  const oldAssigneeEmail = ticket.assigneeEmail;
+  const newAssigneeEmail = state.activeEditAssignee.email;
+
+  if (oldAssigneeEmail === newAssigneeEmail) {
+    state.activeEditAssignee = null;
+    renderAssigneeInfo(ticket);
+    return;
+  }
+
+  try {
+    await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
+    ticket.assigneeEmail = state.activeEditAssignee.email;
+    ticket.assigneeName = state.activeEditAssignee.name;
+    renderTicketInList(ticket);
+    renderAssigneeInfo(ticket);
+    state.activeEditAssignee = null;
+  } catch (error) {
+    console.error('Failed to update assignee:', error);
+  }
+}
+
+async function toggleTicketStatus() {
+  const ticket = getCurrentTicket();
+  if (!ticket) return;
+
+  const newStatus = !ticket.closed;
+
+  try {
+    await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, newStatus);
+    ticket.closed = newStatus;
+    if (newStatus) {
+      state.activeTab = 'closed';
+      elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'closed'));
+    } else {
+      state.activeTab = 'open';
+      elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'open'));
+    }
+    renderTickets(state.activeTab);
+    resetDetailsView();
+  } catch (error) {
+    console.error('Failed to update ticket status:', error);
+  }
+}
+
+function toggleStudentEdit() {
+  const ticket = getCurrentTicket();
+  if (!ticket) return;
   
-  const infoSection = elements[`${type}InfoSection`];
+  const children = getTicketChildren();
+  if (children.length <= 1) return;
+  
+  const infoSection = elements.studentInfoSection;
   const infoContainer = infoSection.querySelector('.info-container');
-  const selectEl = elements[`${type}Select`];
+  const selectEl = elements.studentSelect;
   
   if (selectEl.parentElement === infoSection) {
     selectEl.removeEventListener('change', selectEl._changeHandler);
     selectEl.removeEventListener('blur', selectEl._blurHandler);
     
-    saveFunction();
+    updateTicketStudent();
     
     selectEl.classList.add('hidden-select');
     document.querySelector('.hidden-selects').appendChild(selectEl);
     infoContainer.style.display = 'flex';
-  } 
-  else {
+  } else {
     infoContainer.style.display = 'none';
     selectEl.classList.remove('hidden-select');
     infoSection.appendChild(selectEl);
@@ -46,13 +124,13 @@ function toggleEdit(type, saveFunction) {
     
     selectEl._changeHandler = () => {
       selectEl._blurPrevented = true;
-      toggleEdit(type, saveFunction);
+      toggleStudentEdit();
     };
     
     selectEl._blurHandler = () => {
       setTimeout(() => {
         if (!selectEl._blurPrevented && document.activeElement !== selectEl) {
-          toggleEdit(type, saveFunction);
+          toggleStudentEdit();
         }
         selectEl._blurPrevented = false;
       }, 100);
@@ -63,18 +141,19 @@ function toggleEdit(type, saveFunction) {
   }
 }
 
-function toggleStudentEdit() {
-  toggleEdit('student', saveStudentChanges);
-}
-
 function toggleAssigneeEdit() {
   const editContainer = elements.assigneeEditContainer;
   const infoContainer = elements.assigneeInfoSection.querySelector('.info-container');
+  
   if (editContainer.style.display === 'none') {
+    const ticket = getCurrentTicket();
+    if (!ticket) return;
+    
     infoContainer.style.display = 'none';
     editContainer.style.display = 'block';
-    elements.assigneeEditInput.value = state.activeTicket.assigneeName;
+    elements.assigneeEditInput.value = ticket.assigneeName;
     elements.assigneeEditInput.focus();
+    elements.assigneeEditInput.select();
     setTimeout(() => {
       if (elements.assigneeEditInput.value) {
         elements.assigneeEditInput.dispatchEvent(new Event('input'));
@@ -83,12 +162,6 @@ function toggleAssigneeEdit() {
   } else {
     editContainer.style.display = 'none';
     infoContainer.style.display = 'flex';
-    if (state.activeEditAssignee) {
-      updateTicket({
-        assigneeEmail: state.activeEditAssignee.email,
-        assigneeName: state.activeEditAssignee.name
-      });
-      state.activeEditAssignee = null;
-    }
+    updateTicketAssignee();
   }
 }

@@ -1,5 +1,15 @@
 // Event Handlers and Listeners
 function setupEventListeners() {    
+  setupTabNavigation();
+  setupTicketDetails();
+  setupTicketCreation();
+  setupUserActions();
+  setupParentSearch();
+  setupAssigneeFeatures();
+  setupDocumentClickHandlers();
+}
+
+function setupTabNavigation() {
   elements.tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       elements.tabs.forEach(t => t.classList.remove('active'));
@@ -9,9 +19,11 @@ function setupEventListeners() {
       resetDetailsView();
     });
   });
-  
+}
+
+function setupTicketDetails() {
   elements.mobileBack.addEventListener('click', resetDetailsView);
-  elements.ticketTitleInput.addEventListener('blur', saveTicketChanges);
+  elements.ticketTitleInput.addEventListener('blur', updateTicketTitle);
   elements.sendMessageBtn.addEventListener('click', sendMessage);
   elements.closeTicketBtn.addEventListener('click', closeTicket);
   elements.newMessageInput.addEventListener('keydown', e => {
@@ -20,233 +32,239 @@ function setupEventListeners() {
       sendMessage();
     }
   });
-  
+}
+
+function setupTicketCreation() {
   elements.newTicketButton.addEventListener('click', openNewTicketModal);
   elements.closeModalBtn.addEventListener('click', closeNewTicketModal);
   elements.cancelNewTicketBtn.addEventListener('click', closeNewTicketModal);
   elements.createNewTicketBtn.addEventListener('click', createNewTicket);
+}
 
+function setupUserActions() {
   elements.logoutBtn.addEventListener('click', () => {
     window.location.href = '/auth/logout';
   });
-  
-  elements.parentSearchInput.addEventListener('input', e => {
-    const results = filterParents(e.target.value);
-    displayParentAutocompleteResults(results, state.activeParent);
-  });
-  
-  elements.parentSearchInput.addEventListener('focus', e => {
-    const query = e.target.value;
-    if (query.trim()) {
-      const results = filterParents(query);
-      displayParentAutocompleteResults(results, state.activeParent);
-    }
-  });
+}
+
+function setupParentSearch() {
+  setupSearchInputListeners(
+    elements.parentSearchInput,
+    filterParents,
+    (results) => displayParentAutocompleteResults(results, state.activeParent)
+  );
   
   elements.parentInfo.addEventListener('click', toggleParentSearchMode);
   document.getElementById('parent-edit-icon').addEventListener('click', toggleParentSearchMode);
   
   setupParentSearchKeyboardNavigation();
+}
+
+function setupAssigneeFeatures() {
   setupAssigneeSearchListeners();
   setupAssigneeEditListeners();
-  setupDocumentClickHandlers();
 }
 
-function setupParentSearchKeyboardNavigation() {
-  elements.parentSearchInput.addEventListener('keydown', e => {
-    const autocompleteItems = elements.parentAutocompleteResults.querySelectorAll('.autocomplete-item');
-    const selectedItem = elements.parentAutocompleteResults.querySelector('.autocomplete-item.selected');
-    
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (autocompleteItems.length === 0) return;
-      
-      let nextSelectedIndex = 0;
-      
-      if (selectedItem) {
-        const currentIndex = Array.from(autocompleteItems).indexOf(selectedItem);
-        selectedItem.classList.remove('selected');
-        
-        if (e.key === 'ArrowDown') {
-          nextSelectedIndex = (currentIndex + 1) % autocompleteItems.length;
-        } else {
-          nextSelectedIndex = (currentIndex - 1 + autocompleteItems.length) % autocompleteItems.length;
-        }
-      }
-      
-      autocompleteItems[nextSelectedIndex].classList.add('selected');
-      autocompleteItems[nextSelectedIndex].scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      const selectedItem = elements.parentAutocompleteResults.querySelector('.autocomplete-item.selected');
-      
-      if (selectedItem && elements.parentAutocompleteResults.style.display !== 'none') {
-        // Extract parent data and select
-        const nameEl = selectedItem.querySelector('.autocomplete-name');
-        const emailEl = selectedItem.querySelector('.autocomplete-email');
-        if (nameEl && emailEl) {
-          const emailText = emailEl.textContent.split(' - ')[0];
-          const parent = parents.find(p => p.name === nameEl.textContent && p.email === emailText);
-          if (parent) selectParent(parent);
-        }
-        e.preventDefault();
-      }
-    } else if (e.key === 'Escape') {
-      elements.parentAutocompleteResults.style.display = 'none';
-    }
+function setupSearchInputListeners(inputElement, filterCallback, displayResultsCallback) {
+  inputElement.addEventListener('input', e => {
+    displayResultsCallback(filterCallback(e.target.value));
   });
-}
 
-function setupAssigneeSearchListeners() {
-  elements.assigneeSearchInput.addEventListener('input', e => {
-    const query = e.target.value;
-    const results = staff.filter(s => s.name.toLowerCase().includes(query.toLowerCase()) || s.email.toLowerCase().includes(query.toLowerCase()));
-    elements.assigneeAutocompleteResults.innerHTML = '';
-    if (!results.length) { 
-      elements.assigneeAutocompleteResults.style.display = 'none'; 
-      return; 
-    }
-    results.forEach(s => {
-      const item = document.createElement('div'); 
-      item.className = 'autocomplete-item';
-      item.innerHTML = `<div class="autocomplete-name">${s.name}</div><div class="autocomplete-email">${s.email}</div>`;
-      item.addEventListener('click', () => selectNewTicketAssignee(s));
-      elements.assigneeAutocompleteResults.appendChild(item);
-    });
-    elements.assigneeAutocompleteResults.style.display = 'block';
-  });
-  
-  elements.assigneeSearchInput.addEventListener('focus', e => {
+  inputElement.addEventListener('focus', e => {
     setTimeout(() => {
-      const val = e.target.value.trim();
-      if (val) {
-        e.target.dispatchEvent(new Event('input'));
+      const query = e.target.value.trim();
+      if (query) {
+        displayResultsCallback(filterCallback(query));
       }
     }, 50);
   });
+}
+
+function populateAutocompleteResults(resultsElement, items, nameField, emailField, clickCallback) {
+  resultsElement.innerHTML = '';
   
-  elements.assigneeSearchInput.addEventListener('keydown', e => {
-    const autocompleteItems = elements.assigneeAutocompleteResults.querySelectorAll('.autocomplete-item');
-    const selectedItem = elements.assigneeAutocompleteResults.querySelector('.autocomplete-item.selected');
+  if (!items.length) {
+    resultsElement.style.display = 'none';
+    return;
+  }
+  
+  items.forEach(item => {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'autocomplete-item';
+    itemDiv.innerHTML = `
+      <div class="autocomplete-name">${item[nameField]}</div>
+      <div class="autocomplete-email">${item[emailField]}</div>
+    `;
+    itemDiv.addEventListener('click', () => clickCallback(item));
+    resultsElement.appendChild(itemDiv);
+  });
+  
+  resultsElement.style.display = 'block';
+}
+
+function handleAutocompleteKeyboardNavigation(inputElement, resultsElement, onSelectCallback, getItemTextCallback) {
+  inputElement.addEventListener('keydown', e => {
+    const items = resultsElement.querySelectorAll('.autocomplete-item');
+    const selectedItem = resultsElement.querySelector('.autocomplete-item.selected');
     
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      if (autocompleteItems.length === 0) return;
-      
-      let nextSelectedIndex = 0;
-      
+      if (items.length === 0) return;
+
+      let nextIndex = 0;
       if (selectedItem) {
-        const currentIndex = Array.from(autocompleteItems).indexOf(selectedItem);
+        const currentIndex = Array.from(items).indexOf(selectedItem);
         selectedItem.classList.remove('selected');
-        
-        if (e.key === 'ArrowDown') {
-          nextSelectedIndex = (currentIndex + 1) % autocompleteItems.length;
-        } else {
-          nextSelectedIndex = (currentIndex - 1 + autocompleteItems.length) % autocompleteItems.length;
-        }
+        nextIndex = e.key === 'ArrowDown' 
+          ? (currentIndex + 1) % items.length 
+          : (currentIndex - 1 + items.length) % items.length;
       }
       
-      autocompleteItems[nextSelectedIndex].classList.add('selected');
-      autocompleteItems[nextSelectedIndex].scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      const selectedItem = elements.assigneeAutocompleteResults.querySelector('.autocomplete-item.selected');
-      
-      if (selectedItem && elements.assigneeAutocompleteResults.style.display !== 'none') {
-        // Extract assignee data and select
-        const nameEl = selectedItem.querySelector('.autocomplete-name');
-        const emailEl = selectedItem.querySelector('.autocomplete-email');
-        if (nameEl && emailEl) {
-          const assignee = staff.find(s => s.name === nameEl.textContent && s.email === emailEl.textContent);
-          if (assignee) selectNewTicketAssignee(assignee);
-        }
+      items[nextIndex].classList.add('selected');
+      items[nextIndex].scrollIntoView({ block: 'nearest' });
+    } 
+    else if ((e.key === 'Enter' || e.key === 'Tab') && 
+             resultsElement.style.display !== 'none') {
+      const currentSelected = resultsElement.querySelector('.autocomplete-item.selected');
+      if (currentSelected) {
         e.preventDefault();
+        if (getItemTextCallback) {
+          const { name, email } = getItemTextCallback(currentSelected);
+          onSelectCallback({ name, email });
+        } else {
+          currentSelected.click();
+        }
       }
-    } else if (e.key === 'Escape') {
-      elements.assigneeAutocompleteResults.style.display = 'none';
+    } 
+    else if (e.key === 'Escape') {
+      resultsElement.style.display = 'none';
     }
   });
+}
+
+function setupParentSearchKeyboardNavigation() {
+  const extractItemData = (selectedItem) => {
+    const nameEl = selectedItem.querySelector('.autocomplete-name');
+    const emailEl = selectedItem.querySelector('.autocomplete-email');
+    return nameEl && emailEl 
+      ? { name: nameEl.textContent, email: emailEl.textContent.split(' - ')[0] }
+      : null;
+  };
+
+  const handleSelection = ({ name, email }) => {
+    if (name && email) {
+      const parent = parents.find(p => p.name === name && p.email === email);
+      if (parent) selectParent(parent);
+    }
+  };
   
+  handleAutocompleteKeyboardNavigation(
+    elements.parentSearchInput,
+    elements.parentAutocompleteResults,
+    handleSelection,
+    extractItemData
+  );
+}
+
+function setupAssigneeSearchListeners() {
+  const filterStaff = (query) => {
+    const lowercaseQuery = query.toLowerCase();
+    return staff.filter(s => 
+      matchesWordBeginning(s.name, query) || 
+      matchesWordBeginning(s.email, query)
+    );
+  };
+
+  setupSearchInputListeners(
+    elements.assigneeSearchInput,
+    filterStaff,
+    (results) => populateAutocompleteResults(
+      elements.assigneeAutocompleteResults, 
+      results, 
+      'name', 
+      'email', 
+      selectNewTicketAssignee
+    )
+  );
+
+  const extractItemData = (selectedItem) => {
+    const nameEl = selectedItem.querySelector('.autocomplete-name');
+    const emailEl = selectedItem.querySelector('.autocomplete-email');
+    return nameEl && emailEl 
+      ? { name: nameEl.textContent, email: emailEl.textContent }
+      : null;
+  };
+
+  const handleSelection = ({ name, email }) => {
+    if (name && email) {
+      const assignee = staff.find(s => s.name === name && s.email === email);
+      if (assignee) selectNewTicketAssignee(assignee);
+    }
+  };
+
+  handleAutocompleteKeyboardNavigation(
+    elements.assigneeSearchInput,
+    elements.assigneeAutocompleteResults,
+    handleSelection,
+    extractItemData
+  );
+
   elements.assigneeInfoDisplay.addEventListener('click', toggleAssigneeSearchMode);
   elements.assigneeEditIcon.addEventListener('click', toggleAssigneeSearchMode);
 }
 
 function setupAssigneeEditListeners() {
-  elements.assigneeEditInput.addEventListener('input', e => {
-    const query = e.target.value;
-    const results = staff.filter(s => s.name.toLowerCase().includes(query.toLowerCase()) || s.email.toLowerCase().includes(query.toLowerCase()));
-    elements.assigneeEditAutocompleteResults.innerHTML = '';
-    if (!results.length) { 
-      elements.assigneeEditAutocompleteResults.style.display = 'none'; 
-      return; 
-    }
-    results.forEach(s => {
-      const item = document.createElement('div'); 
-      item.className = 'autocomplete-item';
-      item.innerHTML = `<div class="autocomplete-name">${s.name}</div><div class="autocomplete-email">${s.email}</div>`;
-      item.addEventListener('click', () => selectAssignee(s));
-      elements.assigneeEditAutocompleteResults.appendChild(item);
-    });
-    elements.assigneeEditAutocompleteResults.style.display = 'block';
-  });
-  
-  elements.assigneeEditInput.addEventListener('focus', e => {
-    setTimeout(() => {
-      const val = e.target.value.trim();
-      if (val) {
-        e.target.dispatchEvent(new Event('input'));
-      }
-    }, 50);
-  });
-    elements.assigneeEditInput.addEventListener('keydown', e => {
-    const autocompleteItems = elements.assigneeEditAutocompleteResults.querySelectorAll('.autocomplete-item');
-    const selectedItem = elements.assigneeEditAutocompleteResults.querySelector('.autocomplete-item.selected');
-    
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (autocompleteItems.length === 0) return;
-      
-      let nextSelectedIndex = 0;
-      
-      if (selectedItem) {
-        const currentIndex = Array.from(autocompleteItems).indexOf(selectedItem);
-        selectedItem.classList.remove('selected');
-        
-        if (e.key === 'ArrowDown') {
-          nextSelectedIndex = (currentIndex + 1) % autocompleteItems.length;
-        } else {
-          nextSelectedIndex = (currentIndex - 1 + autocompleteItems.length) % autocompleteItems.length;
-        }
-      }
-      
-      autocompleteItems[nextSelectedIndex].classList.add('selected');
-      autocompleteItems[nextSelectedIndex].scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      const selectedItem = elements.assigneeEditAutocompleteResults.querySelector('.autocomplete-item.selected');
-      
-      if (selectedItem && elements.assigneeEditAutocompleteResults.style.display !== 'none') {
-        e.preventDefault();
-        selectedItem.click();
-      }
-    } else if (e.key === 'Escape') {
-      elements.assigneeEditAutocompleteResults.style.display = 'none';
-    }
-  });
+  const filterStaff = (query) => {
+    const lowercaseQuery = query.toLowerCase();
+    return staff.filter(s => 
+      matchesWordBeginning(s.name, query) || 
+      matchesWordBeginning(s.email, query)
+    );
+  };
+
+  setupSearchInputListeners(
+    elements.assigneeEditInput,
+    filterStaff,
+    (results) => populateAutocompleteResults(
+      elements.assigneeEditAutocompleteResults, 
+      results, 
+      'name', 
+      'email', 
+      selectAssignee
+    )
+  );
+
+  handleAutocompleteKeyboardNavigation(
+    elements.assigneeEditInput,
+    elements.assigneeEditAutocompleteResults,
+    () => {},
+    null
+  );
 }
 
 function setupDocumentClickHandlers() {
   document.addEventListener('click', e => {
-    if (!elements.parentSearchInput.contains(e.target) && !elements.parentAutocompleteResults.contains(e.target)) {
+    // Hide parent autocomplete results when clicking outside
+    if (!elements.parentSearchInput.contains(e.target) && 
+        !elements.parentAutocompleteResults.contains(e.target)) {
       elements.parentAutocompleteResults.style.display = 'none';
     }
     
-    if (!elements.assigneeSearchInput.contains(e.target) && !elements.assigneeAutocompleteResults.contains(e.target)) {
+    // Hide assignee autocomplete results when clicking outside
+    if (!elements.assigneeSearchInput.contains(e.target) && 
+        !elements.assigneeAutocompleteResults.contains(e.target)) {
       elements.assigneeAutocompleteResults.style.display = 'none';
     }
     
+    // Hide assignee edit container when clicking outside
+    const assigneeEditIcon = elements.assigneeInfoSection.querySelector('.edit-icon');
     if (!elements.assigneeEditInput.contains(e.target) && 
         !elements.assigneeEditAutocompleteResults.contains(e.target) &&
-        !elements.assigneeInfoSection.querySelector('.edit-icon')?.contains(e.target)) {
+        !(assigneeEditIcon && assigneeEditIcon.contains(e.target))) {
+      
       elements.assigneeEditAutocompleteResults.style.display = 'none';
       elements.assigneeEditContainer.style.display = 'none';
+      
       const infoContainer = elements.assigneeInfoSection.querySelector('.info-container');
       if (infoContainer) infoContainer.style.display = 'flex';
     }

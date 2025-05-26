@@ -1,93 +1,89 @@
 // Ticket Details Management
 function openTicketDetails(ticketId) {
-  state.activeTicket = tickets.find(ticket => ticket.id === ticketId);
-  if (!state.activeTicket) return;
+  const ticket = tickets.find(t => t.id === ticketId);
+  if (!ticket) return;
+  
+  state.currentTicketId = ticketId;
   
   document.querySelectorAll('.ticket-item').forEach(item => item.classList.remove('selected'));
   const selectedTicket = document.querySelector(`.ticket-item[data-id="${ticketId}"]`);
   if (selectedTicket) selectedTicket.classList.add('selected');
   
-  elements.ticketTitleInput.innerText = state.activeTicket.title;
-  state.activeTicketChildren = parents.find(p => p.email === state.activeTicket.parentEmail).children;
+  elements.ticketTitleInput.innerText = ticket.title;
   
   fetch(`/api/tickets/${ticketId}`)
     .then(response => response.json())
-    .then(data => {
-      state.conversation = data;
+    .then(conversation => {
+      state.conversation = conversation;
       
-      populateStudentSelect();
-      displayInfoSections();
+      const children = parents.find(p => p.email === ticket.parentEmail)?.children || [];
+      
+      populateStudentSelect(ticket, children);
+      renderStudentInfo(ticket, children);
+      renderParentInfo(ticket);
+      renderAssigneeInfo(ticket);
       renderConversation();
       
       elements.detailsEmpty.style.display = 'none';
       elements.detailsContent.style.display = 'block';
       elements.ticketDetails.classList.add('open');
       updateBackButtonIcon();
-      if (state.activeTicket.closed) {
-        elements.closeTicketBtn.textContent = 'Reopen Ticket';
-      } else {
-        elements.closeTicketBtn.textContent = 'Close Ticket';
-      }
+      
+      elements.closeTicketBtn.textContent = ticket.closed ? 'Reopen Ticket' : 'Close Ticket';
     })
     .catch(error => {
-      alert('Error fetching ticket conversation:', error);
+      console.error('Error fetching conversation:', error);
+      showToast('Error fetching ticket conversation: ' + error, 'error');
     });
 }
 
-function populateStudentSelect() {
+function populateStudentSelect(ticket, children) {
   elements.studentSelect.innerHTML = '';
   
-  if (!state.activeTicketChildren?.length) return;
-  
-  state.activeTicketChildren.forEach(child => {
+  children.forEach(child => {
     const option = document.createElement('option');
     option.value = `${child.firstName}-${child.lastName}`;
     option.textContent = getFullName(child.firstName, child.lastName) + ` (${child.tutorGroup})`;
     elements.studentSelect.appendChild(option);
     
-    if (child.firstName === state.activeTicket.studentFirstName && 
-        child.lastName === state.activeTicket.studentLastName) {
+    if (child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName) {
       option.selected = true;
     }
   });
 }
 
-function displayInfoSections() {
-  displayInfoSection('student', {
+function renderStudentInfo(ticket, children) {
+  renderInfoSection('student', {
     heading: 'Student',
     icon: 'child_care',
-    name: getFullName(state.activeTicket.studentFirstName, state.activeTicket.studentLastName),
-    detail: getStudentDetail(),
-    editable: state.activeTicketChildren.length > 1,
+    name: getFullName(ticket.studentFirstName, ticket.studentLastName),
+    detail: ticket.tutorGroup,
+    editable: children.length > 1,
     editHandler: toggleStudentEdit
   });
-  
-  displayInfoSection('parent', {
+}
+
+function renderParentInfo(ticket) {
+  renderInfoSection('parent', {
     heading: 'Parent/Carer',
     icon: 'supervisor_account',
-    name: state.activeTicket.parentName,
-    detail: state.activeTicket.parentRelationship,
+    name: ticket.parentName,
+    detail: ticket.parentRelationship,
     editable: false
   });
-  
-  displayInfoSection('assignee', {
+}
+
+function renderAssigneeInfo(ticket) {
+  renderInfoSection('assignee', {
     heading: 'Assigned To',
     icon: 'school',
-    name: state.activeTicket.assigneeName,
+    name: ticket.assigneeName,
     editable: true,
     editHandler: toggleAssigneeEdit
   });
 }
 
-function getStudentDetail() {
-  const student = state.activeTicketChildren.find(
-    child => child.firstName === state.activeTicket.studentFirstName && 
-    child.lastName === state.activeTicket.studentLastName
-  );
-  return student ? student.tutorGroup : '';
-}
-
-function displayInfoSection(type, config) {
+function renderInfoSection(type, config) {
   const container = elements[`${type}InfoSection`];
   container.innerHTML = '';
   
@@ -107,54 +103,22 @@ function displayInfoSection(type, config) {
   
   infoClone.querySelector('.info-icon').textContent = config.icon;
   infoClone.querySelector('.info-name').textContent = config.name;
-  infoClone.querySelector('.info-detail').textContent = config.detail;
+  infoClone.querySelector('.info-detail').textContent = config.detail || '';
   
   container.appendChild(infoClone);
 }
 
-function updateTicket(updates = {}) {
-  if (!state.activeTicket) return;
+function renderTicketInList(ticket) {
+  const ticketElement = document.querySelector(`.ticket-item[data-id="${ticket.id}"]`);
+  if (!ticketElement) return;
   
-  Object.assign(state.activeTicket, {...updates});
-  
-  renderTickets(state.activeTab);
-  
-  if (updates.assigneeEmail || updates.assigneeName) {
-    displayInfoSection('assignee', {
-      heading: 'Assigned To',
-      icon: 'school',
-      name: state.activeTicket.assigneeName,
-      editable: true,
-      editHandler: toggleAssigneeEdit
-    });
-  }
-  
-  if (updates.studentFirstName || updates.studentLastName) {
-    displayInfoSection('student', {
-      heading: 'Student',
-      icon: 'child_care',
-      name: getFullName(state.activeTicket.studentFirstName, state.activeTicket.studentLastName),
-      detail: getStudentDetail(),
-      editable: true,
-      editHandler: toggleStudentEdit
-    });
-  }
-
-  const ticketElement = document.querySelector(`.ticket-item[data-id="${state.activeTicket.id}"]`);
-  if (ticketElement) ticketElement.classList.add('selected');
+  ticketElement.querySelector('.ticket-title').textContent = ticket.title;
+  ticketElement.querySelector('.student-value span:not(.material-symbols-rounded)').textContent = 
+    getFullName(ticket.studentFirstName, ticket.studentLastName);
+  ticketElement.querySelector('.assignee-value span:not(.material-symbols-rounded)').textContent = 
+    ticket.assigneeName;
 }
 
 function closeTicket() {
-  if (!state.activeTicket) return;
-  const ticketId = state.activeTicket.id;
-  if (!state.activeTicket.closed) {
-    updateTicket({ closed: true });
-    resetDetailsView();
-  } else {
-    updateTicket({ closed: false });
-    state.activeTab = 'open';
-    elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'open'));
-    renderTickets(state.activeTab);
-    resetDetailsView();
-  }
+  toggleTicketStatus();
 }

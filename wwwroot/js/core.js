@@ -42,16 +42,18 @@ const elements = {
 };
 
 const state = {
-  activeTicket: null,
+  currentTicketId: null,
   activeTab: 'open',
-  activeTicketChildren: [],
   timeUpdateInterval: null,
-  parentInfo: null,
+  conversation: [],
   activeParent: null,
   activeAssignee: null,
-  activeEditAssignee: null,
-  conversation: []
+  activeEditAssignee: null
 };
+
+function getCurrentTicket() {
+  return tickets.find(ticket => ticket.id === state.currentTicketId);
+}
 
 let parents;
 let staff;
@@ -123,8 +125,6 @@ async function fetchUsers() {
     console.error('Failed to store users data:', error);
     return false;
   }
-
-  return users;
 }
 
 async function init() {
@@ -138,7 +138,6 @@ async function init() {
       await fetchUsers();
     }
     
-    populateSelectOptions();
     renderTickets(state.activeTab);
     setupEventListeners();
     updateBackButtonIcon();

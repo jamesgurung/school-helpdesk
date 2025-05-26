@@ -31,7 +31,12 @@ public static class BlobService
     ArgumentNullException.ThrowIfNull(ticketId);
     var blobClient = messagesClient.GetBlobClient($"{ticketId}.json");
     var content = await blobClient.DownloadContentAsync();
-    return JsonSerializer.Deserialize<List<Message>>(content.Value.Content.ToString(), JsonSerializerOptions.Web) ?? [];
+    var messages = JsonSerializer.Deserialize<List<Message>>(content.Value.Content.ToString(), JsonSerializerOptions.Web);
+    foreach (var attachment in messages.Where(o => o.Attachments is not null).SelectMany(o => o.Attachments))
+    {
+      attachment.Url = GetAttachmentSasUrl(attachment.Url);
+    }
+    return messages;
   }
 
   public static async Task InsertMessageAsync(string ticketId, Message message)
@@ -61,7 +66,7 @@ public static class BlobService
       BlobName = id,
       Resource = "b",
       StartsOn = DateTime.UtcNow.AddMinutes(-2),
-      ExpiresOn = DateTime.UtcNow.AddHours(1),
+      ExpiresOn = DateTime.UtcNow.AddDays(1),
       Protocol = SasProtocol.Https
     };
     builder.SetPermissions(BlobSasPermissions.Read);

@@ -1,5 +1,21 @@
-function populateSelectOptions() {
-  // Removed assigneeSelect population as it's replaced by autocomplete functionality
+// Utilities and Helper Functions
+
+function matchesWordBeginning(text, query) {
+  if (!text || !query) return false;
+
+  const textLC = text.toLowerCase();
+  const queryLC = query.toLowerCase().trim();
+
+  if (queryLC === '') return false;
+
+  for (let i = 0; i < textLC.length; i++) {
+    if (i === 0 || /\s/.test(textLC[i - 1])) {
+      if (textLC.substring(i).startsWith(queryLC)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function updateBackButtonIcon() {
@@ -39,4 +55,23 @@ function populateNewTicketForm() {
 
 function getFullName(firstName, lastName) {
   return `${firstName} ${lastName}`;
+}
+
+function showToast(message, type = 'info', duration = 3000) {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      document.body.removeChild(toast);
+    }, 300);
+  }, duration);
 }

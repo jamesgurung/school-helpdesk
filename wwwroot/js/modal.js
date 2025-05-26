@@ -64,22 +64,17 @@ function createNewTicket() {
   const message = elements.messageInput.value.trim();
   
   if (!state.activeParent) {
-    alert('Please select a parent/carer');
+    showToast('Please select a parent/carer', 'error');
     return;
   }
   
-  if (!title || !studentValue || !assigneeEmail || !message) {
-    alert('Please fill in all required fields');
+  if (!title || !studentValue || !message || !state.activeAssignee) {
+    showToast('Please fill in all required fields', 'error');
     return;
   }
   
   const [firstName, lastName, tutorGroup] = studentValue.split('-');
   const assigneeStaff = assignee;
-  
-  if (!assigneeStaff) {
-    alert('Please select a valid staff member');
-    return;
-  }
   
   const now = new Date().toISOString();
   
@@ -108,9 +103,7 @@ function createNewTicket() {
     body: JSON.stringify(newTicketData)
   })
   .then(response => response.json())
-  .then(data => {
-    const newTicketId = data.id;
-    
+  .then(newTicketId => {    
     const newTicket = {
       ...newTicketData,
       id: newTicketId
@@ -133,7 +126,7 @@ function createNewTicket() {
     openTicketDetails(newTicketId);
   })
   .catch(error => {
-    console.error('Error creating new ticket:', error);
-    alert('Failed to create ticket. Please try again.');
+    console.error('Failed to create ticket:', error);
+    showToast('Failed to create ticket. Please try again.', 'error');
   });
 }
