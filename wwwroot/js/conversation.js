@@ -25,7 +25,7 @@ function renderConversation() {
     messageIconElement.style.color = `var(${config.iconColorVar})`;
     authorNameElement.style.color = `var(${config.colorVar})`;
 
-    const content = isOnBehalfOfParent ? `${message.content}<p class="reply-note">Note that you are replying directly to the ${currentTicket.parentRelationship.toLowerCase()}.</p>` : message.content;
+    const content = isOnBehalfOfParent ? `${message.content}<p class="reply-note">Note that you are replying directly to the parent/carer.</p>` : message.content;
     
     authorNameElement.innerHTML = isOnBehalfOfParent ? `<span class="agent">${message.authorName}</span> <span>on behalf of</span> ${currentTicket.parentName}` : message.authorName;
     messageClone.querySelector('.message-date').textContent = formatDateTime(message.timestamp);

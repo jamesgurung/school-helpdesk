@@ -1,4 +1,6 @@
-﻿namespace SchoolHelpdesk;
+﻿using System.Text.Json.Serialization;
+
+namespace SchoolHelpdesk;
 
 public class Message
 {
@@ -6,7 +8,10 @@ public class Message
   public string AuthorName { get; set; }
   public bool IsEmployee { get; set; }
   public string Content { get; set; }
+  public bool IsPrivate { get; set; }
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
   public List<Attachment> Attachments { get; set; }
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
   public string OriginalEmail { get; set; }
 }
 

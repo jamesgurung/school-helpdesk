@@ -7,7 +7,8 @@ public class School
   public string Name { get; set; }
   public string AppWebsite { get; set; }
   public string HelpdeskEmail { get; set; }
-  public IList<string> AdminUsers { get; set; }
+  public IList<string> Admins { get; set; }
+  public IList<string> Managers { get; set; }
 
   public Dictionary<string, Parent> ParentsByEmail { get; set; }
   public Dictionary<string, Staff> StaffByEmail { get; set; }

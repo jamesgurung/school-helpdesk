@@ -76,18 +76,11 @@ async function toggleTicketStatus() {
   const ticket = getCurrentTicket();
   if (!ticket) return;
 
-  const newStatus = !ticket.closed;
+  const newStatus = !ticket.isClosed;
 
   try {
     await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, newStatus);
-    ticket.closed = newStatus;
-    if (newStatus) {
-      state.activeTab = 'closed';
-      elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'closed'));
-    } else {
-      state.activeTab = 'open';
-      elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'open'));
-    }
+    ticket.isClosed = newStatus;
     renderTickets(state.activeTab);
     resetDetailsView();
   } catch (error) {

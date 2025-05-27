@@ -1,7 +1,7 @@
 // Ticket List Rendering
 function renderTickets(status) {
   elements.ticketsContainer.innerHTML = '';
-  const filteredTickets = tickets.filter(ticket => ticket.closed === (status === 'closed'));
+  const filteredTickets = tickets.filter(ticket => ticket.isClosed === (status === 'closed'));
   
   if (filteredTickets.length === 0) {
     const emptyClone = document.getElementById('empty-tickets-template').content.cloneNode(true);
@@ -17,10 +17,22 @@ function renderTickets(status) {
     
     ticketClone.querySelector('.ticket-title').textContent = ticket.title;
     ticketClone.querySelector('.student-value span:not(.material-symbols-rounded)').textContent = getFullName(ticket.studentFirstName, ticket.studentLastName);
-    ticketClone.querySelector('.parent-value span:not(.material-symbols-rounded)').textContent = ticket.parentName;
     ticketClone.querySelector('.assignee-value span:not(.material-symbols-rounded)').textContent = ticket.assigneeName;
-    ticketClone.querySelector('.created-date').textContent = formatDate(ticket.created);
-    ticketClone.querySelector('.elapsed-time').textContent = calculateTimeElapsed(ticket.updated);
+    ticketClone.querySelector('.created-date').textContent = formatDateTime(ticket.created);
+    
+    const waitTimeIcon = ticketClone.querySelector('.wait-time-icon');
+    const waitTimeText = ticketClone.querySelector('.wait-time');
+
+    if (ticket.isClosed) {
+      waitTimeIcon.textContent = "check_circle";
+      waitTimeText.textContent = "Resolved";
+    } else if (ticket.waitingSince === null) {
+      waitTimeIcon.textContent = "pending";
+      waitTimeText.textContent = "Reply sent";
+    } else {
+      waitTimeIcon.textContent = "timer";
+      waitTimeText.innerHTML = `Waiting for <span class="elapsed-time">${calculateTimeElapsed(ticket.waitingSince)}</span>`;
+    }
     
     elements.ticketsContainer.appendChild(ticketClone);
     

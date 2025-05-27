@@ -10,13 +10,14 @@ function openTicketDetails(ticketId) {
   if (selectedTicket) selectedTicket.classList.add('selected');
   
   elements.ticketTitleInput.innerText = ticket.title;
+  elements.ticketTitleInput.contentEditable = isManager;
   
   fetch(`/api/tickets/${ticketId}`)
     .then(response => response.json())
     .then(conversation => {
       state.conversation = conversation;
       
-      const children = parents.find(p => p.email === ticket.parentEmail)?.children || [];
+      const children = parents?.find(p => p.email === ticket.parentEmail)?.children || [];
       
       populateStudentSelect(ticket, children);
       renderStudentInfo(ticket, children);
@@ -29,7 +30,7 @@ function openTicketDetails(ticketId) {
       elements.ticketDetails.classList.add('open');
       updateBackButtonIcon();
       
-      elements.closeTicketBtn.textContent = ticket.closed ? 'Reopen Ticket' : 'Close Ticket';
+      elements.closeTicketBtn.textContent = ticket.isClosed ? 'Reopen Ticket' : 'Close Ticket';
     })
     .catch(error => {
       console.error('Error fetching conversation:', error);
@@ -58,7 +59,7 @@ function renderStudentInfo(ticket, children) {
     icon: 'child_care',
     name: getFullName(ticket.studentFirstName, ticket.studentLastName),
     detail: ticket.tutorGroup,
-    editable: children.length > 1,
+    editable: isManager && children.length > 1,
     editHandler: toggleStudentEdit
   });
 }
@@ -78,7 +79,7 @@ function renderAssigneeInfo(ticket) {
     heading: 'Assigned To',
     icon: 'school',
     name: ticket.assigneeName,
-    editable: true,
+    editable: isManager,
     editHandler: toggleAssigneeEdit
   });
 }

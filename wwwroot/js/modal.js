@@ -60,7 +60,6 @@ function createNewTicket() {
   const title = elements.ticketTitleFormInput.value.trim();
   const studentValue = elements.studentSelectInput.value;
   const assignee = state.activeAssignee;
-  const assigneeEmail = assignee?.email;
   const message = elements.messageInput.value.trim();
   
   if (!state.activeParent) {
@@ -74,20 +73,19 @@ function createNewTicket() {
   }
   
   const [firstName, lastName, tutorGroup] = studentValue.split('-');
-  const assigneeStaff = assignee;
   
   const now = new Date().toISOString();
   
   const newTicketData = {
     title: title,
-    closed: false,
+    isClosed: false,
     created: now,
-    updated: now,
+    waitingSince: now,
     studentFirstName: firstName,
     studentLastName: lastName,
     tutorGroup: tutorGroup,
-    assigneeName: assigneeStaff.name,
-    assigneeEmail: assigneeStaff.email,
+    assigneeName: assignee.name,
+    assigneeEmail: assignee.email,
     parentName: state.activeParent.name,
     parentEmail: state.activeParent.email,
     parentRelationship: state.activeParent.relationship,
@@ -114,15 +112,13 @@ function createNewTicket() {
     
     state.conversation = [{
       timestamp: now,
-      authorEmail: state.activeParent.email,
       authorName: state.activeParent.name,
       isEmployee: false,
-      content: message,
-      attachments: []
+      content: message
     }];
     
     closeNewTicketModal();
-    renderTickets('open');
+    elements.tabs[0].click();
     openTicketDetails(newTicketId);
   })
   .catch(error => {

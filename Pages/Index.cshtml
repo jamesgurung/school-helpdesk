@@ -2,21 +2,23 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject IWebHostEnvironment Environment
 @{
-  var isAdmin = User.IsInRole(AuthConstants.Administrator);
-  var tickets = isAdmin ? await TableService.GetAllTicketsAsync() : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name);
+  var isManager = User.IsInRole(AuthConstants.Manager);
+  var tickets = isManager ? await TableService.GetAllTicketsAsync() : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name);
 }
 
 <header>
   <div class="header-container">
     <a class="logo-section" href="/">
       <img src="/img/logo.png" alt="Logo" class="header-logo">
-      <h1>Parent/Carer Helpdesk</h1>
-    </a>
-    <div class="user-actions">
+      <h1>Parent Helpdesk</h1>
+    </a>    <div class="user-actions">
+      @if (isManager)
+      {
       <button class="new-ticket-button" id="new-ticket-button">
         <span class="material-symbols-rounded">add</span>
         <span>New Ticket</span>
       </button>
+      }
       <button class="logout-button" id="logout-button">
         <span class="material-symbols-rounded">logout</span>
         <span>Logout</span>
@@ -41,14 +43,13 @@
     <div class="details-empty">
       <span class="material-symbols-rounded">confirmation_number</span>
       <p>Select a ticket to view details</p>
-    </div>
-    <div class="details-content" style="display: none;">
-      <div class="details-header">
-        <div class="details-title">
-          <div id="ticket-title" contenteditable="true" data-placeholder="Ticket title"></div>
-        </div>
-        <div class="info-section" id="parent-info-section">
-        </div>
+    </div>      <div class="details-content" style="display: none;">
+        <div class="details-header">
+          <div class="details-title">
+            <div id="ticket-title" data-placeholder="Ticket title"></div>
+          </div>
+          <div class="info-section" id="parent-info-section">
+          </div>
         <div class="info-section" id="student-info-section">
         </div>
         <div class="info-section" id="assignee-info-section">
@@ -99,10 +100,10 @@
       </div>
 
       <div class="ticket-info-item">
-        <div class="ticket-info-label">Parent/Carer</div>
-        <div class="ticket-info-value parent-value">
-          <span class="material-symbols-rounded">supervisor_account</span>
-          <span></span>
+        <div class="ticket-info-label">Created</div>
+        <div class="ticket-info-value">
+          <span class="material-symbols-rounded">calendar_month</span>
+          <span class="created-date"></span>
         </div>
       </div>
 
@@ -115,14 +116,10 @@
       </div>
 
       <div class="ticket-info-item">
-        <div class="ticket-info-label">Date Created & Wait Time</div>
+        <div class="ticket-info-label">Status</div>
         <div class="ticket-info-value">
-          <span class="material-symbols-rounded">calendar_month</span>
-          <div class="ticket-timeline">
-            <span class="timeline-date created-date"></span>
-            <span class="material-symbols-rounded">timer</span>
-            <span class="timeline-date elapsed-time"></span>
-          </div>
+          <span class="material-symbols-rounded wait-time-icon">timer</span>
+          <span class="wait-time"></span>
         </div>
       </div>
     </div>
@@ -242,6 +239,7 @@
   const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
   const usersHash = '@School.Instance.UsersJsonHash';
   const tickets = @Html.Raw(Json.Serialize(tickets));
+  const isManager = @isManager.ToString().ToLowerInvariant();
 </script>
 <script src="/js/core.js"></script>
 <script src="/js/date-utils.js"></script>

@@ -57,10 +57,11 @@ School Helpdesk is a free, open-source web application that that makes it easy f
     * `Azure__StorageAccountName` - the name of your Azure Storage account
     * `Azure__StorageAccountKey` - the key for your Azure Storage account
     * `Azure__TenantId` - your Azure tenant ID
-    * `OpenAIApiKey` - the API key for your OpenAI account
+    * `OpenAIKey` - the API key for your OpenAI account
     * `Postmark__InboundAuthKey` - a secret UUID of your choice, used to verify that incoming emails are from Postmark
     * `Postmark__ServerToken` - the token for your Postmark server
-    * `School__AdminUsers__0` - the email address of the first admin user (subsequent admins can be configured by adding items with incrementing indices)
+    * `School__Admins__0` - the email address of the first admin user, who has full administrative access (subsequent admins can be configured by adding items with incrementing indices)
+    * `School__Managers__0` - the email address of the first manager, who can create, view, and edit all tickets (subsequent managers can be configured by adding items with incrementing indices)
     * `School__AppWebsite` - the host name where this app will be hosted, e.g. `example.com`
     * `School__HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
     * `School__Name` - the name of your school

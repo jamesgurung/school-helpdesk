@@ -25,3 +25,10 @@ public class ChangeTitlePayload
   public string AssigneeEmail { get; set; }
   public string NewTitle { get; set; }
 }
+
+public class NewMessagePayload
+{
+  public string AssigneeEmail { get; set; }
+  public string Content { get; set; }
+  public bool IsPrivate { get; set; }
+}

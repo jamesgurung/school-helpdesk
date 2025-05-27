@@ -129,15 +129,15 @@ async function fetchUsers() {
 
 async function init() {
   try {
-    const storedData = await getUsersData();
-    
-    if (storedData?.usersHash === usersHash) {
-      parents = storedData.parents;
-      staff = storedData.staff;
-    } else {
-      await fetchUsers();
+    if (isManager) {
+      const storedData = await getUsersData();      
+      if (storedData?.usersHash === usersHash) {
+        parents = storedData.parents;
+        staff = storedData.staff;
+      } else {
+        await fetchUsers();
+      }
     }
-    
     renderTickets(state.activeTab);
     setupEventListeners();
     updateBackButtonIcon();

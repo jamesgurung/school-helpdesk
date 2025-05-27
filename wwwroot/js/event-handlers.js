@@ -23,7 +23,17 @@ function setupTabNavigation() {
 
 function setupTicketDetails() {
   elements.mobileBack.addEventListener('click', resetDetailsView);
-  elements.ticketTitleInput.addEventListener('blur', updateTicketTitle);
+  
+  if (isManager) {
+    elements.ticketTitleInput.addEventListener('blur', updateTicketTitle);
+    elements.ticketTitleInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        elements.ticketTitleInput.blur();
+      }
+    });
+  }
+  
   elements.sendMessageBtn.addEventListener('click', sendMessage);
   elements.closeTicketBtn.addEventListener('click', closeTicket);
   elements.newMessageInput.addEventListener('keydown', e => {
@@ -35,7 +45,7 @@ function setupTicketDetails() {
 }
 
 function setupTicketCreation() {
-  elements.newTicketButton.addEventListener('click', openNewTicketModal);
+  elements.newTicketButton?.addEventListener('click', openNewTicketModal);
   elements.closeModalBtn.addEventListener('click', closeNewTicketModal);
   elements.cancelNewTicketBtn.addEventListener('click', closeNewTicketModal);
   elements.createNewTicketBtn.addEventListener('click', createNewTicket);
@@ -244,19 +254,16 @@ function setupAssigneeEditListeners() {
 
 function setupDocumentClickHandlers() {
   document.addEventListener('click', e => {
-    // Hide parent autocomplete results when clicking outside
     if (!elements.parentSearchInput.contains(e.target) && 
         !elements.parentAutocompleteResults.contains(e.target)) {
       elements.parentAutocompleteResults.style.display = 'none';
     }
     
-    // Hide assignee autocomplete results when clicking outside
     if (!elements.assigneeSearchInput.contains(e.target) && 
         !elements.assigneeAutocompleteResults.contains(e.target)) {
       elements.assigneeAutocompleteResults.style.display = 'none';
     }
     
-    // Hide assignee edit container when clicking outside
     const assigneeEditIcon = elements.assigneeInfoSection.querySelector('.edit-icon');
     if (!elements.assigneeEditInput.contains(e.target) && 
         !elements.assigneeEditAutocompleteResults.contains(e.target) &&

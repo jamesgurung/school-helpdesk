@@ -33,14 +33,14 @@ public static class TableService
   public static async Task<List<TicketEntity>> GetAllTicketsAsync()
   {
     var tickets = await ticketsClient.QueryAsync<TicketEntity>().ToListAsync();
-    return tickets.OrderByDescending(t => t.CreatedDate).ToList();
+    return tickets.OrderByDescending(t => t.Created).ToList();
   }
 
   public static async Task<List<TicketEntity>> GetTicketsByAssigneeAsync(string assigneeEmail)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
     var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.PartitionKey == assigneeEmail).ToListAsync();
-    return tickets.OrderByDescending(t => t.CreatedDate).ToList();
+    return tickets.OrderByDescending(t => t.Created).ToList();
   }
 
   public static async Task<bool> TicketExistsAsync(string assigneeEmail, string id)
@@ -54,8 +54,8 @@ public static class TableService
   public static async Task<TicketEntity> InsertTicketAsync(TicketEntity ticket)
   {
     ArgumentNullException.ThrowIfNull(ticket);
-    ticket.CreatedDate = DateTime.UtcNow;
-    ticket.UpdatedDate = ticket.CreatedDate;
+    ticket.Created = DateTime.UtcNow;
+    ticket.WaitingSince = ticket.Created;
     ticket.RowKey = Guid.NewGuid().ToString("N");
     await ticketsClient.AddEntityAsync(ticket);
     return ticket;
@@ -90,7 +90,6 @@ public static class TableService
     ArgumentNullException.ThrowIfNull(id);
     var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
     ticket.Value.IsClosed = isClosed;
-    ticket.Value.UpdatedDate = DateTime.UtcNow;
     await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
   }
 
@@ -102,6 +101,15 @@ public static class TableService
     ticket.StudentLastName = student.LastName;
     ticket.TutorGroup = student.TutorGroup;
     await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
+  }
+
+  internal static async Task UpdateLastParentMessageDateAsync(string assigneeEmail, string id, DateTime? timestamp)
+  {
+    ArgumentNullException.ThrowIfNull(assigneeEmail);
+    ArgumentNullException.ThrowIfNull(id);
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    ticket.Value.WaitingSince = timestamp;
+    await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
   }
 }
 
@@ -116,27 +124,16 @@ public class TicketEntity : ITableEntity
   [JsonIgnore]
   public ETag ETag { get; set; }
 
-  [JsonPropertyName("closed")]
   public bool IsClosed { get; set; }
-  [JsonPropertyName("title")]
   public string Title { get; set; }
-  [JsonPropertyName("created")]
-  public DateTime CreatedDate { get; set; }
-  [JsonPropertyName("updated")]
-  public DateTime UpdatedDate { get; set; }
-  [JsonPropertyName("studentFirstName")]
+  public DateTime Created { get; set; }
+  public DateTime? WaitingSince { get; set; }
   public string StudentFirstName { get; set; }
-  [JsonPropertyName("studentLastName")]
   public string StudentLastName { get; set; }
-  [JsonPropertyName("tutorGroup")]
   public string TutorGroup { get; set; }
-  [JsonPropertyName("assigneeName")]
   public string AssigneeName { get; set; }
-  [JsonPropertyName("parentEmail")]
   public string ParentEmail { get; set; }
-  [JsonPropertyName("parentName")]
   public string ParentName { get; set; }
-  [JsonPropertyName("parentRelationship")]
   public string ParentRelationship { get; set; }
   [JsonIgnore]
   public string ThreadId { get; set; }
@@ -144,8 +141,7 @@ public class TicketEntity : ITableEntity
 
 public class NewTicketEntity : TicketEntity
 {
-  [JsonPropertyName("message")]
-  public string InitialMessage { get; set; }
+  public string Message { get; set; }
 }
 
 public static class QueryExtensions

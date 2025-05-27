@@ -1,10 +1,6 @@
 // Date and Time Utilities
-function formatDate(dateString) {
-  return new Date(dateString).getDate() + ' ' + new Date(dateString).toLocaleString('default', { month: 'short' });
-}
-
 function formatDateTime(dateString) {
-  return new Date(dateString).toLocaleDateString('en-US', { 
+  return new Date(dateString).toLocaleDateString('en-GB', { 
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
@@ -34,7 +30,7 @@ function updateAllElapsedTimes() {
     const ticketId = element.closest('.ticket-item')?.dataset?.id;
     if (ticketId) {
       const ticket = tickets.find(t => t.id === ticketId);
-      if (ticket) element.textContent = calculateTimeElapsed(ticket.updated);
+      if (ticket) element.textContent = calculateTimeElapsed(ticket.waitingSince);
     }
   });
 }

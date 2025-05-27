@@ -78,19 +78,21 @@ public static class AuthConfig
 
   private static bool RefreshIdentity(ClaimsIdentity identity, string email)
   {
-    if (email is null || !School.Instance.StaffByEmail.TryGetValue(email, out var staff))
-    {
-      return false;
-    }
+    if (email is null || !School.Instance.StaffByEmail.TryGetValue(email, out var staff)) return false;
+
     for (var i = identity.Claims.Count() - 1; i >= 0; i--)
     {
       identity.RemoveClaim(identity.Claims.ElementAt(i));
     }
+
     identity.AddClaim(new Claim(ClaimTypes.Name, staff.Email));
-    if (School.Instance.AdminUsers.Contains(email, StringComparer.OrdinalIgnoreCase))
-    {
+
+    if (School.Instance.Admins.Contains(email, StringComparer.OrdinalIgnoreCase))
       identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Administrator));
-    }
+
+    if (School.Instance.Managers.Contains(email, StringComparer.OrdinalIgnoreCase))
+      identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Manager));
+
     return true;
   }
 
@@ -116,4 +118,5 @@ public static class AuthConfig
 public static class AuthConstants
 {
   public const string Administrator = nameof(Administrator);
+  public const string Manager = nameof(Manager);
 }
