@@ -398,6 +398,8 @@ h1 {
   display: flex;
   flex-direction: column;
   height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--white);
 }
 
 .details-empty {
@@ -716,7 +718,7 @@ h1 {
   align-items: center;
   gap: 0.5rem;
   background-color: var(--primary-bg-light);
-  padding: 0.5rem 0.75rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
 }
 
@@ -752,11 +754,78 @@ h1 {
   background-color: var(--internal-note-bg);
 }
 
+.message-attachment-controls {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.file-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background-color: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.file-upload-label:hover {
+  background-color: var(--primary-bg-light);
+}
+
+.file-upload-label input[type="file"] {
+  display: none;
+}
+
+.file-upload-label .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--primary);
+}
+
+.attachment-list {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--primary-bg-light);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.attachment-item .material-symbols-rounded {
+  font-size: 16px;
+  color: var(--primary);
+}
+
+.remove-attachment {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+
 .message-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-top: 0.5rem;
+}
+
+.message-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .internal-note-checkbox {
@@ -773,6 +842,11 @@ h1 {
   width: auto;
   margin: 0;
   cursor: pointer;
+}
+
+.internal-note-checkbox:has(:disabled), .internal-note-checkbox input[type="checkbox"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .action-buttons {
@@ -822,6 +896,18 @@ button {
 #send-message:disabled:hover {
   background-color: var(--text-light);
 }
+
+#close-ticket:disabled {
+  background-color: var(--white);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#close-ticket:disabled:hover {
+  background-color: var(--white);
+}
+
+
 
 /* Modal Styles */
 .modal {
@@ -994,6 +1080,61 @@ button {
   to { transform: translateY(0); opacity: 1; }
 }
 
+.image-modal-content {
+  position: relative;
+  margin: 5% auto;
+  padding: 0;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.image-modal-content .close-modal {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.image-modal-content .close-modal:hover {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.modal-image {
+  max-width: 100%;
+  max-height: calc(90vh - 80px);
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.image-caption {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  margin-top: 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  text-align: center;
+  max-width: 100%;
+  word-break: break-word;
+}
+
 .back-button {
   display: none;
   position: absolute;
@@ -1014,45 +1155,27 @@ button {
   height: 100%;
 }
 
-@media (min-width: 1001px) {
-  .ticket-details.open .back-button {
-    display: block;
-    top: 16px;
-    right: 20px;
-    background-color: var(--shadow);
-    color: white;
-  }
-  
-  .ticket-details.open .back-button .material-symbols-rounded {
-    color: white;
-  }
-  
-  .details-content {
-    padding-top: 10px;
-  }
-  
-  .details-title [contenteditable] {
-    width: calc(100% - 35px);
-  }
+.ticket-details.open .back-button {
+  display: block;
+  top: 16px;
+  right: 20px;
+  background-color: var(--shadow);
+  color: white;
+}
+
+.ticket-details.open .back-button .material-symbols-rounded {
+  color: white;
+}
+
+.details-content {
+  padding: 10px 0 40px;
+}
+
+.details-title [contenteditable] {
+  width: calc(100% - 35px);
 }
 
 @media (max-width: 1000px) {
-  .back-button {
-    display: block;
-    top: 20px;
-    left: 24px;
-    background-color: var(--primary);
-    color: white;
-  }
-    .back-button .material-symbols-rounded {
-    color: white;
-  }
-  
-  .container {
-    flex-direction: column;
-    height: calc(100vh - 60px);
-  }
-
   .ticket-list {
     width: 100%;
     max-width: none;
@@ -1065,14 +1188,10 @@ button {
     top: 60px;
     left: 0;
     right: 0;
-    bottom: 0;
+    height: calc(100vh - 60px);
     width: 100%;
     transform: translateX(100%);
     z-index: 10;
-  }
-  
-  .details-title {
-    margin-top: 60px;
   }
 
   .ticket-details.open {

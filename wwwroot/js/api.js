@@ -65,13 +65,31 @@ async function apiUpdateTicketTitle(ticketId, assigneeEmail, newTitle) {
   );
 }
 
-async function apiSendMessage(ticketId, assigneeEmail, content, isPrivate) {
-  await apiRequest(
-    'POST',
-    `/api/tickets/${ticketId}/message`,
-    { assigneeEmail, content, isPrivate },
-    'send message'
-  );
+async function apiSendMessage(ticketId, assigneeEmail, content, isPrivate, files) {
+  const formData = new FormData();
+  formData.append('assigneeEmail', assigneeEmail);
+  formData.append('content', content);
+  formData.append('isPrivate', isPrivate.toString());
+  files.forEach(file => { formData.append('attachments', file); });
+
+  try {
+    const response = await fetch(`/api/tickets/${ticketId}/message`, {
+      method: 'POST',
+      headers: {
+        'X-XSRF-TOKEN': antiforgeryToken
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error(`send message: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    showToast('Failed to send message. Please try again.', 'error');
+    throw error;
+  }
 }
 
 async function apiCreateTicket(ticketData) {

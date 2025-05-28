@@ -58,19 +58,29 @@ public static class BlobService
     await blobClient.UploadAsync(stream, overwrite: true);
   }
 
-  public static string GetAttachmentSasUrl(string id)
+  public static string GetAttachmentSasUrl(string blobName)
   {
     var builder = new BlobSasBuilder
     {
       BlobContainerName = "attachments",
-      BlobName = id,
+      BlobName = blobName,
       Resource = "b",
       StartsOn = DateTime.UtcNow.AddMinutes(-2),
       ExpiresOn = DateTime.UtcNow.AddDays(1),
       Protocol = SasProtocol.Https
     };
     builder.SetPermissions(BlobSasPermissions.Read);
-    return builder.ToSasQueryParameters(sharedKeyCredential).ToString();
+    return $"{attachmentsClient.Uri}/{blobName}?{builder.ToSasQueryParameters(sharedKeyCredential)}";
+  }
+
+  public static async Task<string> UploadAttachmentAsync(Stream fileStream, string fileName)
+  {
+    var fileId = Guid.NewGuid().ToString();
+    var extension = Path.GetExtension(fileName);
+    var blobName = $"{fileId}{extension}";
+    var blobClient = attachmentsClient.GetBlobClient(blobName);
+    await blobClient.UploadAsync(fileStream, overwrite: true);
+    return blobName;
   }
 
   public static async Task LoadConfigAsync()

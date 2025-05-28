@@ -1,114 +1,157 @@
-// Conversation and Messaging
 function renderConversation() {
-  const currentTicket = getCurrentTicket();
-  if (!currentTicket || !state.conversation) return;
-
+  const ticket = getCurrentTicket();
+  if (!ticket || !state.conversation) return;
   elements.conversationContainer.innerHTML = '';
+  const template = document.getElementById('message-template').content;
 
-  state.conversation.forEach((message, index) => {
-    const messageClone = document.getElementById('message-template').content.cloneNode(true);
-    const messageElement = messageClone.querySelector('.message');
-    const messageIconElement = messageClone.querySelector('.message-icon');
-    const authorNameElement = messageClone.querySelector('.author-name');
+  state.conversation.forEach((msg, i) => {
+    const { isEmployee, isPrivate, authorName, timestamp, content, attachments } = msg;
+    const isOnBehalf = isEmployee && i === 0;
+    const isEmp = isEmployee && i > 0;
+    const cls = isEmp ? 'employee' : 'parent';
+    const iconName = isOnBehalf ? 'support_agent' : isEmp ? 'school' : 'person';
+    const colorVar = isEmp ? '--primary-dark' : '--secondary-dark';
 
-    const isOnBehalfOfParent = message.isEmployee && index === 0;
-    const isEmployee = message.isEmployee && index > 0;
-    const config = {
-      class: isEmployee ? 'employee' : 'parent',
-      icon: isOnBehalfOfParent ? 'support_agent' : (isEmployee ? 'school' : 'person'),
-      iconColorVar: isEmployee ? '--primary-dark' : '--secondary-dark',
-      colorVar: isEmployee ? '--primary-dark' : '--secondary-dark'
-    };
-    messageElement.classList.add(config.class);
-    messageIconElement.textContent = config.icon;
-    messageIconElement.style.color = `var(${config.iconColorVar})`;
-    authorNameElement.style.color = `var(${config.colorVar})`;
+    const clone = template.cloneNode(true);
+    const el = clone.querySelector('.message');
+    el.classList.add(cls);
+    if (isPrivate) el.style.backgroundColor = 'var(--internal-note-bg)';
 
-    if (message.isPrivate) {
-      messageElement.style.backgroundColor = 'var(--internal-note-bg)';
-    }
+    const icon = clone.querySelector('.message-icon');
+    icon.textContent = iconName;
+    icon.style.color = `var(${colorVar})`;
 
-    const content = isOnBehalfOfParent ? `${message.content}<p class="reply-note">Note that you are replying directly to the parent/carer.</p>` : message.content;
+    const authorEl = clone.querySelector('.author-name');
+    authorEl.style.color = `var(${colorVar})`;
+    authorEl.innerHTML = isOnBehalf
+      ? `${authorName} <span>on behalf of</span> ${ticket.parentName ?? 'the parent/carer'}`
+      : authorName;
 
-    authorNameElement.innerHTML = isOnBehalfOfParent ? `${message.authorName} <span>on behalf of</span> ${currentTicket.parentName}` : message.authorName;
-    messageClone.querySelector('.message-date').textContent = formatDateTime(message.timestamp);
-    messageClone.querySelector('.message-content').innerHTML = content;
+    clone.querySelector('.message-date').textContent = formatDateTime(timestamp);
+    clone.querySelector('.message-content').innerHTML = isOnBehalf
+      ? `${content}<p class="reply-note">Note that you are replying directly to the parent/carer.</p>`
+      : content;
 
-    if (message.attachments?.length) {
-      renderMessageAttachments(messageElement, message.attachments);
-    }
-
-    elements.conversationContainer.appendChild(messageClone);
+    if (attachments?.length) renderMessageAttachments(el, attachments);
+    elements.conversationContainer.appendChild(clone);
   });
 }
 
-function renderMessageAttachments(messageElement, attachments) {
-  const container = document.createElement('div');
-  container.className = 'message-attachments';
+const isImage = name => !['pdf', 'docx'].includes(name.toLowerCase().split('.').pop());
+const getFileIcon = name => isImage(name) ? 'image' : 'description';
 
-  attachments.forEach(attachment => {
-    const link = document.createElement('a');
-    link.href = attachment.url;
-    link.className = 'attachment-link';
-    link.target = '_blank';
+function showImageModal(src, name) {
+  const modal = document.getElementById('image-modal');
+  modal.style.display = 'block';
+  document.getElementById('modal-image').src = src;
+  document.getElementById('image-caption').textContent = name;
+}
+const closeImageModal = () => document.getElementById('image-modal').style.display = 'none';
 
-    const attachmentEl = document.createElement('div');
-    attachmentEl.className = 'attachment';
-
+function renderMessageAttachments(container, attachments) {
+  const wrap = document.createElement('div');
+  wrap.className = 'message-attachments';
+  attachments.forEach(({ fileName, url }) => {
+    const item = document.createElement('div');
+    item.className = 'attachment';
     const icon = document.createElement('span');
     icon.className = 'material-symbols-rounded';
-    icon.textContent = 'attachment';
-
-    const fileName = document.createElement('span');
-    fileName.textContent = attachment.fileName;
-
-    attachmentEl.append(icon, fileName);
-    link.appendChild(attachmentEl);
-    container.appendChild(link);
+    icon.textContent = getFileIcon(fileName);
+    const nameEl = document.createElement('span');
+    nameEl.textContent = fileName;
+    item.append(icon, nameEl);
+    if (isImage(fileName)) {
+      item.style.cursor = 'pointer';
+      item.onclick = () => showImageModal(url, fileName);
+      wrap.append(item);
+    } else {
+      const link = document.createElement('a');
+      link.href = url;
+      link.className = 'attachment-link';
+      link.append(item);
+      wrap.append(link);
+    }
   });
-
-  messageElement.appendChild(container);
+  container.append(wrap);
 }
 
 async function sendMessage() {
-  const currentTicket = getCurrentTicket();
-  if (!currentTicket || !elements.newMessageInput.value.trim()) return;
+  const ticket = getCurrentTicket();
+  const content = elements.newMessageInput.value.trim();
+  if (!ticket || !content) return;
+  if (!canSendMessages(ticket)) return showToast('Please complete all ticket details before sending messages.', 'error');
+  const assignee = staff.find(s => s.email === ticket.assigneeEmail);
+  if (!assignee) return showToast('Please assign this ticket to a staff member before sending a message.', 'error');
 
-  const assigneeStaff = staff.find(s => s.email === currentTicket.assigneeEmail);
-
-  if (!assigneeStaff) {
-    showToast('Please assign this ticket to a staff member before sending a message.', 'error');
-    return;
-  }
-
+  const files = Array.from(elements.messageAttachments.files);
   const isPrivate = elements.internalNoteCheckbox.checked;
-  const messageContent = elements.newMessageInput.value.trim();
 
   elements.sendMessageBtn.disabled = true;
   elements.sendMessageBtn.textContent = 'Sending...';
-
   try {
-    await apiSendMessage(currentTicket.id, currentTicket.assigneeEmail, messageContent, isPrivate);
-
-    const newMessage = {
-      timestamp: new Date().toISOString(),
-      authorName: currentUser,
-      isEmployee: true,
-      content: messageContent,
-      isPrivate: isPrivate,
-      attachments: []
-    };
-    state.conversation.push(newMessage);
+    const msg = await apiSendMessage(ticket.id, ticket.assigneeEmail, content, isPrivate, files);
+    state.conversation.push(msg);
     elements.newMessageInput.value = '';
     elements.internalNoteCheckbox.checked = false;
     elements.newMessageInput.classList.remove('internal-note');
+    elements.messageAttachments.value = '';
+    elements.attachmentList.innerHTML = '';
     renderConversation();
     elements.ticketDetails.scrollTop = elements.ticketDetails.scrollHeight;
     updateCloseTicketButtonText();
-
-    showToast(isPrivate ? 'Internal note added successfully' : 'Message sent successfully', 'success');
   } finally {
     elements.sendMessageBtn.disabled = false;
     elements.sendMessageBtn.textContent = 'Send Message';
   }
+}
+
+function handleAttachmentChange() {
+  const files = Array.from(elements.messageAttachments.files);
+  const allowed = ['.pdf', '.docx', '.png', '.jpg', '.jpeg', '.webp', '.heic'];
+  const invalid = /[<>:"/\\|?*\x00-\x1f]/;
+  const max = 10 * 1024 * 1024;
+  const valid = [];
+  files.forEach(f => {
+    let msg;
+    const ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
+    if (!f.size) msg = `File "${f.name}" is empty and cannot be attached.`;
+    else if (f.size > max) msg = `File "${f.name}" exceeds the 10 MB size limit.`;
+    else if (!allowed.includes(ext)) msg = `File "${f.name}" has an invalid file type. Only PDF, DOCX, PNG, JPG, JPEG, WEBP, and HEIC files are allowed.`;
+    else if (f.name.length > 100) msg = `File "${f.name}" has a name that is too long (maximum 100 characters).`;
+    else if (invalid.test(f.name) || f.name.includes('..') || f.name.includes('/')) msg = `File "${f.name}" contains invalid characters in its name.`;
+    if (msg) showToast(msg, 'error'); else valid.push(f);
+  });
+  if (valid.length !== files.length) {
+    const dt = new DataTransfer();
+    valid.forEach(f => dt.items.add(f));
+    elements.messageAttachments.files = dt.files;
+  }
+  renderAttachmentList(valid);
+}
+
+function renderAttachmentList(files) {
+  elements.attachmentList.innerHTML = '';
+  files.forEach((file, i) => {
+    const item = document.createElement('div');
+    item.className = 'attachment-item';
+    const icon = document.createElement('span');
+    icon.className = 'material-symbols-rounded';
+    icon.textContent = getFileIcon(file.name);
+    const nameEl = document.createElement('span');
+    nameEl.textContent = file.name;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'remove-attachment';
+    btn.innerHTML = '<span class="material-symbols-rounded">close</span>';
+    btn.onclick = () => removeAttachment(i);
+    item.append(icon, nameEl, btn);
+    elements.attachmentList.appendChild(item);
+  });
+}
+
+function removeAttachment(idx) {
+  const dt = new DataTransfer();
+  Array.from(elements.messageAttachments.files).forEach((f, i) => i !== idx && dt.items.add(f));
+  elements.messageAttachments.files = dt.files;
+  renderAttachmentList(Array.from(dt.files));
 }

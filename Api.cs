@@ -6,6 +6,8 @@ namespace SchoolHelpdesk;
 
 public static class Api
 {
+  private static readonly HashSet<string> validFileExtensions = new([".pdf", ".docx", ".png", ".jpg", ".jpeg", ".webp", ".heic"], StringComparer.OrdinalIgnoreCase);
+
   public static void MapApiPaths(this WebApplication app)
   {
     app.MapPost("/inbound", [AllowAnonymous] async ([FromBody] PostmarkInboundWebhookMessage message, [FromQuery] string auth) =>
@@ -97,11 +99,11 @@ public static class Api
         return Results.BadRequest("Student information is required.");
 
       var entity = await TableService.GetTicketAsync(payload.AssigneeEmail, id);
-      var parents = School.Instance.ParentsByEmail[entity.ParentEmail];
-      if (!parents.Any())
+      var parent = School.Instance.ParentsByEmail[entity.ParentEmail].FirstOrDefault(o => o.Name == entity.ParentName);
+      if (parent is null)
         return Results.BadRequest("Parent associated with this ticket does not exist.");
 
-      var child = parents.SelectMany(o => o.Children).FirstOrDefault(c => string.Equals(c.FirstName, payload.StudentFirst, StringComparison.OrdinalIgnoreCase) &&
+      var child = parent.Children.FirstOrDefault(c => string.Equals(c.FirstName, payload.StudentFirst, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(c.LastName, payload.StudentLast, StringComparison.OrdinalIgnoreCase));
       if (child is null)
         return Results.BadRequest("Student does not match any child of the parent associated with this ticket.");
@@ -127,14 +129,18 @@ public static class Api
       if (newParent is null)
         return Results.BadRequest("New parent does not exist.");
 
-      var currentStudent = newParent.Children.FirstOrDefault(c =>
-        string.Equals(c.FirstName, entity.StudentFirstName, StringComparison.OrdinalIgnoreCase) &&
-        string.Equals(c.LastName, entity.StudentLastName, StringComparison.OrdinalIgnoreCase));
+      Student currentStudent = null;
+      if (entity.StudentFirstName is not null && entity.StudentLastName is not null)
+      {
+        currentStudent = newParent.Children.FirstOrDefault(c =>
+          string.Equals(c.FirstName, entity.StudentFirstName, StringComparison.OrdinalIgnoreCase) &&
+          string.Equals(c.LastName, entity.StudentLastName, StringComparison.OrdinalIgnoreCase));
 
-      if (currentStudent is null)
-        return Results.BadRequest("Current student is not associated with the new parent.");
+        if (currentStudent is null)
+          return Results.BadRequest("Current student is not associated with the new parent.");
+      }
 
-      await TableService.ChangeTicketParentAsync(entity, newParent, currentStudent.ParentRelationship);
+      await TableService.ChangeTicketParentAsync(entity, newParent, currentStudent?.ParentRelationship);
       return Results.NoContent();
     });
 
@@ -162,14 +168,63 @@ public static class Api
       await TableService.RenameTicketAsync(payload.AssigneeEmail, id, payload.NewTitle);
       return Results.NoContent();
     });
-
-    group.MapPost("/tickets/{id}/message", async (string id, [FromBody] NewMessagePayload payload, HttpContext context) =>
+    group.MapPost("/tickets/{id}/message", async (string id, HttpContext context) =>
     {
-      if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(payload?.Content))
-        return Results.BadRequest("Ticket ID and message content are required.");
+      if (string.IsNullOrWhiteSpace(id))
+        return Results.BadRequest("Ticket ID is required.");
 
       if (!context.User.IsInRole(AuthConstants.Manager) && !await TableService.TicketExistsAsync(context.User.Identity.Name, id))
         return Results.Forbid();
+
+      if (!context.Request.HasFormContentType)
+        return Results.BadRequest("Request must be a form.");
+
+      var form = await context.Request.ReadFormAsync();
+
+      if (!bool.TryParse(form["isPrivate"], out var isPrivate))
+        return Results.BadRequest("Must specify whether the message is private.");
+
+      var assigneeEmail = form["assigneeEmail"];
+      if (string.IsNullOrWhiteSpace(assigneeEmail))
+        return Results.BadRequest("Assignee email is required.");
+
+      var content = form["content"];
+      if (string.IsNullOrWhiteSpace(content))
+        return Results.BadRequest("Message content is required.");
+
+      var invalidFileNameChars = Path.GetInvalidFileNameChars();
+      foreach (var file in form.Files)
+      {
+        if (file.Length == 0)
+          return Results.BadRequest("Attachment cannot be empty.");
+
+        if (file.Length > 10 * 1024 * 1024)
+          return Results.BadRequest("Attachment size exceeds the limit of 10 MB.");
+
+        if (!validFileExtensions.Contains(Path.GetExtension(file.FileName)))
+          return Results.BadRequest("Invalid file type.");
+
+        if (file.FileName.Length > 100)
+          return Results.BadRequest("Attachment file name is too long.");
+
+        if (file.FileName.IndexOfAny(invalidFileNameChars) >= 0)
+          return Results.BadRequest("Attachment file name contains invalid characters.");
+
+        if (file.FileName.Contains("..") || file.FileName.Contains('/'))
+          return Results.BadRequest("Attachment file name cannot contain relative paths.");
+      }
+
+      var attachments = new List<Attachment>();
+      foreach (var file in form.Files)
+      {
+        using var stream = file.OpenReadStream();
+        var blobName = await BlobService.UploadAttachmentAsync(stream, file.FileName);
+        attachments.Add(new Attachment
+        {
+          FileName = file.FileName,
+          Url = blobName
+        });
+      }
 
       var user = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
       var message = new Message
@@ -177,12 +232,21 @@ public static class Api
         AuthorName = user,
         IsEmployee = true,
         Timestamp = DateTime.UtcNow,
-        Content = payload.Content,
-        IsPrivate = payload.IsPrivate
+        Content = content,
+        IsPrivate = isPrivate,
+        Attachments = attachments.Count > 0 ? attachments : null
       };
       await BlobService.AppendMessageAsync(id, message);
-      await TableService.UpdateLastParentMessageDateAsync(payload.AssigneeEmail, id, null);
-      return Results.NoContent();
+      await TableService.UpdateLastParentMessageDateAsync(assigneeEmail, id, null);
+
+      if (message.Attachments is not null)
+      {
+        foreach (var attachment in message.Attachments)
+        {
+          attachment.Url = BlobService.GetAttachmentSasUrl(attachment.Url);
+        }
+      }
+      return Results.Ok(message);
     });
   }
 }

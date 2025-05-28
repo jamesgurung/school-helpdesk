@@ -28,6 +28,8 @@ function openTicketDetails(ticketId) {
       elements.newMessageInput.classList.remove('internal-note');
       elements.sendMessageBtn.textContent = 'Send Message';
 
+      updateMessageControlsState(ticket);
+
       elements.detailsEmpty.style.display = 'none';
       elements.detailsContent.style.display = 'block';
       elements.ticketDetails.classList.add('open');
@@ -35,6 +37,7 @@ function openTicketDetails(ticketId) {
 
       elements.closeTicketBtn.textContent = ticket.isClosed ? 'Reopen Ticket' : 'Close Ticket';
       updateCloseTicketButtonText();
+      elements.ticketDetails.scrollTop = 0;
     })
     .catch(error => {
       console.error('Error fetching conversation:', error);
@@ -44,73 +47,103 @@ function openTicketDetails(ticketId) {
 
 function populateStudentSelect(ticket, children) {
   elements.studentSelect.innerHTML = '';
+  
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = 'Select a student';
+  placeholderOption.disabled = true;
+  placeholderOption.selected = true;
+  elements.studentSelect.appendChild(placeholderOption);
+  
   children.forEach(child => {
     const option = document.createElement('option');
     option.value = `${child.firstName}|${child.lastName}`;
     option.textContent = getFullName(child.firstName, child.lastName) + ` (${child.tutorGroup})`;
     elements.studentSelect.appendChild(option);
-
     if (child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName) {
       option.selected = true;
+      placeholderOption.selected = false;
     }
   });
 }
 
 function populateParentSelect(ticket, ticketParents) {
   elements.parentSelect.innerHTML = '';
+  
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = 'Select a parent/carer';
+  placeholderOption.disabled = true;
+  placeholderOption.selected = true;
+  elements.parentSelect.appendChild(placeholderOption);
+  
   ticketParents.forEach(parent => {
     const option = document.createElement('option');
     option.value = `${parent.name}|${parent.email}`;
     option.textContent = parent.name;
     elements.parentSelect.appendChild(option);
-
     if (parent.name === ticket.parentName && parent.email === ticket.parentEmail) {
       option.selected = true;
+      placeholderOption.selected = false;
     }
   });
 }
 
 function renderStudentInfo(ticket, children) {
+  const status = getTicketValidationStatus(ticket);
+  const hasStudent = status.hasStudent;
+  
   renderInfoSection('student', {
     heading: 'Student',
-    icon: 'child_care',
-    name: getFullName(ticket.studentFirstName, ticket.studentLastName),
-    detail: ticket.tutorGroup,
-    editable: isManager && children.length > 1,
-    editHandler: toggleStudentEdit
+    icon: hasStudent ? 'child_care' : 'warning',
+    name: hasStudent ? getFullName(ticket.studentFirstName, ticket.studentLastName) : 'Not Set',
+    detail: hasStudent ? ticket.tutorGroup : '',
+    editable: canEditField(ticket, 'student') && children.length > 1,
+    editHandler: toggleStudentEdit,
+    isWarning: !hasStudent
   });
 }
 
 function renderParentInfo(ticket) {
-  let parentRelationship = ticket.parentRelationship;
-
-  if (!parentRelationship) {
-    const children = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName)?.children || [];
-    const currentChild = children.find(child =>
-      child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName
-    );
-    parentRelationship = currentChild?.parentRelationship || '';
+  const status = getTicketValidationStatus(ticket);
+  const hasParent = status.hasParent;
+  
+  let parentRelationship = '';
+  if (hasParent) {
+    parentRelationship = ticket.parentRelationship;
+    if (!parentRelationship) {
+      const children = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName)?.children || [];
+      const currentChild = children.find(child =>
+        child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName
+      );
+      parentRelationship = currentChild?.parentRelationship || '';
+    }
   }
 
   const ticketParents = parents?.filter(p => p.email === ticket.parentEmail) || [];
 
   renderInfoSection('parent', {
     heading: 'Parent/Carer',
-    icon: 'supervisor_account',
-    name: ticket.parentName,
+    icon: hasParent ? 'supervisor_account' : 'warning',
+    name: hasParent ? ticket.parentName : 'Not Set',
     detail: parentRelationship,
-    editable: isManager && ticketParents.length > 1,
-    editHandler: toggleParentEdit
+    editable: canEditField(ticket, 'parent') && ticketParents.length > 1,
+    editHandler: toggleParentEdit,
+    isWarning: !hasParent
   });
 }
 
 function renderAssigneeInfo(ticket) {
+  const status = getTicketValidationStatus(ticket);
+  const hasAssignee = status.hasAssignee;
+  
   renderInfoSection('assignee', {
     heading: 'Assigned To',
-    icon: 'school',
-    name: ticket.assigneeName,
-    editable: isManager,
-    editHandler: toggleAssigneeEdit
+    icon: hasAssignee ? 'school' : 'warning',
+    name: hasAssignee ? ticket.assigneeName : 'Unassigned',
+    editable: canEditField(ticket, 'assignee'),
+    editHandler: toggleAssigneeEdit,
+    isWarning: !hasAssignee
   });
 }
 
@@ -122,7 +155,7 @@ function renderInfoSection(type, config) {
 
   infoClone.querySelector('.heading-text').textContent = config.heading;
 
-  if (config.editable) {
+ if (config.editable) {
     infoClone.querySelector('.edit-icon').textContent = 'edit';
     infoClone.querySelector('.edit-icon').addEventListener('click', config.editHandler);
   } else {
@@ -133,7 +166,14 @@ function renderInfoSection(type, config) {
   infoContainer.classList.add(`${type}-info`);
 
   infoClone.querySelector('.info-icon').textContent = config.icon;
-  infoClone.querySelector('.info-name').textContent = config.name;
+  
+  const nameElement = infoClone.querySelector('.info-name');
+  nameElement.textContent = config.name;
+  if (config.isWarning) {
+    nameElement.style.color = 'var(--warning)';
+    infoClone.querySelector('.info-icon').style.color = 'var(--warning)';
+  }
+  
   infoClone.querySelector('.info-detail').textContent = config.detail || '';
 
   container.appendChild(infoClone);
@@ -144,13 +184,40 @@ function renderTicketInList(ticket) {
   if (!ticketElement) return;
 
   ticketElement.querySelector('.ticket-title').textContent = ticket.title;
-  ticketElement.querySelector('.student-value span:not(.material-symbols-rounded)').textContent =
-    getFullName(ticket.studentFirstName, ticket.studentLastName);
-  ticketElement.querySelector('.assignee-value span:not(.material-symbols-rounded)').textContent =
-    ticket.assigneeName;
+  
+  const studentElement = ticketElement.querySelector('.student-value span:not(.material-symbols-rounded)');
+  const assigneeElement = ticketElement.querySelector('.assignee-value span:not(.material-symbols-rounded)');
+  
+  const status = getTicketValidationStatus(ticket);
+  
+  if (status.hasStudent) {
+    studentElement.textContent = getFullName(ticket.studentFirstName, ticket.studentLastName);
+    studentElement.style.color = '';
+    studentElement.style.fontStyle = '';
+  } else {
+    studentElement.textContent = 'Not Set';
+    studentElement.style.color = 'var(--warning)';
+  }
+  
+  if (status.hasAssignee) {
+    assigneeElement.textContent = ticket.assigneeName;
+    assigneeElement.style.color = '';
+    assigneeElement.style.fontStyle = '';
+  } else {
+    assigneeElement.textContent = 'Unassigned';
+    assigneeElement.style.color = 'var(--warning)';
+  }
 }
 
 async function closeTicket() {
+  const ticket = getCurrentTicket();
+  if (!ticket) return;
+  
+  // Only allow closing if all fields are complete or if ticket is already closed (reopening)
+  if (!ticket.isClosed && !canSendMessages(ticket)) {
+    return;
+  }
+
   const hasMessage = elements.newMessageInput.value.trim().length > 0;
 
   if (hasMessage) {
@@ -158,4 +225,32 @@ async function closeTicket() {
   }
 
   toggleTicketStatus();
+}
+
+function updateMessageControlsState(ticket) {
+  const canSend = canSendMessages(ticket);
+  
+  elements.sendMessageBtn.disabled = !canSend;
+  elements.newMessageInput.disabled = !canSend;
+  elements.internalNoteCheckbox.disabled = !canSend;
+  
+  // Also control the close ticket button - only allow closing if all fields are complete or if reopening
+  const canClose = ticket.isClosed || canSend;
+  elements.closeTicketBtn.disabled = !canClose;
+  
+  if (!canSend) {
+    elements.newMessageInput.placeholder = 'Complete ticket details first.';
+    elements.sendMessageBtn.style.opacity = '0.5';
+    elements.newMessageInput.style.opacity = '0.5';
+  } else {
+    elements.newMessageInput.placeholder = 'Type your message here...';
+    elements.sendMessageBtn.style.opacity = '1';
+    elements.newMessageInput.style.opacity = '1';
+  }
+  
+  if (!canClose) {
+    elements.closeTicketBtn.style.opacity = '0.5';
+  } else {
+    elements.closeTicketBtn.style.opacity = '1';
+  }
 }

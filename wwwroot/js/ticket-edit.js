@@ -49,6 +49,8 @@ async function updateTicketStudent() {
     renderTicketInList(ticket);
     renderStudentInfo(ticket, children);
     renderParentInfo(ticket);
+    renderAssigneeInfo(ticket);
+    updateMessageControlsState(ticket);
   } catch (error) {
     console.error('Failed to update student:', error);
     elements.studentSelect.value = `${ticket.studentFirstName}|${ticket.studentLastName}`;
@@ -77,12 +79,14 @@ async function updateTicketParent() {
 
     if (currentStudent) {
       ticket.parentRelationship = currentStudent.parentRelationship;
+    } else {
+      ticket.parentRelationship = 'Parent/Carer';
     }
-
     renderTicketInList(ticket);
     populateStudentSelect(ticket, newChildren);
     renderStudentInfo(ticket, newChildren);
     renderParentInfo(ticket);
+    updateMessageControlsState(ticket);
   } catch (error) {
     console.error('Failed to update parent:', error);
     const currentParents = getTicketParents();
@@ -113,6 +117,7 @@ async function updateTicketAssignee() {
     renderTicketInList(ticket);
     renderAssigneeInfo(ticket);
     state.activeEditAssignee = null;
+    updateMessageControlsState(ticket);
   } catch (error) {
     console.error('Failed to update assignee:', error);
   }
@@ -170,14 +175,21 @@ function toggleSelectEdit(selectEl, infoSection, getOptions, updateFn) {
 }
 
 function toggleStudentEdit() {
+  const ticket = getCurrentTicket();
+  if (!canEditField(ticket, 'student')) return;
   toggleSelectEdit(elements.studentSelect, elements.studentInfoSection, getTicketChildren, updateTicketStudent);
 }
 
 function toggleParentEdit() {
+  const ticket = getCurrentTicket();
+  if (!canEditField(ticket, 'parent')) return;
   toggleSelectEdit(elements.parentSelect, elements.parentInfoSection, getTicketParents, updateTicketParent);
 }
 
 function toggleAssigneeEdit() {
+  const ticket = getCurrentTicket();
+  if (!canEditField(ticket, 'assignee')) return;
+  
   const editContainer = elements.assigneeEditContainer;
   const infoContainer = elements.assigneeInfoSection.querySelector('.info-container');
 

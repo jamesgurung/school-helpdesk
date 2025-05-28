@@ -1,4 +1,3 @@
-// Event Handlers and Listeners
 function setupEventListeners() {
   setupTabNavigation();
   setupTicketDetails();
@@ -11,47 +10,40 @@ function setupEventListeners() {
 }
 
 function setupTabNavigation() {
-  elements.tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      confirmNavigationWithUnsentText('switch tabs', () => {
-        elements.tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        state.activeTab = tab.dataset.tab;
-        renderTickets(state.activeTab);
-        resetDetailsView();
-      });
+  elements.tabs.forEach(tab => tab.addEventListener('click', () => {
+    confirmNavigationWithUnsentText('switch tabs', () => {
+      elements.tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.activeTab = tab.dataset.tab;
+      renderTickets(state.activeTab);
+      resetDetailsView();
     });
-  });
+  }));
 }
 
 function setupTicketDetails() {
-  elements.mobileBack.addEventListener('click', () => {
-    confirmNavigationWithUnsentText('go back', resetDetailsView);
-  });
-
+  elements.mobileBack.addEventListener('click', () => confirmNavigationWithUnsentText('go back', resetDetailsView));
+  
   if (isManager) {
     elements.ticketTitleInput.addEventListener('blur', updateTicketTitle);
-    elements.ticketTitleInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        elements.ticketTitleInput.blur();
-      }
+    elements.ticketTitleInput.addEventListener('keydown', e => { 
+      if (e.key === 'Enter') { 
+        e.preventDefault(); 
+        elements.ticketTitleInput.blur(); 
+      } 
     });
   }
+  
   elements.sendMessageBtn.addEventListener('click', sendMessage);
   elements.closeTicketBtn.addEventListener('click', closeTicket);
   elements.newMessageInput.addEventListener('input', updateCloseTicketButtonText);
+  elements.messageAttachments.addEventListener('change', handleAttachmentChange);
+  
   elements.internalNoteCheckbox.addEventListener('change', e => {
-    if (e.target.checked) {
-      elements.newMessageInput.classList.add('internal-note');
-      if (!elements.sendMessageBtn.disabled) {
-        elements.sendMessageBtn.textContent = 'Add Note';
-      }
-    } else {
-      elements.newMessageInput.classList.remove('internal-note');
-      if (!elements.sendMessageBtn.disabled) {
-        elements.sendMessageBtn.textContent = 'Send Message';
-      }
+    const adding = e.target.checked;
+    elements.newMessageInput.classList.toggle('internal-note', adding);
+    if (!elements.sendMessageBtn.disabled) {
+      elements.sendMessageBtn.textContent = adding ? 'Add Note' : 'Send Message';
     }
     updateCloseTicketButtonText();
   });
@@ -59,281 +51,179 @@ function setupTicketDetails() {
 
 function setupTicketCreation() {
   elements.newTicketButton?.addEventListener('click', openNewTicketModal);
-  elements.closeModalBtn.addEventListener('click', () => {
-    confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal);
-  });
-  elements.cancelNewTicketBtn.addEventListener('click', () => {
-    confirmModalCloseWithUnsentText('cancel creating this ticket', closeNewTicketModal);
-  });
+  
+  [elements.closeModalBtn, elements.cancelNewTicketBtn].forEach(btn => 
+    btn.addEventListener('click', () => 
+      confirmModalCloseWithUnsentText(
+        btn === elements.closeModalBtn ? 'close the new ticket form' : 'cancel creating this ticket', 
+        closeNewTicketModal
+      )
+    )
+  );
+  
   elements.createNewTicketBtn.addEventListener('click', createNewTicket);
+  
   elements.studentSelectInput.addEventListener('change', () => {
-    if (state.activeParent && elements.studentSelectInput.value) {
-      const [firstName, lastName] = elements.studentSelectInput.value.split('|');
-      const selectedChild = state.activeParent.children.find(child =>
-        child.firstName === firstName && child.lastName === lastName
-      );
-      updateParentRelationshipDisplay(selectedChild?.parentRelationship || '');
+    const val = elements.studentSelectInput.value;
+    if (state.activeParent && val) {
+      const [firstName, lastName] = val.split('|');
+      const child = state.activeParent.children.find(c => c.firstName === firstName && c.lastName === lastName);
+      updateParentRelationshipDisplay(child?.parentRelationship || '');
     }
   });
 }
 
-function setupUserActions() {
-  elements.logoutBtn.addEventListener('click', () => {
-    window.location.href = '/auth/logout';
-  });
+function setupUserActions() { 
+  elements.logoutBtn.addEventListener('click', () => window.location.href = '/auth/logout'); 
 }
 
 function setupParentSearch() {
-  setupSearchInputListeners(
-    elements.parentSearchInput,
-    filterParents,
-    (results) => displayParentAutocompleteResults(results, state.activeParent)
-  );
-
+  setupSearchInputListeners(elements.parentSearchInput, filterParents, results => displayParentAutocompleteResults(results, state.activeParent));
   elements.parentInfo.addEventListener('click', toggleParentSearchMode);
   document.getElementById('parent-edit-icon').addEventListener('click', toggleParentSearchMode);
-
   setupParentSearchKeyboardNavigation();
 }
 
-function setupAssigneeFeatures() {
-  setupAssigneeSearchListeners();
-  setupAssigneeEditListeners();
+function setupAssigneeFeatures() { 
+  setupAssigneeSearchListeners(); 
+  setupAssigneeEditListeners(); 
 }
 
-function setupSearchInputListeners(inputElement, filterCallback, displayResultsCallback) {
-  inputElement.addEventListener('input', e => {
-    displayResultsCallback(filterCallback(e.target.value));
-  });
+const filterStaff = query => {
+  const q = query.toLowerCase();
+  return staff.filter(s => matchesWordBeginning(s.name, query) || matchesWordBeginning(s.email, query));
+};
 
-  inputElement.addEventListener('focus', e => {
-    setTimeout(() => {
-      const query = e.target.value.trim();
-      if (query) {
-        displayResultsCallback(filterCallback(query));
-      }
-    }, 50);
-  });
+function setupSearchInputListeners(input, filter, display) {
+  input.addEventListener('input', e => display(filter(e.target.value)));
+  input.addEventListener('focus', e => setTimeout(() => { 
+    const v = e.target.value.trim(); 
+    if (v) display(filter(v)); 
+  }, 50));
 }
 
-function populateAutocompleteResults(resultsElement, items, nameField, emailField, clickCallback) {
-  resultsElement.innerHTML = '';
-
-  if (!items.length) {
-    resultsElement.style.display = 'none';
-    return;
+function populateAutocompleteResults(container, items, nameField, emailField, onClick) {
+  container.innerHTML = ''; 
+  if (!items.length) { 
+    container.style.display = 'none'; 
+    return; 
   }
-
   items.forEach(item => {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'autocomplete-item';
-    itemDiv.innerHTML = `
-      <div class="autocomplete-name">${item[nameField]}</div>
-      <div class="autocomplete-email">${item[emailField]}</div>
-    `;
-    itemDiv.addEventListener('click', () => clickCallback(item));
-    resultsElement.appendChild(itemDiv);
+    const div = document.createElement('div');
+    div.className = 'autocomplete-item';
+    div.innerHTML = `<div class="autocomplete-name">${item[nameField]}</div><div class="autocomplete-email">${item[emailField]}</div>`;
+    div.addEventListener('click', () => onClick(item));
+    container.appendChild(div);
   });
-
-  resultsElement.style.display = 'block';
+  container.style.display = 'block';
 }
 
-function handleAutocompleteKeyboardNavigation(inputElement, resultsElement, onSelectCallback, getItemTextCallback) {
-  inputElement.addEventListener('keydown', e => {
-    const items = resultsElement.querySelectorAll('.autocomplete-item');
-    const selectedItem = resultsElement.querySelector('.autocomplete-item.selected');
-
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (items.length === 0) return;
-
-      let nextIndex = 0;
-      if (selectedItem) {
-        const currentIndex = Array.from(items).indexOf(selectedItem);
-        selectedItem.classList.remove('selected');
-        nextIndex = e.key === 'ArrowDown'
-          ? (currentIndex + 1) % items.length
-          : (currentIndex - 1 + items.length) % items.length;
+function handleAutocompleteKeyboardNavigation(input, results, onSelect, getText) {
+  input.addEventListener('keydown', e => {
+    const items = results.querySelectorAll('.autocomplete-item');
+    let selected = results.querySelector('.autocomplete-item.selected');
+    if (['ArrowDown', 'ArrowUp'].includes(e.key)) {
+      e.preventDefault(); 
+      if (!items.length) return;
+      let i = selected ? Array.from(items).indexOf(selected) : -1;
+      selected && selected.classList.remove('selected');
+      i = (e.key === 'ArrowDown' ? i + 1 : i - 1 + items.length) % items.length;
+      items[i].classList.add('selected'); 
+      items[i].scrollIntoView({ block: 'nearest' });
+    } else if ((e.key === 'Enter' || e.key === 'Tab') && results.style.display !== 'none') {
+      const curr = results.querySelector('.autocomplete-item.selected');
+      if (curr) { 
+        e.preventDefault(); 
+        if (getText) { 
+          const { name, email } = getText(curr); 
+          onSelect({ name, email }); 
+        } else curr.click(); 
       }
-
-      items[nextIndex].classList.add('selected');
-      items[nextIndex].scrollIntoView({ block: 'nearest' });
-    }
-    else if ((e.key === 'Enter' || e.key === 'Tab') &&
-      resultsElement.style.display !== 'none') {
-      const currentSelected = resultsElement.querySelector('.autocomplete-item.selected');
-      if (currentSelected) {
-        e.preventDefault();
-        if (getItemTextCallback) {
-          const { name, email } = getItemTextCallback(currentSelected);
-          onSelectCallback({ name, email });
-        } else {
-          currentSelected.click();
-        }
-      }
-    }
-    else if (e.key === 'Escape') {
-      resultsElement.style.display = 'none';
-    }
+    } else if (e.key === 'Escape') results.style.display = 'none';
   });
 }
 
 function setupParentSearchKeyboardNavigation() {
-  const extractItemData = (selectedItem) => {
-    const nameEl = selectedItem.querySelector('.autocomplete-name');
-    const emailEl = selectedItem.querySelector('.autocomplete-email');
-    return nameEl && emailEl
-      ? { name: nameEl.textContent, email: emailEl.textContent.split(' - ')[0] }
-      : null;
-  };
-
-  const handleSelection = ({ name, email }) => {
-    if (name && email) {
-      const parent = parents.find(p => p.name === name && p.email === email);
-      if (parent) selectParent(parent);
-    }
-  };
-
+  const getData = item => ({
+    name: item.querySelector('.autocomplete-name').textContent,
+    email: item.querySelector('.autocomplete-email').textContent.split(' - ')[0]
+  });
   handleAutocompleteKeyboardNavigation(
     elements.parentSearchInput,
     elements.parentAutocompleteResults,
-    handleSelection,
-    extractItemData
+    ({ name, email }) => { const p = parents.find(p => p.name === name && p.email === email); p && selectParent(p); },
+    getData
   );
 }
 
 function setupAssigneeSearchListeners() {
-  const filterStaff = (query) => {
-    const lowercaseQuery = query.toLowerCase();
-    return staff.filter(s =>
-      matchesWordBeginning(s.name, query) ||
-      matchesWordBeginning(s.email, query)
-    );
-  };
-
   setupSearchInputListeners(
     elements.assigneeSearchInput,
     filterStaff,
-    (results) => populateAutocompleteResults(
-      elements.assigneeAutocompleteResults,
-      results,
-      'name',
-      'email',
-      selectNewTicketAssignee
-    )
+    results => populateAutocompleteResults(elements.assigneeAutocompleteResults, results, 'name', 'email', selectNewTicketAssignee)
   );
-
-  const extractItemData = (selectedItem) => {
-    const nameEl = selectedItem.querySelector('.autocomplete-name');
-    const emailEl = selectedItem.querySelector('.autocomplete-email');
-    return nameEl && emailEl
-      ? { name: nameEl.textContent, email: emailEl.textContent }
-      : null;
-  };
-
-  const handleSelection = ({ name, email }) => {
-    if (name && email) {
-      const assignee = staff.find(s => s.name === name && s.email === email);
-      if (assignee) selectNewTicketAssignee(assignee);
-    }
-  };
-
   handleAutocompleteKeyboardNavigation(
     elements.assigneeSearchInput,
     elements.assigneeAutocompleteResults,
-    handleSelection,
-    extractItemData
+    ({ name, email }) => { 
+      const a = staff.find(s => s.name === name && s.email === email); 
+      a && selectNewTicketAssignee(a); 
+    },
+    item => ({ name: item.querySelector('.autocomplete-name').textContent, email: item.querySelector('.autocomplete-email').textContent })
   );
-
-  elements.assigneeInfoDisplay.addEventListener('click', toggleAssigneeSearchMode);
-  elements.assigneeEditIcon.addEventListener('click', toggleAssigneeSearchMode);
+  [elements.assigneeInfoDisplay, elements.assigneeEditIcon].forEach(el => el.addEventListener('click', toggleAssigneeSearchMode));
 }
 
 function setupAssigneeEditListeners() {
-  const filterStaff = (query) => {
-    const lowercaseQuery = query.toLowerCase();
-    return staff.filter(s =>
-      matchesWordBeginning(s.name, query) ||
-      matchesWordBeginning(s.email, query)
-    );
-  };
-
-  setupSearchInputListeners(
-    elements.assigneeEditInput,
-    filterStaff,
-    (results) => populateAutocompleteResults(
-      elements.assigneeEditAutocompleteResults,
-      results,
-      'name',
-      'email',
-      selectAssignee
-    )
-  );
-
-  handleAutocompleteKeyboardNavigation(
-    elements.assigneeEditInput,
-    elements.assigneeEditAutocompleteResults,
-    () => { },
-    null);
+  setupSearchInputListeners(elements.assigneeEditInput, filterStaff, results => populateAutocompleteResults(elements.assigneeEditAutocompleteResults, results, 'name', 'email', selectAssignee));
+  handleAutocompleteKeyboardNavigation(elements.assigneeEditInput, elements.assigneeEditAutocompleteResults, () => { }, null);
 }
 
-function setupTicketEditFeatures() {
-  if (isManager) {
-    // Set up student select change handler  
-    elements.studentSelect.addEventListener('change', updateTicketStudent);
-
-    // Set up parent select change handler
-    elements.parentSelect.addEventListener('change', updateTicketParent);
-  }
+function setupTicketEditFeatures() { 
+  if (isManager) { 
+    elements.studentSelect.addEventListener('change', updateTicketStudent); 
+    elements.parentSelect.addEventListener('change', updateTicketParent); 
+  } 
 }
 
 function setupDocumentClickHandlers() {
   document.addEventListener('click', e => {
-    if (!elements.parentSearchInput.contains(e.target) &&
-      !elements.parentAutocompleteResults.contains(e.target)) {
+    if (!elements.parentSearchInput.contains(e.target) && !elements.parentAutocompleteResults.contains(e.target)) {
       elements.parentAutocompleteResults.style.display = 'none';
     }
-
-    if (!elements.assigneeSearchInput.contains(e.target) &&
-      !elements.assigneeAutocompleteResults.contains(e.target)) {
+    if (!elements.assigneeSearchInput.contains(e.target) && !elements.assigneeAutocompleteResults.contains(e.target)) {
       elements.assigneeAutocompleteResults.style.display = 'none';
     }
-
-    const assigneeEditIcon = elements.assigneeInfoSection.querySelector('.edit-icon');
-    if (!elements.assigneeEditInput.contains(e.target) &&
-      !elements.assigneeEditAutocompleteResults.contains(e.target) &&
-      !(assigneeEditIcon && assigneeEditIcon.contains(e.target))) {
-
-      elements.assigneeEditAutocompleteResults.style.display = 'none';
+    const editIcon = elements.assigneeInfoSection.querySelector('.edit-icon');
+    if (!elements.assigneeEditInput.contains(e.target) && !elements.assigneeEditAutocompleteResults.contains(e.target) && !(editIcon && editIcon.contains(e.target))) {
+      elements.assigneeEditAutocompleteResults.style.display = 'none'; 
       elements.assigneeEditContainer.style.display = 'none';
-
-      const infoContainer = elements.assigneeInfoSection.querySelector('.info-container');
-      if (infoContainer) infoContainer.style.display = 'flex';
+      const infoC = elements.assigneeInfoSection.querySelector('.info-container'); 
+      infoC && (infoC.style.display = 'flex');
     }
-
-    // Handle modal click-outside to close with warning
     if (e.target === elements.newTicketModal) {
       confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal);
     }
-  });
-
-  // Handle ESC key to close modal with warning
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && elements.newTicketModal.style.display === 'block') {
-      confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal);
+    if (e.target.id === 'image-modal') {
+      closeImageModal();
     }
+  });
+  document.addEventListener('keydown', e => { 
+    if (e.key === 'Escape') { 
+      if (elements.newTicketModal.style.display === 'block') {
+        confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal); 
+      }
+      if (document.getElementById('image-modal').style.display === 'block') {
+        closeImageModal(); 
+      }
+    } 
   });
 }
 
 function updateCloseTicketButtonText() {
-  const currentTicket = getCurrentTicket();
-  if (!currentTicket) return;
-
-  const hasMessage = elements.newMessageInput.value.trim().length > 0;
-
-  if (currentTicket.isClosed) {
-    elements.closeTicketBtn.textContent = hasMessage ? 'Send & Reopen' : 'Reopen Ticket';
-  } else {
-    elements.closeTicketBtn.textContent = hasMessage ? 'Send & Close' : 'Close Ticket';
-  }
+  const t = getCurrentTicket(); 
+  if (!t) return;
+  const hasMsg = elements.newMessageInput.value.trim();
+  if (t.isClosed) elements.closeTicketBtn.textContent = hasMsg ? 'Send & Reopen' : 'Reopen Ticket';
+  else elements.closeTicketBtn.textContent = hasMsg ? 'Send & Close' : 'Close Ticket';
 }

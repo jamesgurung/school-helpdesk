@@ -8,6 +8,24 @@ public static class EmailService
 {
   private static string _serverToken;
   private static string _authKey;
+  private static string _debugEmail;
+
+  public static void Configure(string postmarkServerToken, string postmarkInboundAuthKey, string debugEmail)
+  {
+    if (string.IsNullOrEmpty(postmarkServerToken) || string.IsNullOrEmpty(postmarkInboundAuthKey))
+    {
+      throw new InvalidOperationException("Postmark server token and inbound auth key must be provided.");
+    }
+#if DEBUG
+    if (string.IsNullOrEmpty(debugEmail))
+    {
+      throw new InvalidOperationException("Debug email must be provided.");
+    }
+#endif
+    _serverToken = postmarkServerToken;
+    _authKey = postmarkInboundAuthKey;
+    _debugEmail = debugEmail;
+  }
 
   public static async Task ProcessInboundAsync(PostmarkInboundWebhookMessage message, string authKey)
   {
@@ -72,16 +90,6 @@ public static class EmailService
   public static string GetReplySubject(string messageSubject)
   {
     return messageSubject.StartsWith("Re: ", StringComparison.OrdinalIgnoreCase) ? messageSubject : "Re: " + messageSubject;
-  }
-
-  public static void Configure(string postmarkServerToken, string postmarkInboundAuthKey)
-  {
-    if (string.IsNullOrEmpty(postmarkServerToken) || string.IsNullOrEmpty(postmarkInboundAuthKey))
-    {
-      throw new InvalidOperationException("Postmark server token and inbound auth key must be provided.");
-    }
-    _serverToken = postmarkServerToken;
-    _authKey = postmarkInboundAuthKey;
   }
 
   private static string GetHeader(this PostmarkInboundWebhookMessage message, string name)

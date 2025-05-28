@@ -23,7 +23,7 @@ var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAcco
 School.Instance = builder.Configuration.GetSection(nameof(School)).Get<School>();
 TableService.Configure(connectionString);
 BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
-EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"]);
+EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"], School.Instance.DebugEmail);
 
 await BlobService.LoadConfigAsync();
 

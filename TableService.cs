@@ -99,6 +99,7 @@ public static class TableService
     ticket.StudentFirstName = student.FirstName;
     ticket.StudentLastName = student.LastName;
     ticket.TutorGroup = student.TutorGroup;
+    ticket.ParentRelationship = student.ParentRelationship;
     await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
   }
 

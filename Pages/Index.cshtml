@@ -78,11 +78,21 @@
       <div class="conversation" id="conversation"></div>
       <div class="new-message">
         <textarea id="new-message" placeholder="Type your message here..."></textarea>
+        <div class="message-attachment-controls">
+          <div id="attachment-list" class="attachment-list"></div>
+        </div>
         <div class="message-controls">
-          <label class="internal-note-checkbox">
-            <input type="checkbox" id="internal-note">
-            <span>Internal note</span>
-          </label>
+          <div class="message-controls-left">
+            <label class="file-upload-label">
+              <input type="file" id="message-attachments" multiple accept=".pdf,.docx,.png,.jpg,.jpeg,.webp,.heic">
+              <span class="material-symbols-rounded">attach_file</span>
+              <span>Attach Files</span>
+            </label>
+            <label class="internal-note-checkbox">
+              <input type="checkbox" id="internal-note">
+              <span>Internal note</span>
+            </label>
+          </div>
           <div class="action-buttons">
             <button class="btn-secondary" id="close-ticket">Close Ticket</button>
             <button class="btn-primary" id="send-message">Send Message</button>
@@ -243,6 +253,14 @@
       <button class="btn-secondary" id="cancel-new-ticket">Cancel</button>
       <button class="btn-primary" id="create-new-ticket">Create Ticket</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="image-modal">
+  <div class="image-modal-content">
+    <span class="close-modal material-symbols-rounded" onclick="closeImageModal()">close</span>
+    <img id="modal-image" class="modal-image">
+    <div id="image-caption" class="image-caption"></div>
   </div>
 </div>
 
