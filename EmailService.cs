@@ -15,7 +15,8 @@ public static class EmailService
     var messageId = message.GetHeader("message-id");
     var replySubject = GetReplySubject(message.Subject);
 
-    if (!School.Instance.ParentsByEmail.TryGetValue(message.From, out var parent))
+    var parents = School.Instance.ParentsByEmail[message.From];
+    if (!parents.Any())
     {
       var spamHeader = message.Headers.FirstOrDefault(o => o.Name == "x-spam-status")?.Value;
       if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;

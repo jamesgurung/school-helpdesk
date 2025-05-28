@@ -92,7 +92,6 @@ public static class TableService
     ticket.Value.IsClosed = isClosed;
     await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
   }
-
   public static async Task ChangeTicketStudentAsync(TicketEntity ticket, Student student)
   {
     ArgumentNullException.ThrowIfNull(ticket);
@@ -100,6 +99,16 @@ public static class TableService
     ticket.StudentFirstName = student.FirstName;
     ticket.StudentLastName = student.LastName;
     ticket.TutorGroup = student.TutorGroup;
+    await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
+  }
+
+  public static async Task ChangeTicketParentAsync(TicketEntity ticket, Parent parent, string relationship)
+  {
+    ArgumentNullException.ThrowIfNull(ticket);
+    ArgumentNullException.ThrowIfNull(parent);
+    ticket.ParentName = parent.Name;
+    ticket.ParentEmail = parent.Email;
+    ticket.ParentRelationship = relationship;
     await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
   }
 
@@ -135,8 +144,6 @@ public class TicketEntity : ITableEntity
   public string ParentEmail { get; set; }
   public string ParentName { get; set; }
   public string ParentRelationship { get; set; }
-  [JsonIgnore]
-  public string ThreadId { get; set; }
 }
 
 public class NewTicketEntity : TicketEntity

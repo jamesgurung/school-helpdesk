@@ -10,7 +10,7 @@ public class School
   public IList<string> Admins { get; set; }
   public IList<string> Managers { get; set; }
 
-  public Dictionary<string, Parent> ParentsByEmail { get; set; }
+  public ILookup<string, Parent> ParentsByEmail { get; set; }
   public Dictionary<string, Staff> StaffByEmail { get; set; }
 
   public string UsersJson { get; set; }
@@ -44,7 +44,6 @@ public class Parent
 {
   public string Email { get; set; }
   public string Name { get; set; }
-  public string Relationship { get; set; }
   public List<Student> Children { get; set; }
 }
 
@@ -53,6 +52,7 @@ public class Student
   public string FirstName { get; set; }
   public string LastName { get; set; }
   public string TutorGroup { get; set; }
+  public string ParentRelationship { get; set; }
 }
 
 public class Staff

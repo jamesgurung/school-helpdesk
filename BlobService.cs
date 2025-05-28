@@ -99,26 +99,34 @@ public static class BlobService
 
     School.Instance.StaffByEmail = staff.ToDictionary(s => s.Email, s => new Staff { Email = s.Email, Name = $"{s.Title} {s.FirstName[0]} {s.LastName}" }, StringComparer.OrdinalIgnoreCase);
 
-    School.Instance.ParentsByEmail = students
-      .GroupBy(s => s.ParentEmailAddress, StringComparer.OrdinalIgnoreCase)
-      .Select(g =>
+    var studentsByParent = students
+      .Select(s => new
       {
-        var parentNames = g.Select(s => $"{s.ParentTitle} {(string.IsNullOrEmpty(s.ParentFirstName) ? string.Empty : $"{s.ParentFirstName[0]} ")}{s.ParentLastName}".Trim()).Distinct().ToList();
-        var name = parentNames.Count > 1 ? string.Join(" and ", parentNames) : parentNames.FirstOrDefault() ?? "Parent/Carer";
-        var parentRelationships = g.Select(s => s.Relationship).Distinct().ToList();
-        var relationship = parentRelationships.Count > 1 ? "Parents" : parentRelationships.FirstOrDefault() ?? "Parent/Carer";
+        s.FirstName,
+        s.LastName,
+        s.TutorGroup,
+        s.ParentEmailAddress,
+        s.Relationship,
+        ParentName = $"{s.ParentTitle} {(string.IsNullOrEmpty(s.ParentFirstName) ? string.Empty : $"{s.ParentFirstName[0]} ")}{s.ParentLastName}".Trim()
+      }).GroupBy(s => $"{s.ParentEmailAddress}:{s.ParentName}", StringComparer.OrdinalIgnoreCase);
+
+    var parents = studentsByParent.Select(g =>
+      {
+        var first = g.First();
+        var name = string.IsNullOrWhiteSpace(first.ParentName) ? "Parent/Carer" : first.ParentName;
         return new Parent
         {
-          Email = g.Key,
+          Email = first.ParentEmailAddress,
           Name = name,
-          Relationship = relationship,
-          Children = g.Select(s => new Student { FirstName = s.FirstName, LastName = s.LastName, TutorGroup = s.TutorGroup }).ToList()
+          Children = g.Select(s => new Student { FirstName = s.FirstName, LastName = s.LastName, TutorGroup = s.TutorGroup, ParentRelationship = s.Relationship }).ToList()
         };
-      }).ToDictionary(o => o.Email);
+      });
+
+    School.Instance.ParentsByEmail = parents.ToLookup(o => o.Email, StringComparer.OrdinalIgnoreCase);
 
     var users = new
     {
-      Parents = School.Instance.ParentsByEmail.Values,
+      Parents = parents,
       Staff = School.Instance.StaffByEmail.Values
     };
     School.Instance.UsersJson = JsonSerializer.Serialize(users, JsonSerializerOptions.Web);

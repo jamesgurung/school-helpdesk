@@ -97,10 +97,11 @@ public static class Api
         return Results.BadRequest("Student information is required.");
 
       var entity = await TableService.GetTicketAsync(payload.AssigneeEmail, id);
-      if (!School.Instance.ParentsByEmail.TryGetValue(entity.ParentEmail, out var parent))
+      var parents = School.Instance.ParentsByEmail[entity.ParentEmail];
+      if (!parents.Any())
         return Results.BadRequest("Parent associated with this ticket does not exist.");
 
-      var child = parent.Children.FirstOrDefault(c => string.Equals(c.FirstName, payload.StudentFirst, StringComparison.OrdinalIgnoreCase) &&
+      var child = parents.SelectMany(o => o.Children).FirstOrDefault(c => string.Equals(c.FirstName, payload.StudentFirst, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(c.LastName, payload.StudentLast, StringComparison.OrdinalIgnoreCase));
       if (child is null)
         return Results.BadRequest("Student does not match any child of the parent associated with this ticket.");
@@ -108,6 +109,35 @@ public static class Api
       await TableService.ChangeTicketStudentAsync(entity, child);
       return Results.NoContent();
     });
+
+    group.MapPut("/tickets/{id}/parent", async (string id, [FromBody] ChangeParentPayload payload, HttpContext context) =>
+    {
+      if (!context.User.IsInRole(AuthConstants.Manager))
+        return Results.Forbid();
+
+      if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
+        return Results.BadRequest("Ticket ID and assignee email are required.");
+
+      if (string.IsNullOrWhiteSpace(payload?.NewParentName))
+        return Results.BadRequest("New parent information is required.");
+
+      var entity = await TableService.GetTicketAsync(payload.AssigneeEmail, id);
+      var newParent = School.Instance.ParentsByEmail[entity.ParentEmail].FirstOrDefault(p => p.Name == payload.NewParentName);
+
+      if (newParent is null)
+        return Results.BadRequest("New parent does not exist.");
+
+      var currentStudent = newParent.Children.FirstOrDefault(c =>
+        string.Equals(c.FirstName, entity.StudentFirstName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(c.LastName, entity.StudentLastName, StringComparison.OrdinalIgnoreCase));
+
+      if (currentStudent is null)
+        return Results.BadRequest("Current student is not associated with the new parent.");
+
+      await TableService.ChangeTicketParentAsync(entity, newParent, currentStudent.ParentRelationship);
+      return Results.NoContent();
+    });
+
 
     group.MapPut("/tickets/{id}/status", async (string id, [FromBody] ChangeStatusPayload payload, HttpContext context) =>
     {
@@ -152,7 +182,6 @@ public static class Api
       };
       await BlobService.AppendMessageAsync(id, message);
       await TableService.UpdateLastParentMessageDateAsync(payload.AssigneeEmail, id, null);
-
       return Results.NoContent();
     });
   }

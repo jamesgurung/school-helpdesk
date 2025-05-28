@@ -17,12 +17,6 @@ function confirmSelectionAndShowDetails(item, config) {
   if (config.searchContainer) config.searchContainer.style.display = 'none';
   if (config.infoDisplay) config.infoDisplay.style.display = config.infoDisplayType || 'flex';
   if (config.editIcon) config.editIcon.style.display = 'inline-block';
-
-  if (config.relationshipDisplay && config.relationshipProperty && item[config.relationshipProperty]) {
-    config.relationshipDisplay.textContent = ` (${item[config.relationshipProperty]})`;
-  } else if (config.relationshipDisplay) {
-    config.relationshipDisplay.textContent = '';
-  }
 }
 
 function toggleSearchDisplayMode(e, config) {
@@ -67,8 +61,8 @@ function parentMatchesQuery(parent, queryLC, matchesWordBeginningFn) {
   const childrenMatch = parent.children && parent.children.some(child => {
     const fullName = `${child.firstName} ${child.lastName}`;
     return matchesWordBeginningFn(fullName, queryLC) ||
-           matchesWordBeginningFn(child.firstName, queryLC) ||
-           matchesWordBeginningFn(child.lastName, queryLC);
+      matchesWordBeginningFn(child.firstName, queryLC) ||
+      matchesWordBeginningFn(child.lastName, queryLC);
   });
   return nameMatch || emailMatch || childrenMatch;
 }
@@ -174,18 +168,16 @@ function selectParent(parent) {
     searchContainer: elements.parentSearchContainer,
     infoDisplay: elements.parentInfo,
     editIcon: document.getElementById('parent-edit-icon'),
-    relationshipDisplay: elements.parentRelationshipDisplay,
-    relationshipProperty: 'relationship',
     nameProperty: 'name',
     infoDisplayType: 'flex'
   });
 
   updateStudentOptions(parent.children);
-
   if (parent.children && parent.children.length === 1) {
     const child = parent.children[0];
-    const studentValue = `${child.firstName}-${child.lastName}-${child.tutorGroup}`;
+    const studentValue = `${child.firstName}|${child.lastName}|${child.tutorGroup}`;
     elements.studentSelectInput.value = studentValue;
+    updateParentRelationshipDisplay(child.parentRelationship);
     setTimeout(() => {
       elements.studentSelectInput.classList.add('auto-selected');
       setTimeout(() => elements.studentSelectInput.classList.remove('auto-selected'), 1000);
@@ -196,13 +188,14 @@ function selectParent(parent) {
 
 function updateStudentOptions(children) {
   elements.studentSelectInput.innerHTML = '<option value="" disabled selected>Select a student</option>';
+  updateParentRelationshipDisplay('');
+
   if (!children || children.length === 0) {
     elements.studentSelectInput.disabled = true;
     return;
-  }
-  children.forEach(child => {
+  } children.forEach(child => {
     const option = document.createElement('option');
-    option.value = `${child.firstName}-${child.lastName}-${child.tutorGroup}`;
+    option.value = `${child.firstName}|${child.lastName}|${child.tutorGroup}`;
     option.textContent = `${child.firstName} ${child.lastName} (${child.tutorGroup})`;
     elements.studentSelectInput.appendChild(option);
   });

@@ -2,39 +2,39 @@
 function openTicketDetails(ticketId) {
   const ticket = tickets.find(t => t.id === ticketId);
   if (!ticket) return;
-  
+
   state.currentTicketId = ticketId;
-  
+
   document.querySelectorAll('.ticket-item').forEach(item => item.classList.remove('selected'));
   const selectedTicket = document.querySelector(`.ticket-item[data-id="${ticketId}"]`);
   if (selectedTicket) selectedTicket.classList.add('selected');
-  
+
   elements.ticketTitleInput.innerText = ticket.title;
   elements.ticketTitleInput.contentEditable = isManager;
-  
-  fetch(`/api/tickets/${ticketId}`)
-    .then(response => response.json())
+
+  fetch(`/api/tickets/${ticketId}`).then(response => response.json())
     .then(conversation => {
       state.conversation = conversation;
-      
-      const children = parents?.find(p => p.email === ticket.parentEmail)?.children || [];
-      
+      const children = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName)?.children || [];
+      const ticketParents = parents?.filter(p => p.email === ticket.parentEmail) || [];
+
       populateStudentSelect(ticket, children);
+      populateParentSelect(ticket, ticketParents);
       renderStudentInfo(ticket, children);
       renderParentInfo(ticket);
       renderAssigneeInfo(ticket);
       renderConversation();
-      
       elements.internalNoteCheckbox.checked = false;
       elements.newMessageInput.classList.remove('internal-note');
       elements.sendMessageBtn.textContent = 'Send Message';
-      
+
       elements.detailsEmpty.style.display = 'none';
       elements.detailsContent.style.display = 'block';
       elements.ticketDetails.classList.add('open');
       updateBackButtonIcon();
-      
+
       elements.closeTicketBtn.textContent = ticket.isClosed ? 'Reopen Ticket' : 'Close Ticket';
+      updateCloseTicketButtonText();
     })
     .catch(error => {
       console.error('Error fetching conversation:', error);
@@ -44,14 +44,27 @@ function openTicketDetails(ticketId) {
 
 function populateStudentSelect(ticket, children) {
   elements.studentSelect.innerHTML = '';
-  
   children.forEach(child => {
     const option = document.createElement('option');
-    option.value = `${child.firstName}-${child.lastName}`;
+    option.value = `${child.firstName}|${child.lastName}`;
     option.textContent = getFullName(child.firstName, child.lastName) + ` (${child.tutorGroup})`;
     elements.studentSelect.appendChild(option);
-    
+
     if (child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName) {
+      option.selected = true;
+    }
+  });
+}
+
+function populateParentSelect(ticket, ticketParents) {
+  elements.parentSelect.innerHTML = '';
+  ticketParents.forEach(parent => {
+    const option = document.createElement('option');
+    option.value = `${parent.name}|${parent.email}`;
+    option.textContent = parent.name;
+    elements.parentSelect.appendChild(option);
+
+    if (parent.name === ticket.parentName && parent.email === ticket.parentEmail) {
       option.selected = true;
     }
   });
@@ -69,12 +82,25 @@ function renderStudentInfo(ticket, children) {
 }
 
 function renderParentInfo(ticket) {
+  let parentRelationship = ticket.parentRelationship;
+
+  if (!parentRelationship) {
+    const children = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName)?.children || [];
+    const currentChild = children.find(child =>
+      child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName
+    );
+    parentRelationship = currentChild?.parentRelationship || '';
+  }
+
+  const ticketParents = parents?.filter(p => p.email === ticket.parentEmail) || [];
+
   renderInfoSection('parent', {
     heading: 'Parent/Carer',
     icon: 'supervisor_account',
     name: ticket.parentName,
-    detail: ticket.parentRelationship,
-    editable: false
+    detail: parentRelationship,
+    editable: isManager && ticketParents.length > 1,
+    editHandler: toggleParentEdit
   });
 }
 
@@ -91,39 +117,45 @@ function renderAssigneeInfo(ticket) {
 function renderInfoSection(type, config) {
   const container = elements[`${type}InfoSection`];
   container.innerHTML = '';
-  
+
   const infoClone = document.getElementById('info-section-template').content.cloneNode(true);
-  
+
   infoClone.querySelector('.heading-text').textContent = config.heading;
-  
+
   if (config.editable) {
     infoClone.querySelector('.edit-icon').textContent = 'edit';
     infoClone.querySelector('.edit-icon').addEventListener('click', config.editHandler);
   } else {
     infoClone.querySelector('.edit-icon').remove();
   }
-  
+
   const infoContainer = infoClone.querySelector('.info-container');
   infoContainer.classList.add(`${type}-info`);
-  
+
   infoClone.querySelector('.info-icon').textContent = config.icon;
   infoClone.querySelector('.info-name').textContent = config.name;
   infoClone.querySelector('.info-detail').textContent = config.detail || '';
-  
+
   container.appendChild(infoClone);
 }
 
 function renderTicketInList(ticket) {
   const ticketElement = document.querySelector(`.ticket-item[data-id="${ticket.id}"]`);
   if (!ticketElement) return;
-  
+
   ticketElement.querySelector('.ticket-title').textContent = ticket.title;
-  ticketElement.querySelector('.student-value span:not(.material-symbols-rounded)').textContent = 
+  ticketElement.querySelector('.student-value span:not(.material-symbols-rounded)').textContent =
     getFullName(ticket.studentFirstName, ticket.studentLastName);
-  ticketElement.querySelector('.assignee-value span:not(.material-symbols-rounded)').textContent = 
+  ticketElement.querySelector('.assignee-value span:not(.material-symbols-rounded)').textContent =
     ticket.assigneeName;
 }
 
-function closeTicket() {
+async function closeTicket() {
+  const hasMessage = elements.newMessageInput.value.trim().length > 0;
+
+  if (hasMessage) {
+    await sendMessage();
+  }
+
   toggleTicketStatus();
 }

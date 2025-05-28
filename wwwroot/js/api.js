@@ -8,11 +8,11 @@ async function apiRequest(httpMethod, endpoint, data, actionText) {
       },
       body: JSON.stringify(data)
     });
-    
+
     if (!response.ok) {
       throw new Error(`${actionText}: ${response.status}`);
     }
-    
+
     return response;
   } catch (error) {
     showToast(`Failed to ${actionText.toLowerCase()}. Please try again.`, 'error');
@@ -35,6 +35,15 @@ async function apiUpdateTicketStudent(ticketId, assigneeEmail, studentFirst, stu
     `/api/tickets/${ticketId}/student`,
     { assigneeEmail, studentFirst, studentLast, studentTutorGroup },
     'update student'
+  );
+}
+
+async function apiUpdateTicketParent(ticketId, assigneeEmail, newParentName) {
+  await apiRequest(
+    'PUT',
+    `/api/tickets/${ticketId}/parent`,
+    { assigneeEmail, newParentName },
+    'update parent'
   );
 }
 

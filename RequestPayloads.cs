@@ -32,3 +32,9 @@ public class NewMessagePayload
   public string Content { get; set; }
   public bool IsPrivate { get; set; }
 }
+
+public class ChangeParentPayload
+{
+  public string AssigneeEmail { get; set; }
+  public string NewParentName { get; set; }
+}

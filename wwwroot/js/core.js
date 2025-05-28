@@ -7,6 +7,7 @@ const elements = {
   tabs: document.querySelectorAll('.tab'),
   ticketTitleInput: document.getElementById('ticket-title'),
   studentSelect: document.getElementById('student-select'),
+  parentSelect: document.getElementById('parent-select'),
   parentInfoSection: document.getElementById('parent-info-section'),
   studentInfoSection: document.getElementById('student-info-section'),
   assigneeInfoSection: document.getElementById('assignee-info-section'),
@@ -62,16 +63,16 @@ let staff;
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('helpdesk', 1);
-    
+
     request.onerror = event => reject(event.target.error);
-    
+
     request.onupgradeneeded = event => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains('users')) {
         db.createObjectStore('users');
       }
     };
-    
+
     request.onsuccess = event => resolve(event.target.result);
   });
 }
@@ -81,11 +82,11 @@ async function getUsersData() {
     const db = await openDatabase();
     const transaction = db.transaction('users', 'readonly');
     const store = transaction.objectStore('users');
-    
+
     const parentsRequest = store.get('parents');
     const staffRequest = store.get('staff');
     const hashRequest = store.get('hash');
-    
+
     return new Promise((resolve, reject) => {
       transaction.oncomplete = () => {
         resolve({
@@ -105,10 +106,10 @@ async function getUsersData() {
 async function fetchUsers() {
   const response = await fetch('/api/users');
   const users = await response.json();
-  
+
   parents = users.parents;
   staff = users.staff;
-  
+
   try {
     const db = await openDatabase();
     const transaction = db.transaction('users', 'readwrite');
@@ -131,7 +132,7 @@ async function fetchUsers() {
 async function init() {
   try {
     if (isManager) {
-      const storedData = await getUsersData();      
+      const storedData = await getUsersData();
       if (storedData?.usersHash === usersHash) {
         parents = storedData.parents;
         staff = storedData.staff;

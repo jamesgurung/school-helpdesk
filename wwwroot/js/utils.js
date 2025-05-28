@@ -43,13 +43,13 @@ function populateNewTicketForm() {
   elements.parentRelationshipDisplay.textContent = '';
   elements.studentSelectInput.innerHTML = '<option value="" disabled selected>Select a student</option>';
   elements.studentSelectInput.disabled = true;
-  
+
   elements.parentSearchInput.value = '';
   state.activeParent = null;
-  
+
   elements.parentSearchContainer.style.display = 'block';
   elements.parentInfo.style.display = 'none';
-  
+
   document.getElementById('parent-edit-icon').style.display = 'none';
 }
 
@@ -57,21 +57,66 @@ function getFullName(firstName, lastName) {
   return `${firstName} ${lastName}`;
 }
 
+function updateParentRelationshipDisplay(relationship) {
+  if (relationship) {
+    elements.parentRelationshipDisplay.textContent = ` (${relationship})`;
+  } else {
+    elements.parentRelationshipDisplay.textContent = '';
+  }
+}
+
 function showToast(message, type = 'info', duration = 3000) {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   toast.textContent = message;
-  
+
   document.body.appendChild(toast);
-  
+
   setTimeout(() => {
     toast.classList.add('show');
   }, 10);
-  
+
   setTimeout(() => {
     toast.classList.remove('show');
     setTimeout(() => {
       document.body.removeChild(toast);
     }, 300);
   }, duration);
+}
+
+// Navigation warning utilities
+function hasUnsentText() {
+  return elements.newMessageInput && elements.newMessageInput.value.trim().length > 0;
+}
+
+function hasUnsentNewTicketText() {
+  return elements.messageInput && elements.messageInput.value.trim().length > 0;
+}
+
+function confirmNavigationWithUnsentText(actionDescription, callback) {
+  if (!hasUnsentText()) {
+    callback();
+    return;
+  }
+
+  const message = `You have unsent text in the message box. Are you sure you want to ${actionDescription}? Your unsent text will be lost.`;
+
+  if (confirm(message)) {
+    elements.newMessageInput.value = '';
+    callback();
+  }
+}
+
+function confirmModalCloseWithUnsentText(actionDescription, callback) {
+  if (!hasUnsentNewTicketText()) {
+    callback();
+    return;
+  }
+
+  const message = `You have unsent text in the message box. Are you sure you want to ${actionDescription}? Your unsent text will be lost.`;
+
+  if (confirm(message)) {
+    elements.messageInput.value = '';
+    callback();
+  }
 }

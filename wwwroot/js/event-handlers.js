@@ -1,29 +1,34 @@
 // Event Handlers and Listeners
-function setupEventListeners() {    
+function setupEventListeners() {
   setupTabNavigation();
   setupTicketDetails();
   setupTicketCreation();
   setupUserActions();
   setupParentSearch();
   setupAssigneeFeatures();
+  setupTicketEditFeatures();
   setupDocumentClickHandlers();
 }
 
 function setupTabNavigation() {
   elements.tabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      elements.tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      state.activeTab = tab.dataset.tab;
-      renderTickets(state.activeTab);
-      resetDetailsView();
+      confirmNavigationWithUnsentText('switch tabs', () => {
+        elements.tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        state.activeTab = tab.dataset.tab;
+        renderTickets(state.activeTab);
+        resetDetailsView();
+      });
     });
   });
 }
 
 function setupTicketDetails() {
-  elements.mobileBack.addEventListener('click', resetDetailsView);
-  
+  elements.mobileBack.addEventListener('click', () => {
+    confirmNavigationWithUnsentText('go back', resetDetailsView);
+  });
+
   if (isManager) {
     elements.ticketTitleInput.addEventListener('blur', updateTicketTitle);
     elements.ticketTitleInput.addEventListener('keydown', e => {
@@ -35,6 +40,7 @@ function setupTicketDetails() {
   }
   elements.sendMessageBtn.addEventListener('click', sendMessage);
   elements.closeTicketBtn.addEventListener('click', closeTicket);
+  elements.newMessageInput.addEventListener('input', updateCloseTicketButtonText);
   elements.internalNoteCheckbox.addEventListener('change', e => {
     if (e.target.checked) {
       elements.newMessageInput.classList.add('internal-note');
@@ -47,14 +53,28 @@ function setupTicketDetails() {
         elements.sendMessageBtn.textContent = 'Send Message';
       }
     }
+    updateCloseTicketButtonText();
   });
 }
 
 function setupTicketCreation() {
   elements.newTicketButton?.addEventListener('click', openNewTicketModal);
-  elements.closeModalBtn.addEventListener('click', closeNewTicketModal);
-  elements.cancelNewTicketBtn.addEventListener('click', closeNewTicketModal);
+  elements.closeModalBtn.addEventListener('click', () => {
+    confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal);
+  });
+  elements.cancelNewTicketBtn.addEventListener('click', () => {
+    confirmModalCloseWithUnsentText('cancel creating this ticket', closeNewTicketModal);
+  });
   elements.createNewTicketBtn.addEventListener('click', createNewTicket);
+  elements.studentSelectInput.addEventListener('change', () => {
+    if (state.activeParent && elements.studentSelectInput.value) {
+      const [firstName, lastName] = elements.studentSelectInput.value.split('|');
+      const selectedChild = state.activeParent.children.find(child =>
+        child.firstName === firstName && child.lastName === lastName
+      );
+      updateParentRelationshipDisplay(selectedChild?.parentRelationship || '');
+    }
+  });
 }
 
 function setupUserActions() {
@@ -69,10 +89,10 @@ function setupParentSearch() {
     filterParents,
     (results) => displayParentAutocompleteResults(results, state.activeParent)
   );
-  
+
   elements.parentInfo.addEventListener('click', toggleParentSearchMode);
   document.getElementById('parent-edit-icon').addEventListener('click', toggleParentSearchMode);
-  
+
   setupParentSearchKeyboardNavigation();
 }
 
@@ -98,12 +118,12 @@ function setupSearchInputListeners(inputElement, filterCallback, displayResultsC
 
 function populateAutocompleteResults(resultsElement, items, nameField, emailField, clickCallback) {
   resultsElement.innerHTML = '';
-  
+
   if (!items.length) {
     resultsElement.style.display = 'none';
     return;
   }
-  
+
   items.forEach(item => {
     const itemDiv = document.createElement('div');
     itemDiv.className = 'autocomplete-item';
@@ -114,7 +134,7 @@ function populateAutocompleteResults(resultsElement, items, nameField, emailFiel
     itemDiv.addEventListener('click', () => clickCallback(item));
     resultsElement.appendChild(itemDiv);
   });
-  
+
   resultsElement.style.display = 'block';
 }
 
@@ -122,7 +142,7 @@ function handleAutocompleteKeyboardNavigation(inputElement, resultsElement, onSe
   inputElement.addEventListener('keydown', e => {
     const items = resultsElement.querySelectorAll('.autocomplete-item');
     const selectedItem = resultsElement.querySelector('.autocomplete-item.selected');
-    
+
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (items.length === 0) return;
@@ -131,16 +151,16 @@ function handleAutocompleteKeyboardNavigation(inputElement, resultsElement, onSe
       if (selectedItem) {
         const currentIndex = Array.from(items).indexOf(selectedItem);
         selectedItem.classList.remove('selected');
-        nextIndex = e.key === 'ArrowDown' 
-          ? (currentIndex + 1) % items.length 
+        nextIndex = e.key === 'ArrowDown'
+          ? (currentIndex + 1) % items.length
           : (currentIndex - 1 + items.length) % items.length;
       }
-      
+
       items[nextIndex].classList.add('selected');
       items[nextIndex].scrollIntoView({ block: 'nearest' });
-    } 
-    else if ((e.key === 'Enter' || e.key === 'Tab') && 
-             resultsElement.style.display !== 'none') {
+    }
+    else if ((e.key === 'Enter' || e.key === 'Tab') &&
+      resultsElement.style.display !== 'none') {
       const currentSelected = resultsElement.querySelector('.autocomplete-item.selected');
       if (currentSelected) {
         e.preventDefault();
@@ -151,7 +171,7 @@ function handleAutocompleteKeyboardNavigation(inputElement, resultsElement, onSe
           currentSelected.click();
         }
       }
-    } 
+    }
     else if (e.key === 'Escape') {
       resultsElement.style.display = 'none';
     }
@@ -162,7 +182,7 @@ function setupParentSearchKeyboardNavigation() {
   const extractItemData = (selectedItem) => {
     const nameEl = selectedItem.querySelector('.autocomplete-name');
     const emailEl = selectedItem.querySelector('.autocomplete-email');
-    return nameEl && emailEl 
+    return nameEl && emailEl
       ? { name: nameEl.textContent, email: emailEl.textContent.split(' - ')[0] }
       : null;
   };
@@ -173,7 +193,7 @@ function setupParentSearchKeyboardNavigation() {
       if (parent) selectParent(parent);
     }
   };
-  
+
   handleAutocompleteKeyboardNavigation(
     elements.parentSearchInput,
     elements.parentAutocompleteResults,
@@ -185,8 +205,8 @@ function setupParentSearchKeyboardNavigation() {
 function setupAssigneeSearchListeners() {
   const filterStaff = (query) => {
     const lowercaseQuery = query.toLowerCase();
-    return staff.filter(s => 
-      matchesWordBeginning(s.name, query) || 
+    return staff.filter(s =>
+      matchesWordBeginning(s.name, query) ||
       matchesWordBeginning(s.email, query)
     );
   };
@@ -195,10 +215,10 @@ function setupAssigneeSearchListeners() {
     elements.assigneeSearchInput,
     filterStaff,
     (results) => populateAutocompleteResults(
-      elements.assigneeAutocompleteResults, 
-      results, 
-      'name', 
-      'email', 
+      elements.assigneeAutocompleteResults,
+      results,
+      'name',
+      'email',
       selectNewTicketAssignee
     )
   );
@@ -206,7 +226,7 @@ function setupAssigneeSearchListeners() {
   const extractItemData = (selectedItem) => {
     const nameEl = selectedItem.querySelector('.autocomplete-name');
     const emailEl = selectedItem.querySelector('.autocomplete-email');
-    return nameEl && emailEl 
+    return nameEl && emailEl
       ? { name: nameEl.textContent, email: emailEl.textContent }
       : null;
   };
@@ -232,8 +252,8 @@ function setupAssigneeSearchListeners() {
 function setupAssigneeEditListeners() {
   const filterStaff = (query) => {
     const lowercaseQuery = query.toLowerCase();
-    return staff.filter(s => 
-      matchesWordBeginning(s.name, query) || 
+    return staff.filter(s =>
+      matchesWordBeginning(s.name, query) ||
       matchesWordBeginning(s.email, query)
     );
   };
@@ -242,10 +262,10 @@ function setupAssigneeEditListeners() {
     elements.assigneeEditInput,
     filterStaff,
     (results) => populateAutocompleteResults(
-      elements.assigneeEditAutocompleteResults, 
-      results, 
-      'name', 
-      'email', 
+      elements.assigneeEditAutocompleteResults,
+      results,
+      'name',
+      'email',
       selectAssignee
     )
   );
@@ -253,33 +273,67 @@ function setupAssigneeEditListeners() {
   handleAutocompleteKeyboardNavigation(
     elements.assigneeEditInput,
     elements.assigneeEditAutocompleteResults,
-    () => {},
-    null
-  );
+    () => { },
+    null);
+}
+
+function setupTicketEditFeatures() {
+  if (isManager) {
+    // Set up student select change handler  
+    elements.studentSelect.addEventListener('change', updateTicketStudent);
+
+    // Set up parent select change handler
+    elements.parentSelect.addEventListener('change', updateTicketParent);
+  }
 }
 
 function setupDocumentClickHandlers() {
   document.addEventListener('click', e => {
-    if (!elements.parentSearchInput.contains(e.target) && 
-        !elements.parentAutocompleteResults.contains(e.target)) {
+    if (!elements.parentSearchInput.contains(e.target) &&
+      !elements.parentAutocompleteResults.contains(e.target)) {
       elements.parentAutocompleteResults.style.display = 'none';
     }
-    
-    if (!elements.assigneeSearchInput.contains(e.target) && 
-        !elements.assigneeAutocompleteResults.contains(e.target)) {
+
+    if (!elements.assigneeSearchInput.contains(e.target) &&
+      !elements.assigneeAutocompleteResults.contains(e.target)) {
       elements.assigneeAutocompleteResults.style.display = 'none';
     }
-    
+
     const assigneeEditIcon = elements.assigneeInfoSection.querySelector('.edit-icon');
-    if (!elements.assigneeEditInput.contains(e.target) && 
-        !elements.assigneeEditAutocompleteResults.contains(e.target) &&
-        !(assigneeEditIcon && assigneeEditIcon.contains(e.target))) {
-      
+    if (!elements.assigneeEditInput.contains(e.target) &&
+      !elements.assigneeEditAutocompleteResults.contains(e.target) &&
+      !(assigneeEditIcon && assigneeEditIcon.contains(e.target))) {
+
       elements.assigneeEditAutocompleteResults.style.display = 'none';
       elements.assigneeEditContainer.style.display = 'none';
-      
+
       const infoContainer = elements.assigneeInfoSection.querySelector('.info-container');
       if (infoContainer) infoContainer.style.display = 'flex';
     }
+
+    // Handle modal click-outside to close with warning
+    if (e.target === elements.newTicketModal) {
+      confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal);
+    }
   });
+
+  // Handle ESC key to close modal with warning
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && elements.newTicketModal.style.display === 'block') {
+      confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal);
+    }
+  });
+}
+
+function updateCloseTicketButtonText() {
+  const currentTicket = getCurrentTicket();
+  if (!currentTicket) return;
+
+  const hasMessage = elements.newMessageInput.value.trim().length > 0;
+
+  if (currentTicket.isClosed) {
+    elements.closeTicketBtn.textContent = hasMessage ? 'Send & Reopen' : 'Reopen Ticket';
+  } else {
+    elements.closeTicketBtn.textContent = hasMessage ? 'Send & Close' : 'Close Ticket';
+  }
 }

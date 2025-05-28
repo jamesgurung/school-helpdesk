@@ -1,8 +1,14 @@
-// Edit Functionality for Tickets
 function getTicketChildren() {
   const ticket = getCurrentTicket();
   if (!ticket) return [];
-  return parents.find(p => p.email === ticket.parentEmail)?.children || [];
+  const parent = parents.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName);
+  return parent?.children || [];
+}
+
+function getTicketParents() {
+  const ticket = getCurrentTicket();
+  if (!ticket) return [];
+  return parents.filter(p => p.email === ticket.parentEmail);
 }
 
 async function updateTicketTitle() {
@@ -26,7 +32,7 @@ async function updateTicketStudent() {
   const ticket = getCurrentTicket();
   if (!ticket) return;
 
-  const [firstName, lastName] = elements.studentSelect.value.split('-');
+  const [firstName, lastName] = elements.studentSelect.value.split('|');
   const children = getTicketChildren();
   const student = children.find(child =>
     child.firstName === firstName && child.lastName === lastName
@@ -39,11 +45,51 @@ async function updateTicketStudent() {
     ticket.studentFirstName = firstName;
     ticket.studentLastName = lastName;
     ticket.tutorGroup = student.tutorGroup;
+    ticket.parentRelationship = student.parentRelationship;
     renderTicketInList(ticket);
     renderStudentInfo(ticket, children);
+    renderParentInfo(ticket);
   } catch (error) {
     console.error('Failed to update student:', error);
-    elements.studentSelect.value = `${ticket.studentFirstName}-${ticket.studentLastName}`;
+    elements.studentSelect.value = `${ticket.studentFirstName}|${ticket.studentLastName}`;
+  }
+}
+
+async function updateTicketParent() {
+  const ticket = getCurrentTicket();
+  if (!ticket) return;
+
+  const [parentName, parentEmail] = elements.parentSelect.value.split('|');
+  const ticketParents = getTicketParents();
+  const selectedParent = ticketParents.find(parent => parent.name === parentName && parent.email === parentEmail);
+
+  if (!selectedParent) return;
+
+  try {
+    await apiUpdateTicketParent(ticket.id, ticket.assigneeEmail, parentName);
+    ticket.parentName = parentName;
+    ticket.parentEmail = parentEmail;
+
+    const newChildren = selectedParent.children;
+    const currentStudent = newChildren.find(child =>
+      child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName
+    );
+
+    if (currentStudent) {
+      ticket.parentRelationship = currentStudent.parentRelationship;
+    }
+
+    renderTicketInList(ticket);
+    populateStudentSelect(ticket, newChildren);
+    renderStudentInfo(ticket, newChildren);
+    renderParentInfo(ticket);
+  } catch (error) {
+    console.error('Failed to update parent:', error);
+    const currentParents = getTicketParents();
+    const currentParent = currentParents.find(p => p.name === ticket.parentName);
+    if (currentParent) {
+      elements.parentSelect.value = `${currentParent.name}|${currentParent.email}`;
+    }
   }
 }
 
@@ -88,23 +134,15 @@ async function toggleTicketStatus() {
   }
 }
 
-function toggleStudentEdit() {
-  const ticket = getCurrentTicket();
-  if (!ticket) return;
-  
-  const children = getTicketChildren();
-  if (children.length <= 1) return;
-  
-  const infoSection = elements.studentInfoSection;
+function toggleSelectEdit(selectEl, infoSection, getOptions, updateFn) {
+  const options = getOptions();
+  if (options.length <= 1) return;
   const infoContainer = infoSection.querySelector('.info-container');
-  const selectEl = elements.studentSelect;
-  
   if (selectEl.parentElement === infoSection) {
     selectEl.removeEventListener('change', selectEl._changeHandler);
     selectEl.removeEventListener('blur', selectEl._blurHandler);
-    
-    updateTicketStudent();
-    
+    selectEl._blurPrevented = true;
+    updateFn();
     selectEl.classList.add('hidden-select');
     document.querySelector('.hidden-selects').appendChild(selectEl);
     infoContainer.style.display = 'flex';
@@ -114,34 +152,39 @@ function toggleStudentEdit() {
     infoSection.appendChild(selectEl);
     selectEl.style.display = 'block';
     selectEl.focus();
-    
     selectEl._changeHandler = () => {
       selectEl._blurPrevented = true;
-      toggleStudentEdit();
+      toggleSelectEdit(selectEl, infoSection, getOptions, updateFn);
     };
-    
     selectEl._blurHandler = () => {
       setTimeout(() => {
         if (!selectEl._blurPrevented && document.activeElement !== selectEl) {
-          toggleStudentEdit();
+          toggleSelectEdit(selectEl, infoSection, getOptions, updateFn);
         }
         selectEl._blurPrevented = false;
       }, 100);
     };
-    
     selectEl.addEventListener('change', selectEl._changeHandler, { once: true });
     selectEl.addEventListener('blur', selectEl._blurHandler, { once: true });
   }
 }
 
+function toggleStudentEdit() {
+  toggleSelectEdit(elements.studentSelect, elements.studentInfoSection, getTicketChildren, updateTicketStudent);
+}
+
+function toggleParentEdit() {
+  toggleSelectEdit(elements.parentSelect, elements.parentInfoSection, getTicketParents, updateTicketParent);
+}
+
 function toggleAssigneeEdit() {
   const editContainer = elements.assigneeEditContainer;
   const infoContainer = elements.assigneeInfoSection.querySelector('.info-container');
-  
+
   if (editContainer.style.display === 'none') {
     const ticket = getCurrentTicket();
     if (!ticket) return;
-    
+
     infoContainer.style.display = 'none';
     editContainer.style.display = 'block';
     elements.assigneeEditInput.value = ticket.assigneeName;

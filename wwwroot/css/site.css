@@ -526,12 +526,8 @@ h1 {
   background-color: var(--secondary-bg-light);
 }
 
-.author-name span:not(.agent) {
+.author-name span {
   font-weight: normal;
-}
-
-.author-name span.agent {
-  color: var(--primary-dark);
 }
 
 .message-header {
@@ -683,7 +679,7 @@ h1 {
   color: var(--text);
 }
 
-#student-select:not(.hidden-select) {
+#student-select:not(.hidden-select),#parent-select:not(.hidden-select) {
   display: block;
   width: 100%;
   margin: 0.25rem 0;
