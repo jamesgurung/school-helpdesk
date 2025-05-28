@@ -25,6 +25,10 @@ function openTicketDetails(ticketId) {
       renderAssigneeInfo(ticket);
       renderConversation();
       
+      elements.internalNoteCheckbox.checked = false;
+      elements.newMessageInput.classList.remove('internal-note');
+      elements.sendMessageBtn.textContent = 'Send Message';
+      
       elements.detailsEmpty.style.display = 'none';
       elements.detailsContent.style.display = 'block';
       elements.ticketDetails.classList.add('open');

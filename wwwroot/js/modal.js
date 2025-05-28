@@ -38,7 +38,6 @@ function resetNewTicketForm() {
   elements.messageInput.value = '';
   elements.studentSelectInput.innerHTML = '<option value="">Select a student...</option>';
   
-  // Reset parent info
   state.activeParent = null;
   elements.parentNameDisplay.textContent = 'No parent selected';
   elements.parentNameDisplay.classList.add('no-parent');
@@ -47,7 +46,6 @@ function resetNewTicketForm() {
   elements.parentSearchContainer.style.display = 'none';
   document.getElementById('parent-edit-icon').style.display = 'none';
   
-  // Reset assignee info
   state.activeAssignee = null;
   elements.assigneeNameDisplay.textContent = 'No assignee selected';
   elements.assigneeNameDisplay.classList.add('no-parent');
@@ -56,7 +54,7 @@ function resetNewTicketForm() {
   elements.assigneeEditIcon.style.display = 'none';
 }
 
-function createNewTicket() {
+async function createNewTicket() {
   const title = elements.ticketTitleFormInput.value.trim();
   const studentValue = elements.studentSelectInput.value;
   const assignee = state.activeAssignee;
@@ -75,8 +73,7 @@ function createNewTicket() {
   const [firstName, lastName, tutorGroup] = studentValue.split('-');
   
   const now = new Date().toISOString();
-  
-  const newTicketData = {
+    const newTicketData = {
     title: title,
     isClosed: false,
     created: now,
@@ -92,37 +89,24 @@ function createNewTicket() {
     message: message
   };
   
-  fetch('/api/tickets', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-XSRF-TOKEN': antiforgeryToken
-    },
-    body: JSON.stringify(newTicketData)
-  })
-  .then(response => response.json())
-  .then(newTicketId => {    
-    const newTicket = {
-      ...newTicketData,
-      id: newTicketId
-    };
+  const newTicketId = await apiCreateTicket(newTicketData);
     
-    delete newTicket.message;
-    tickets.unshift(newTicket);
+  const newTicket = {
+    ...newTicketData,
+    id: newTicketId
+  };
     
-    state.conversation = [{
-      timestamp: now,
-      authorName: state.activeParent.name,
-      isEmployee: false,
-      content: message
-    }];
+  delete newTicket.message;
+  tickets.unshift(newTicket);
     
-    closeNewTicketModal();
-    elements.tabs[0].click();
-    openTicketDetails(newTicketId);
-  })
-  .catch(error => {
-    console.error('Failed to create ticket:', error);
-    showToast('Failed to create ticket. Please try again.', 'error');
-  });
+  state.conversation = [{
+    timestamp: now,
+    authorName: state.activeParent.name,
+    isEmployee: false,
+    content: message
+  }];
+    
+  closeNewTicketModal();
+  elements.tabs[0].click();
+  openTicketDetails(newTicketId);
 }

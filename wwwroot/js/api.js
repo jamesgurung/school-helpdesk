@@ -1,7 +1,7 @@
-async function apiPutRequest(endpoint, data, actionText) {
+async function apiRequest(httpMethod, endpoint, data, actionText) {
   try {
     const response = await fetch(endpoint, {
-      method: 'PUT',
+      method: httpMethod,
       headers: {
         'Content-Type': 'application/json',
         'X-XSRF-TOKEN': antiforgeryToken
@@ -12,13 +12,17 @@ async function apiPutRequest(endpoint, data, actionText) {
     if (!response.ok) {
       throw new Error(`${actionText}: ${response.status}`);
     }
+    
+    return response;
   } catch (error) {
     showToast(`Failed to ${actionText.toLowerCase()}. Please try again.`, 'error');
+    throw error;
   }
 }
 
 async function apiUpdateTicketAssignee(ticketId, assigneeEmail, newAssigneeEmail) {
-  await apiPutRequest(
+  await apiRequest(
+    'PUT',
     `/api/tickets/${ticketId}/assignee`,
     { assigneeEmail, newAssigneeEmail },
     'update assignee'
@@ -26,7 +30,8 @@ async function apiUpdateTicketAssignee(ticketId, assigneeEmail, newAssigneeEmail
 }
 
 async function apiUpdateTicketStudent(ticketId, assigneeEmail, studentFirst, studentLast, studentTutorGroup) {
-  await apiPutRequest(
+  await apiRequest(
+    'PUT',
     `/api/tickets/${ticketId}/student`,
     { assigneeEmail, studentFirst, studentLast, studentTutorGroup },
     'update student'
@@ -34,7 +39,8 @@ async function apiUpdateTicketStudent(ticketId, assigneeEmail, studentFirst, stu
 }
 
 async function apiUpdateTicketStatus(ticketId, assigneeEmail, isClosed) {
-  await apiPutRequest(
+  await apiRequest(
+    'PUT',
     `/api/tickets/${ticketId}/status`,
     { assigneeEmail, isClosed },
     'update ticket status'
@@ -42,9 +48,29 @@ async function apiUpdateTicketStatus(ticketId, assigneeEmail, isClosed) {
 }
 
 async function apiUpdateTicketTitle(ticketId, assigneeEmail, newTitle) {
-  await apiPutRequest(
+  await apiRequest(
+    'PUT',
     `/api/tickets/${ticketId}/title`,
     { assigneeEmail, newTitle },
     'update ticket title'
   );
+}
+
+async function apiSendMessage(ticketId, assigneeEmail, content, isPrivate) {
+  await apiRequest(
+    'POST',
+    `/api/tickets/${ticketId}/message`,
+    { assigneeEmail, content, isPrivate },
+    'send message'
+  );
+}
+
+async function apiCreateTicket(ticketData) {
+  const response = await apiRequest(
+    'POST',
+    '/api/tickets',
+    ticketData,
+    'create ticket'
+  );
+  return await response.json();
 }

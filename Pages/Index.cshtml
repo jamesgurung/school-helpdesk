@@ -11,13 +11,14 @@
     <a class="logo-section" href="/">
       <img src="/img/logo.png" alt="Logo" class="header-logo">
       <h1>Parent Helpdesk</h1>
-    </a>    <div class="user-actions">
+    </a>
+    <div class="user-actions">
       @if (isManager)
       {
-      <button class="new-ticket-button" id="new-ticket-button">
-        <span class="material-symbols-rounded">add</span>
-        <span>New Ticket</span>
-      </button>
+        <button class="new-ticket-button" id="new-ticket-button">
+          <span class="material-symbols-rounded">add</span>
+          <span>New Ticket</span>
+        </button>
       }
       <button class="logout-button" id="logout-button">
         <span class="material-symbols-rounded">logout</span>
@@ -43,13 +44,14 @@
     <div class="details-empty">
       <span class="material-symbols-rounded">confirmation_number</span>
       <p>Select a ticket to view details</p>
-    </div>      <div class="details-content" style="display: none;">
-        <div class="details-header">
-          <div class="details-title">
-            <div id="ticket-title" data-placeholder="Ticket title"></div>
-          </div>
-          <div class="info-section" id="parent-info-section">
-          </div>
+    </div>
+    <div class="details-content" style="display: none;">
+      <div class="details-header">
+        <div class="details-title">
+          <div id="ticket-title" data-placeholder="Ticket title"></div>
+        </div>
+        <div class="info-section" id="parent-info-section">
+        </div>
         <div class="info-section" id="student-info-section">
         </div>
         <div class="info-section" id="assignee-info-section">
@@ -72,12 +74,17 @@
 
       <h3 class="section-heading">Conversation</h3>
       <div class="conversation" id="conversation"></div>
-
       <div class="new-message">
         <textarea id="new-message" placeholder="Type your message here..."></textarea>
-        <div class="action-buttons">
-          <button class="btn-secondary" id="close-ticket">Close Ticket</button>
-          <button class="btn-primary" id="send-message">Send Message</button>
+        <div class="message-controls">
+          <label class="internal-note-checkbox">
+            <input type="checkbox" id="internal-note">
+            <span>Internal note</span>
+          </label>
+          <div class="action-buttons">
+            <button class="btn-secondary" id="close-ticket">Close Ticket</button>
+            <button class="btn-primary" id="send-message">Send Message</button>
+          </div>
         </div>
       </div>
     </div>
@@ -180,8 +187,9 @@
     <div class="modal-body">
       <form id="new-ticket-form">
         <div class="form-group">
-          <label for="parent-search-input">Parent/Carer <span class="material-symbols-rounded edit-icon"
-              id="parent-edit-icon">edit</span></label>
+          <label for="parent-search-input">
+            Parent/Carer <span class="material-symbols-rounded edit-icon" id="parent-edit-icon">edit</span>
+          </label>
           <div class="parent-selection-container">
             <div class="autocomplete-container" id="parent-search-container">
               <input type="text" id="parent-search-input" placeholder="Search by name or email" required autocomplete="off" data-lpignore="true" data-form-type="other">
@@ -208,8 +216,9 @@
         </div>
 
         <div class="form-group">
-          <label for="assignee-search-input">Assign To <span class="material-symbols-rounded edit-icon"
-              id="assignee-edit-icon">edit</span></label>
+          <label for="assignee-search-input">
+            Assign To <span class="material-symbols-rounded edit-icon" id="assignee-edit-icon">edit</span>
+          </label>
           <div class="parent-selection-container">
             <div class="autocomplete-container" id="assignee-search-container">
               <input type="text" id="assignee-search-input" placeholder="Search staff member" required autocomplete="off" data-lpignore="true" data-form-type="other">
@@ -240,6 +249,7 @@
   const usersHash = '@School.Instance.UsersJsonHash';
   const tickets = @Html.Raw(Json.Serialize(tickets));
   const isManager = @isManager.ToString().ToLowerInvariant();
+  const currentUser = '@School.Instance.StaffByEmail[HttpContext.User.Identity.Name].Name';
 </script>
 <script src="/js/core.js"></script>
 <script src="/js/date-utils.js"></script>

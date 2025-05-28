@@ -33,13 +33,19 @@ function setupTicketDetails() {
       }
     });
   }
-  
   elements.sendMessageBtn.addEventListener('click', sendMessage);
   elements.closeTicketBtn.addEventListener('click', closeTicket);
-  elements.newMessageInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+  elements.internalNoteCheckbox.addEventListener('change', e => {
+    if (e.target.checked) {
+      elements.newMessageInput.classList.add('internal-note');
+      if (!elements.sendMessageBtn.disabled) {
+        elements.sendMessageBtn.textContent = 'Add Note';
+      }
+    } else {
+      elements.newMessageInput.classList.remove('internal-note');
+      if (!elements.sendMessageBtn.disabled) {
+        elements.sendMessageBtn.textContent = 'Send Message';
+      }
     }
   });
 }

@@ -31,7 +31,7 @@ function renderTickets(status) {
       waitTimeText.textContent = "Reply sent";
     } else {
       waitTimeIcon.textContent = "timer";
-      waitTimeText.innerHTML = `Waiting for <span class="elapsed-time">${calculateTimeElapsed(ticket.waitingSince)}</span>`;
+      waitTimeText.innerHTML = `Needs reply &ndash; <span class="elapsed-time">${calculateTimeElapsed(ticket.waitingSince)}</span>`;
     }
     
     elements.ticketsContainer.appendChild(ticketClone);
@@ -48,6 +48,10 @@ function resetDetailsView() {
   elements.detailsEmpty.style.display = 'flex';
   elements.detailsContent.style.display = 'none';
   elements.ticketDetails.classList.remove('open');
+  
+  elements.internalNoteCheckbox.checked = false;
+  elements.newMessageInput.classList.remove('internal-note');
+  elements.sendMessageBtn.textContent = 'Send Message';
   
   document.querySelectorAll('.ticket-item').forEach(item => {
     item.classList.remove('selected');

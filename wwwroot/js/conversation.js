@@ -19,11 +19,14 @@ function renderConversation() {
       iconColorVar: isEmployee || isOnBehalfOfParent ? '--primary-dark' : '--secondary-dark',
       colorVar: isEmployee ? '--primary-dark' : '--secondary-dark'
     };
-    
     messageElement.classList.add(config.class);
     messageIconElement.textContent = config.icon;
     messageIconElement.style.color = `var(${config.iconColorVar})`;
     authorNameElement.style.color = `var(${config.colorVar})`;
+
+    if (message.isPrivate) {
+      messageElement.style.backgroundColor = 'var(--internal-note-bg)';
+    }
 
     const content = isOnBehalfOfParent ? `${message.content}<p class="reply-note">Note that you are replying directly to the parent/carer.</p>` : message.content;
     
@@ -69,7 +72,7 @@ function renderMessageAttachments(messageElement, attachments) {
   messageElement.appendChild(container);
 }
 
-function sendMessage() {
+async function sendMessage() {
   const currentTicket = getCurrentTicket();
   if (!currentTicket || !elements.newMessageInput.value.trim()) return;
   
@@ -80,15 +83,32 @@ function sendMessage() {
     return;
   }
   
-  const newMessage = {
-    timestamp: new Date().toISOString(),
-    authorEmail: assigneeStaff.email,
-    authorName: assigneeStaff.name,
-    isEmployee: true,
-    content: elements.newMessageInput.value.trim(),
-    attachments: []
-  };
-  state.conversation.push(newMessage);
-  elements.newMessageInput.value = '';
-  renderConversation();
+  const isPrivate = elements.internalNoteCheckbox.checked;
+  const messageContent = elements.newMessageInput.value.trim();
+  
+  elements.sendMessageBtn.disabled = true;
+  elements.sendMessageBtn.textContent = 'Sending...';
+  
+  try {
+    await apiSendMessage(currentTicket.id, currentTicket.assigneeEmail, messageContent, isPrivate);
+    
+    const newMessage = {
+      timestamp: new Date().toISOString(),
+      authorName: currentUser,
+      isEmployee: true,
+      content: messageContent,
+      isPrivate: isPrivate,
+      attachments: []
+    };
+    state.conversation.push(newMessage);
+    elements.newMessageInput.value = '';
+    elements.internalNoteCheckbox.checked = false;
+    elements.newMessageInput.classList.remove('internal-note');
+    renderConversation();
+    
+    showToast(isPrivate ? 'Internal note added successfully' : 'Message sent successfully', 'success');
+  } finally {
+    elements.sendMessageBtn.disabled = false;
+    elements.sendMessageBtn.textContent = 'Send Message';
+  }
 }

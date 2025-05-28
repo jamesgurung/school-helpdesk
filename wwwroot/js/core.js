@@ -15,6 +15,7 @@ const elements = {
   assigneeEditAutocompleteResults: document.getElementById('assignee-edit-autocomplete-results'),
   conversationContainer: document.getElementById('conversation'),
   newMessageInput: document.getElementById('new-message'),
+  internalNoteCheckbox: document.getElementById('internal-note'),
   sendMessageBtn: document.getElementById('send-message'),
   closeTicketBtn: document.getElementById('close-ticket'),
   logoutBtn: document.getElementById('logout-button'),
