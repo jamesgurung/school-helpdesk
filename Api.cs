@@ -40,8 +40,8 @@ public static class Api
         return Results.BadRequest("Initial message is required.");
       }
 
-      await TableService.InsertTicketAsync(ticketEntity);
-      await BlobService.InsertMessageAsync(ticket.RowKey, new Message
+      var id = await TableService.CreateTicketAsync(ticketEntity);
+      await BlobService.CreateMessageAsync(id, new Message
       {
         AuthorName = user,
         IsEmployee = true,
@@ -52,12 +52,8 @@ public static class Api
       return Results.Created((string)null, ticketEntity.RowKey);
     });
 
-    group.MapGet("/tickets/{id}", async (string id, HttpContext context) =>
+    group.MapGet("/tickets/{id:int}", async (int id, HttpContext context) =>
     {
-      if (string.IsNullOrWhiteSpace(id))
-      {
-        return Results.BadRequest("Ticket ID is required.");
-      }
       if (!context.User.IsInRole(AuthConstants.Manager) && !await TableService.TicketExistsAsync(context.User.Identity.Name, id))
       {
         return Results.Forbid();
@@ -66,34 +62,46 @@ public static class Api
       return Results.Ok(messages);
     });
 
-    group.MapPut("/tickets/{id}/assignee", async (string id, [FromBody] ChangeAssigneePayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/assignee", async (int id, [FromBody] ChangeAssigneePayload payload, HttpContext context) =>
     {
       if (!context.User.IsInRole(AuthConstants.Manager))
         return Results.Forbid();
 
-      if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
-        return Results.BadRequest("Ticket ID and assignee email are required.");
+      if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
+        return Results.BadRequest("Assignee email is required.");
 
-      if (string.IsNullOrWhiteSpace(payload?.NewAssigneeEmail))
+      var newAssigneeEmail = payload.NewAssigneeEmail?.Trim().ToLowerInvariant();
+      if (string.IsNullOrEmpty(newAssigneeEmail))
         return Results.BadRequest("New assignee email is required.");
 
-      if (string.Equals(payload.AssigneeEmail, payload.NewAssigneeEmail, StringComparison.OrdinalIgnoreCase))
+      if (string.Equals(payload.AssigneeEmail, newAssigneeEmail, StringComparison.OrdinalIgnoreCase))
         return Results.BadRequest("New assignee email cannot be the same as the current assignee email.");
 
-      if (!School.Instance.StaffByEmail.TryGetValue(payload.NewAssigneeEmail, out var staff))
+      if (!School.Instance.StaffByEmail.TryGetValue(newAssigneeEmail, out var staff))
         return Results.BadRequest("New assignee email does not match any staff member.");
 
-      await TableService.ReassignTicketAsync(payload.AssigneeEmail, id, payload.NewAssigneeEmail, staff.Name);
+      await TableService.ReassignTicketAsync(payload.AssigneeEmail, id, newAssigneeEmail, staff.Name);
+
+      var currentUser = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
+      await BlobService.AppendMessageAsync(id, new Message
+      {
+        AuthorName = currentUser,
+        IsEmployee = true,
+        Timestamp = DateTime.UtcNow,
+        IsPrivate = false,
+        Content = $"#assign {staff.Name}"
+      });
+
       return Results.NoContent();
     });
 
-    group.MapPut("/tickets/{id}/student", async (string id, [FromBody] ChangeStudentPayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/student", async (int id, [FromBody] ChangeStudentPayload payload, HttpContext context) =>
     {
       if (!context.User.IsInRole(AuthConstants.Manager))
         return Results.Forbid();
 
-      if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
-        return Results.BadRequest("Ticket ID and assignee email are required.");
+      if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
+        return Results.BadRequest("Assignee email is required.");
 
       if (string.IsNullOrWhiteSpace(payload?.StudentFirst) || string.IsNullOrWhiteSpace(payload?.StudentLast))
         return Results.BadRequest("Student information is required.");
@@ -112,13 +120,13 @@ public static class Api
       return Results.NoContent();
     });
 
-    group.MapPut("/tickets/{id}/parent", async (string id, [FromBody] ChangeParentPayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/parent", async (int id, [FromBody] ChangeParentPayload payload, HttpContext context) =>
     {
       if (!context.User.IsInRole(AuthConstants.Manager))
         return Results.Forbid();
 
-      if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
-        return Results.BadRequest("Ticket ID and assignee email are required.");
+      if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
+        return Results.BadRequest("Assignee email is required.");
 
       if (string.IsNullOrWhiteSpace(payload?.NewParentName))
         return Results.BadRequest("New parent information is required.");
@@ -145,22 +153,30 @@ public static class Api
     });
 
 
-    group.MapPut("/tickets/{id}/status", async (string id, [FromBody] ChangeStatusPayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/status", async (int id, [FromBody] ChangeStatusPayload payload, HttpContext context) =>
     {
-      if (string.IsNullOrWhiteSpace(id))
-        return Results.BadRequest("Ticket ID is required.");
-
       if (!context.User.IsInRole(AuthConstants.Manager) && !await TableService.TicketExistsAsync(context.User.Identity.Name, id))
         return Results.Forbid();
 
       await TableService.CloseTicketAsync(payload.AssigneeEmail, id, payload.IsClosed);
+
+      var currentUser = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
+      await BlobService.AppendMessageAsync(id, new Message
+      {
+        AuthorName = currentUser,
+        IsEmployee = true,
+        Timestamp = DateTime.UtcNow,
+        IsPrivate = false,
+        Content = payload.IsClosed ? "#close" : "#reopen"
+      });
+
       return Results.NoContent();
     });
 
-    group.MapPut("/tickets/{id}/title", async (string id, [FromBody] ChangeTitlePayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/title", async (int id, [FromBody] ChangeTitlePayload payload, HttpContext context) =>
     {
-      if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(payload?.NewTitle))
-        return Results.BadRequest("Ticket ID and title are required.");
+      if (string.IsNullOrWhiteSpace(payload?.NewTitle))
+        return Results.BadRequest("Ticket title is required.");
 
       if (!context.User.IsInRole(AuthConstants.Manager))
         return Results.Forbid();
@@ -169,11 +185,8 @@ public static class Api
       return Results.NoContent();
     });
 
-    group.MapPost("/tickets/{id}/message", async (string id, HttpContext context) =>
+    group.MapPost("/tickets/{id:int}/message", async (int id, HttpContext context) =>
     {
-      if (string.IsNullOrWhiteSpace(id))
-        return Results.BadRequest("Ticket ID is required.");
-
       if (!context.User.IsInRole(AuthConstants.Manager) && !await TableService.TicketExistsAsync(context.User.Identity.Name, id))
         return Results.Forbid();
 
@@ -182,16 +195,19 @@ public static class Api
 
       var form = await context.Request.ReadFormAsync();
 
-      if (!bool.TryParse(form["isPrivate"], out var isPrivate))
+      if (!bool.TryParse(form["isPrivate"].ToString(), out var isPrivate))
         return Results.BadRequest("Must specify whether the message is private.");
 
-      var assigneeEmail = form["assigneeEmail"];
+      var assigneeEmail = form["assigneeEmail"].ToString();
       if (string.IsNullOrWhiteSpace(assigneeEmail))
         return Results.BadRequest("Assignee email is required.");
 
-      var content = form["content"];
+      var content = form["content"].ToString();
       if (string.IsNullOrWhiteSpace(content))
         return Results.BadRequest("Message content is required.");
+
+      if (content.StartsWith('#'))
+        return Results.BadRequest("Message content cannot start with a hash (#).");
 
       var invalidFileNameChars = Path.GetInvalidFileNameChars();
       foreach (var file in form.Files)
@@ -238,7 +254,11 @@ public static class Api
         Attachments = attachments.Count > 0 ? attachments : null
       };
       await BlobService.AppendMessageAsync(id, message);
-      await TableService.UpdateLastParentMessageDateAsync(assigneeEmail, id, null);
+
+      if (!isPrivate)
+      {
+        await TableService.UpdateLastParentMessageDateAsync(assigneeEmail, id, null);
+      }
 
       if (message.Attachments is not null)
       {

@@ -22,7 +22,7 @@ function setupTabNavigation() {
 }
 
 function setupTicketDetails() {
-  elements.mobileBack.addEventListener('click', () => confirmNavigationWithUnsentText('go back', resetDetailsView));
+  elements.backBtn.addEventListener('click', () => confirmNavigationWithUnsentText('go back', resetDetailsView));
   
   if (isManager) {
     elements.ticketTitleInput.addEventListener('blur', updateTicketTitle);
@@ -90,8 +90,9 @@ function setupAssigneeFeatures() {
 }
 
 const filterStaff = query => {
-  const q = query.toLowerCase();
-  return staff.filter(s => matchesWordBeginning(s.name, query) || matchesWordBeginning(s.email, query));
+  const queryLC = query.toLowerCase().trim();
+  if (!queryLC) return [];
+  return staff.filter(s => matchesWordBeginning(s.name, queryLC) || matchesWordBeginning(s.email, queryLC));
 };
 
 function setupSearchInputListeners(input, filter, display) {
@@ -202,7 +203,9 @@ function setupDocumentClickHandlers() {
       infoC && (infoC.style.display = 'flex');
     }
     if (e.target === elements.newTicketModal) {
-      confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal);
+      if (!hasUnsentNewTicketText()) {
+        closeNewTicketModal();
+      }
     }
     if (e.target.id === 'image-modal') {
       closeImageModal();

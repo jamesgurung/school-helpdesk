@@ -26,7 +26,6 @@ function openTicketDetails(ticketId) {
   elements.detailsEmpty.style.display = 'none';
   elements.detailsContent.style.display = 'block';
   elements.ticketDetails.classList.add('open');
-  updateBackButtonIcon();
 
   elements.closeTicketBtn.textContent = ticket.isClosed ? 'Reopen Ticket' : 'Close Ticket';
   updateCloseTicketButtonText();
@@ -104,7 +103,7 @@ function renderStudentInfo(ticket, children) {
   
   renderInfoSection('student', {
     heading: 'Student',
-    icon: hasStudent ? 'child_care' : 'warning',
+    icon: hasStudent ? 'school' : 'warning',
     name: hasStudent ? getFullName(ticket.studentFirstName, ticket.studentLastName) : 'Not Set',
     detail: hasStudent ? ticket.tutorGroup : '',
     editable: canEditField(ticket, 'student') && children.length > 1,
@@ -148,7 +147,7 @@ function renderAssigneeInfo(ticket) {
   
   renderInfoSection('assignee', {
     heading: 'Assigned To',
-    icon: hasAssignee ? 'school' : 'warning',
+    icon: hasAssignee ? 'account_circle' : 'warning',
     name: hasAssignee ? ticket.assigneeName : 'Unassigned',
     editable: canEditField(ticket, 'assignee'),
     editHandler: toggleAssigneeEdit,

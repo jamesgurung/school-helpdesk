@@ -3,7 +3,7 @@ const elements = {
   ticketDetails: document.getElementById('ticket-details'),
   detailsEmpty: document.querySelector('.details-empty'),
   detailsContent: document.querySelector('.details-content'),
-  mobileBack: document.getElementById('back-button'),
+  backBtn: document.getElementById('back-button'),
   tabs: document.querySelectorAll('.tab'),
   ticketTitleInput: document.getElementById('ticket-title'),
   studentSelect: document.getElementById('student-select'),
@@ -145,9 +145,7 @@ async function init() {
     }
     renderTickets(state.activeTab);
     setupEventListeners();
-    updateBackButtonIcon();
     populateNewTicketForm();
-    window.addEventListener('resize', updateBackButtonIcon);
     state.timeUpdateInterval = setInterval(updateAllElapsedTimes, 1000);
   } catch (error) {
     console.error('Failed to initialize the app:', error);

@@ -26,6 +26,7 @@ BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
 EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"], School.Instance.DebugEmail);
 
 await BlobService.LoadConfigAsync();
+await TableService.LoadLatestTicketIdAsync();
 
 builder.ConfigureAuth();
 builder.Services.AddResponseCompression();

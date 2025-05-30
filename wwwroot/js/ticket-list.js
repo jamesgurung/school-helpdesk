@@ -43,11 +43,11 @@ function renderTickets(status) {
       waitTimeIcon.textContent = "check_circle";
       waitTimeText.textContent = "Resolved";
     } else if (ticket.waitingSince === null) {
-      waitTimeIcon.textContent = "pending";
+      waitTimeIcon.textContent = "mark_email_read";
       waitTimeText.textContent = "Reply sent";
     } else {
       waitTimeIcon.textContent = "timer";
-      waitTimeText.innerHTML = `Needs reply, <span class="elapsed-time">${calculateTimeElapsed(ticket.waitingSince)}</span>`;
+      waitTimeText.innerHTML = `Open for <span class="elapsed-time">${calculateTimeElapsed(ticket.waitingSince)}</span>`;
     }
     elements.ticketsContainer.appendChild(ticketClone);
 

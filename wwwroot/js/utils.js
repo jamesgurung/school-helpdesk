@@ -1,12 +1,7 @@
 function matchesWordBeginning(text, query) {
   const q = query && query.trim().toLowerCase();
   if (!text || !q) return false;
-  return new RegExp(`(?:^|\s)${q}`).test(text.toLowerCase());
-}
-
-function updateBackButtonIcon() {
-  const icon = elements.mobileBack.querySelector('.material-symbols-rounded');
-  icon.textContent = window.innerWidth <= 768 ? 'arrow_back' : 'close';
+  return new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(text.toLowerCase());
 }
 
 function populateNewTicketForm() {
@@ -54,7 +49,13 @@ function hasUnsentText() {
 }
 
 function hasUnsentNewTicketText() {
-  return elements.messageInput?.value.trim().length > 0;
+  return elements.messageInput?.value.trim().length > 0 ||
+         elements.ticketTitleFormInput?.value.trim().length > 0 ||
+         elements.parentSearchInput?.value.trim().length > 0 ||
+         elements.assigneeSearchInput?.value.trim().length > 0 ||
+         state.activeParent ||
+         state.activeAssignee ||
+         (elements.studentSelectInput?.value && elements.studentSelectInput.value !== '');
 }
 
 function confirmNavigationWithUnsentText(actionDescription, callback) {

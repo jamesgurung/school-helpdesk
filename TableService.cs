@@ -8,6 +8,7 @@ public static class TableService
 {
   private static TableClient ticketsClient;
   private static TableClient commentsClient;
+  private static int latestTicketId = -1;
 
   public static void Configure(string connectionString)
   {
@@ -22,11 +23,10 @@ public static class TableService
     await commentsClient.QueryAsync<TableEntity>(o => o.PartitionKey == nonExistentKey).ToListAsync();
   }
 
-  public static async Task<TicketEntity> GetTicketAsync(string assigneeEmail, string id)
+  public static async Task<TicketEntity> GetTicketAsync(string assigneeEmail, int id)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
-    ArgumentNullException.ThrowIfNull(id);
-    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id.ToRowKey());
     return ticket.Value;
   }
 
@@ -43,52 +43,52 @@ public static class TableService
     return tickets.OrderByDescending(t => t.Created).ToList();
   }
 
-  public static async Task<bool> TicketExistsAsync(string assigneeEmail, string id)
+  public static async Task<bool> TicketExistsAsync(string assigneeEmail, int id)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
-    ArgumentNullException.ThrowIfNull(id);
-    var ticket = await ticketsClient.GetEntityIfExistsAsync<TicketEntity>(assigneeEmail, id, select: ["RowKey"]);
+    var ticket = await ticketsClient.GetEntityIfExistsAsync<TicketEntity>(assigneeEmail, id.ToRowKey(), select: ["RowKey"]);
     return ticket.HasValue;
   }
 
-  public static async Task<TicketEntity> InsertTicketAsync(TicketEntity ticket)
+  public static async Task<int> CreateTicketAsync(TicketEntity ticket)
   {
     ArgumentNullException.ThrowIfNull(ticket);
+    if (latestTicketId < 0) throw new InvalidOperationException("Latest ticket ID not initialized.");
+
+    var id = Interlocked.Increment(ref latestTicketId);
     ticket.Created = DateTime.UtcNow;
     ticket.WaitingSince = ticket.Created;
-    ticket.RowKey = Guid.NewGuid().ToString("N");
+    ticket.RowKey = id.ToRowKey();
     await ticketsClient.AddEntityAsync(ticket);
-    return ticket;
+    return id;
   }
 
-  public static async Task ReassignTicketAsync(string assigneeEmail, string id, string newAssigneeEmail, string newAssigneeName)
+  public static async Task ReassignTicketAsync(string assigneeEmail, int id, string newAssigneeEmail, string newAssigneeName)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
-    ArgumentNullException.ThrowIfNull(id);
     ArgumentNullException.ThrowIfNull(newAssigneeEmail);
 
-    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    var rowKey = id.ToRowKey();
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, rowKey);
     ticket.Value.PartitionKey = newAssigneeEmail;
     ticket.Value.AssigneeName = newAssigneeName;
     await ticketsClient.AddEntityAsync(ticket.Value);
-    await ticketsClient.DeleteEntityAsync(assigneeEmail, id);
+    await ticketsClient.DeleteEntityAsync(assigneeEmail, rowKey);
   }
 
-  public static async Task RenameTicketAsync(string assigneeEmail, string id, string newTitle)
+  public static async Task RenameTicketAsync(string assigneeEmail, int id, string newTitle)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
-    ArgumentNullException.ThrowIfNull(id);
     ArgumentNullException.ThrowIfNull(newTitle);
-    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id.ToRowKey());
     ticket.Value.Title = newTitle;
     await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
   }
 
-  public static async Task CloseTicketAsync(string assigneeEmail, string id, bool isClosed)
+  public static async Task CloseTicketAsync(string assigneeEmail, int id, bool isClosed)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
-    ArgumentNullException.ThrowIfNull(id);
-    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id.ToRowKey());
     ticket.Value.IsClosed = isClosed;
     await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
   }
@@ -113,13 +113,23 @@ public static class TableService
     await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
   }
 
-  internal static async Task UpdateLastParentMessageDateAsync(string assigneeEmail, string id, DateTime? timestamp)
+  public static async Task UpdateLastParentMessageDateAsync(string assigneeEmail, int id, DateTime? timestamp)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
-    ArgumentNullException.ThrowIfNull(id);
-    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id);
+    var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id.ToRowKey());
     ticket.Value.WaitingSince = timestamp;
     await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
+  }
+
+  public static async Task LoadLatestTicketIdAsync()
+  {
+    var tickets = await ticketsClient.QueryAsync<TicketEntity>(select: ["RowKey"]).ToListAsync();
+    latestTicketId = tickets.Count == 0 ? 0 : tickets.Max(t => int.TryParse(t.RowKey, out var id) ? id : 0);
+  }
+
+  public static string ToRowKey(this int id)
+  {
+    return id.ToString("D6");
   }
 }
 

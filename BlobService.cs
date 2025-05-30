@@ -26,10 +26,9 @@ public static class BlobService
   private static BlobContainerClient configClient;
   private static StorageSharedKeyCredential sharedKeyCredential;
 
-  public static async Task<List<Message>> GetMessagesAsync(string ticketId)
+  public static async Task<List<Message>> GetMessagesAsync(int ticketId)
   {
-    ArgumentNullException.ThrowIfNull(ticketId);
-    var blobClient = messagesClient.GetBlobClient($"{ticketId}.json");
+    var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
     var content = await blobClient.DownloadContentAsync();
     var messages = JsonSerializer.Deserialize<List<Message>>(content.Value.Content.ToString(), JsonSerializerOptions.Web);
     foreach (var attachment in messages.Where(o => o.Attachments is not null).SelectMany(o => o.Attachments))
@@ -39,17 +38,17 @@ public static class BlobService
     return messages;
   }
 
-  public static async Task InsertMessageAsync(string ticketId, Message message)
+  public static async Task CreateMessageAsync(int ticketId, Message message)
   {
-    var blobClient = messagesClient.GetBlobClient($"{ticketId}.json");
+    var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
     var json = JsonSerializer.Serialize(new[] { message }, JsonSerializerOptions.Web);
     using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
     await blobClient.UploadAsync(stream);
   }
 
-  public static async Task AppendMessageAsync(string ticketId, Message message)
+  public static async Task AppendMessageAsync(int ticketId, Message message)
   {
-    var blobClient = messagesClient.GetBlobClient($"{ticketId}.json");
+    var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
     var existingContent = await blobClient.DownloadContentAsync();
     var existingMessages = JsonSerializer.Deserialize<List<Message>>(existingContent.Value.Content.ToString(), JsonSerializerOptions.Web) ?? [];
     existingMessages.Add(message);
@@ -75,7 +74,7 @@ public static class BlobService
 
   public static async Task<string> UploadAttachmentAsync(Stream fileStream, string fileName)
   {
-    var fileId = Guid.NewGuid().ToString();
+    var fileId = Guid.NewGuid().ToString("N");
     var extension = Path.GetExtension(fileName);
     var blobName = $"{fileId}{extension}";
     var blobClient = attachmentsClient.GetBlobClient(blobName);

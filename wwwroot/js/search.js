@@ -55,16 +55,20 @@ function toggleSearchDisplayMode(e, config) {
   }
 }
 
-function parentMatchesQuery(parent, queryLC, matchesWordBeginningFn) {
-  const nameMatch = matchesWordBeginningFn(parent.name, queryLC);
-  const emailMatch = matchesWordBeginningFn(parent.email, queryLC);
-  const childrenMatch = parent.children && parent.children.some(child => {
+function parentMatchesQuery(parent, query) {
+  const queryLC = query.toLowerCase().trim();
+  if (!queryLC) return false;
+  
+  if (matchesWordBeginning(parent.name, queryLC) || matchesWordBeginning(parent.email, queryLC)) {
+    return true;
+  }
+  
+  return parent.children && parent.children.some(child => {
     const fullName = `${child.firstName} ${child.lastName}`;
-    return matchesWordBeginningFn(fullName, queryLC) ||
-      matchesWordBeginningFn(child.firstName, queryLC) ||
-      matchesWordBeginningFn(child.lastName, queryLC);
+    return matchesWordBeginning(fullName, queryLC) ||
+      matchesWordBeginning(child.firstName, queryLC) ||
+      matchesWordBeginning(child.lastName, queryLC);
   });
-  return nameMatch || emailMatch || childrenMatch;
 }
 
 function selectAssignee(assignee) {
@@ -92,7 +96,7 @@ function filterParents(query) {
   const queryLC = query.toLowerCase().trim();
   if (!queryLC) return [];
 
-  const allMatchedParents = parents.filter(parent => parentMatchesQuery(parent, queryLC, matchesWordBeginning));
+  const allMatchedParents = parents.filter(parent => parentMatchesQuery(parent, queryLC));
 
   const exactMatchIndex = allMatchedParents.findIndex(parent =>
     parent.name.toLowerCase() === queryLC
@@ -111,9 +115,7 @@ function displayParentAutocompleteResults(results, selectedParent = null) {
     elements.parentAutocompleteResults.style.display = 'none';
     return;
   }
-
   let selectedItem = null;
-  const query = elements.parentSearchInput.value.toLowerCase().trim();
 
   results.forEach(parent => {
     const item = document.createElement('div');
@@ -127,12 +129,7 @@ function displayParentAutocompleteResults(results, selectedParent = null) {
     if (parent.children && parent.children.length > 0) {
       childrenInfo = parent.children.map(child => {
         const fullName = `${child.firstName} ${child.lastName}`;
-        const childNameMatchesQuery = query && (
-          matchesWordBeginning(fullName, query) ||
-          matchesWordBeginning(child.firstName, query) ||
-          matchesWordBeginning(child.lastName, query)
-        );
-        return `${childNameMatchesQuery ? '<strong>' : ''}${fullName}${childNameMatchesQuery ? '</strong>' : ''} (${child.tutorGroup})`;
+        return `${fullName} (${child.tutorGroup})`;
       }).join(', ');
     }
 

@@ -114,6 +114,7 @@ async function updateTicketAssignee() {
     await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
     ticket.assigneeEmail = state.activeEditAssignee.email;
     ticket.assigneeName = state.activeEditAssignee.name;
+    addConversationEntry(`#assign ${state.activeEditAssignee.name}`);
     renderTicketInList(ticket);
     renderAssigneeInfo(ticket);
     state.activeEditAssignee = null;
@@ -132,8 +133,11 @@ async function toggleTicketStatus() {
   try {
     await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, newStatus);
     ticket.isClosed = newStatus;
-    renderTickets(state.activeTab);
-    resetDetailsView();
+    addConversationEntry(newStatus ? '#close' : '#reopen');
+    renderTickets(state.activeTab);    
+    elements.closeTicketBtn.textContent = newStatus ? 'Reopen Ticket' : 'Close Ticket';
+    updateCloseTicketButtonText();
+    updateMessageControlsState(ticket);
   } catch (error) {
     console.error('Failed to update ticket status:', error);
   }

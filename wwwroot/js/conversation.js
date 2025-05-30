@@ -6,10 +6,33 @@ function renderConversation() {
 
   state.conversation.forEach((msg, i) => {
     const { isEmployee, isPrivate, authorName, timestamp, content, attachments } = msg;
+    
+    if (isEmployee && (content === '#close' || content === '#reopen' || content.startsWith('#assign '))) {
+      const eventEl = document.createElement('div');
+      eventEl.className = 'message-header ticket-event';
+      
+      let eventText, icon;
+      if (content === '#close') {
+        eventText = `${authorName} <span>closed this ticket</span>`;
+        icon = 'check_circle';
+      } else if (content === '#reopen') {
+        eventText = `${authorName} <span>reopened this ticket</span>`;
+        icon = 'arrow_circle_down';
+      } else if (content.startsWith('#assign ')) {
+        const assigneeName = content.substring(8);
+        eventText = `<span>Assigned to</span> ${assigneeName}`;
+        icon = 'assignment_ind';
+      }
+      
+      eventEl.innerHTML = `<div class="message-author"><div class="message-icon material-symbols-rounded">${icon}</div><div class="author-name">${eventText}</div></div><div>${formatDateTime(timestamp)}</div>`;
+      elements.conversationContainer.appendChild(eventEl);
+      return;
+    }
+
     const isOnBehalf = isEmployee && i === 0;
     const isEmp = isEmployee && i > 0;
     const cls = isEmp ? 'employee' : 'parent';
-    const iconName = isOnBehalf ? 'support_agent' : isEmp ? 'school' : 'person';
+    const iconName = isOnBehalf ? 'support_agent' : isEmp ? 'account_circle' : 'supervisor_account';
     const colorVar = isEmp ? '--primary-dark' : '--secondary-dark';
 
     const clone = template.cloneNode(true);
@@ -29,7 +52,7 @@ function renderConversation() {
 
     clone.querySelector('.message-date').textContent = formatDateTime(timestamp);
     clone.querySelector('.message-content').innerHTML = isOnBehalf
-      ? `${content}<p class="reply-note">Note that you are replying directly to the parent/carer.</p>`
+      ? `${content}<p class="reply-note">Your reply will be sent directly to the parent/carer.</p>`
       : content;
 
     if (attachments?.length) renderMessageAttachments(el, attachments);
@@ -154,4 +177,16 @@ function removeAttachment(idx) {
   Array.from(elements.messageAttachments.files).forEach((f, i) => i !== idx && dt.items.add(f));
   elements.messageAttachments.files = dt.files;
   renderAttachmentList(Array.from(dt.files));
+}
+
+function addConversationEntry(content) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    authorName: currentUser,
+    isEmployee: true,
+    isPrivate: false,
+    content
+  };
+  state.conversation.push(entry);
+  renderConversation();
 }
