@@ -65,6 +65,7 @@ School Helpdesk is a free, open-source web application that that makes it easy f
     * `School__AppWebsite` - the host name where this app will be hosted, e.g. `example.com`
     * `School__HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
     * `School__Name` - the name of your school
+    * `School__SyncApiKey` - a secret key to be used when updating the `students.csv` and `staff.csv` files with an automated script (optional)
 
 10. Configure your Postmark server's Default Inbound Stream settings:
     * Set the webhook to `https://<app-website-domain>/inbound?auth=<authkey>`

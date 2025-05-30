@@ -55,7 +55,7 @@ public static class BlobService
     existingMessages.Add(message);
     var json = JsonSerializer.Serialize(existingMessages, JsonSerializerOptions.Web);
     using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-    await blobClient.UploadAsync(stream, overwrite: true);
+    await blobClient.UploadAsync(stream, true);
   }
 
   public static string GetAttachmentSasUrl(string blobName)
@@ -79,8 +79,17 @@ public static class BlobService
     var extension = Path.GetExtension(fileName);
     var blobName = $"{fileId}{extension}";
     var blobClient = attachmentsClient.GetBlobClient(blobName);
-    await blobClient.UploadAsync(fileStream, overwrite: true);
+    await blobClient.UploadAsync(fileStream, true);
     return blobName;
+  }
+
+  public static async Task UpdateDataFileAsync(string fileName, string content)
+  {
+    ArgumentNullException.ThrowIfNull(fileName);
+    ArgumentNullException.ThrowIfNull(content);
+    var blobClient = configClient.GetBlobClient(fileName);
+    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+    await blobClient.UploadAsync(stream, true);
   }
 
   public static async Task LoadConfigAsync()

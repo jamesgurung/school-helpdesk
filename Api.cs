@@ -168,6 +168,7 @@ public static class Api
       await TableService.RenameTicketAsync(payload.AssigneeEmail, id, payload.NewTitle);
       return Results.NoContent();
     });
+
     group.MapPost("/tickets/{id}/message", async (string id, HttpContext context) =>
     {
       if (string.IsNullOrWhiteSpace(id))
@@ -247,6 +248,36 @@ public static class Api
         }
       }
       return Results.Ok(message);
+    });
+
+    app.MapPut("/api/people", [AllowAnonymous] async (HttpContext context, [FromHeader(Name = "X-Api-Key")] string auth) =>
+    {
+      if (string.IsNullOrEmpty(School.Instance.SyncApiKey)) return Results.Conflict("An sync API key is not configured.");
+      if (auth != School.Instance.SyncApiKey) return Results.Unauthorized();
+
+      var formFiles = context.Request.Form.Files;
+      if (formFiles.Count != 2) return Results.BadRequest();
+      if (formFiles.Any(o => o.Length == 0)) return Results.BadRequest();
+      var staffFile = formFiles.SingleOrDefault(o => o.Name == "staff");
+      var studentsFile = formFiles.SingleOrDefault(o => o.Name == "students");
+      if (staffFile is null || studentsFile is null) return Results.BadRequest();
+
+      using (var staffStream = staffFile.OpenReadStream())
+      {
+        using var staffReader = new StreamReader(staffStream);
+        var staffCsv = await staffReader.ReadToEndAsync();
+        await BlobService.UpdateDataFileAsync("staff.csv", staffCsv);
+      }
+
+      using (var studentsStream = studentsFile.OpenReadStream())
+      {
+        using var studentsReader = new StreamReader(studentsStream);
+        var studentsCsv = await studentsReader.ReadToEndAsync();
+        await BlobService.UpdateDataFileAsync("students.csv", studentsCsv);
+      }
+
+      await BlobService.LoadConfigAsync();
+      return Results.NoContent();
     });
   }
 }

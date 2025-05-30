@@ -12,32 +12,41 @@ function openTicketDetails(ticketId) {
   elements.ticketTitleInput.innerText = ticket.title;
   elements.ticketTitleInput.contentEditable = isManager;
 
+  const children = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName)?.children || [];
+  const ticketParents = parents?.filter(p => p.email === ticket.parentEmail) || [];
+
+  populateStudentSelect(ticket, children);
+  populateParentSelect(ticket, ticketParents);
+  renderStudentInfo(ticket, children);
+  renderParentInfo(ticket);
+  renderAssigneeInfo(ticket);
+  elements.internalNoteCheckbox.checked = false;
+  elements.newMessageInput.classList.remove('internal-note');
+  elements.sendMessageBtn.textContent = 'Send Message';
+  elements.detailsEmpty.style.display = 'none';
+  elements.detailsContent.style.display = 'block';
+  elements.ticketDetails.classList.add('open');
+  updateBackButtonIcon();
+
+  elements.closeTicketBtn.textContent = ticket.isClosed ? 'Reopen Ticket' : 'Close Ticket';
+  updateCloseTicketButtonText();
+  elements.ticketDetails.scrollTop = 0;
+  elements.conversationContainer.innerHTML = '<div style="text-align: center">Loading conversation...</div>';
+  elements.sendMessageBtn.disabled = true;
+  elements.newMessageInput.disabled = true;
+  elements.internalNoteCheckbox.disabled = true;
+  elements.closeTicketBtn.disabled = true;
+  elements.sendMessageBtn.style.opacity = '0.5';
+  elements.newMessageInput.style.opacity = '0.5';
+  elements.closeTicketBtn.style.opacity = '0.5';
+  elements.uploadFilesBtn.style.opacity = '0.5';
+  elements.uploadFilesBtn.style.pointerEvents = 'none';
+
   fetch(`/api/tickets/${ticketId}`).then(response => response.json())
     .then(conversation => {
-      state.conversation = conversation;
-      const children = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName)?.children || [];
-      const ticketParents = parents?.filter(p => p.email === ticket.parentEmail) || [];
-
-      populateStudentSelect(ticket, children);
-      populateParentSelect(ticket, ticketParents);
-      renderStudentInfo(ticket, children);
-      renderParentInfo(ticket);
-      renderAssigneeInfo(ticket);
+      state.conversation = conversation;      
       renderConversation();
-      elements.internalNoteCheckbox.checked = false;
-      elements.newMessageInput.classList.remove('internal-note');
-      elements.sendMessageBtn.textContent = 'Send Message';
-
       updateMessageControlsState(ticket);
-
-      elements.detailsEmpty.style.display = 'none';
-      elements.detailsContent.style.display = 'block';
-      elements.ticketDetails.classList.add('open');
-      updateBackButtonIcon();
-
-      elements.closeTicketBtn.textContent = ticket.isClosed ? 'Reopen Ticket' : 'Close Ticket';
-      updateCloseTicketButtonText();
-      elements.ticketDetails.scrollTop = 0;
     })
     .catch(error => {
       console.error('Error fetching conversation:', error);
@@ -233,8 +242,8 @@ function updateMessageControlsState(ticket) {
   elements.sendMessageBtn.disabled = !canSend;
   elements.newMessageInput.disabled = !canSend;
   elements.internalNoteCheckbox.disabled = !canSend;
+  elements.uploadFilesBtn.style.pointerEvents = canSend ? 'auto' : 'none';
   
-  // Also control the close ticket button - only allow closing if all fields are complete or if reopening
   const canClose = ticket.isClosed || canSend;
   elements.closeTicketBtn.disabled = !canClose;
   
@@ -242,10 +251,12 @@ function updateMessageControlsState(ticket) {
     elements.newMessageInput.placeholder = 'Complete ticket details first.';
     elements.sendMessageBtn.style.opacity = '0.5';
     elements.newMessageInput.style.opacity = '0.5';
+    elements.uploadFilesBtn.style.opacity = '0.5';
   } else {
     elements.newMessageInput.placeholder = 'Type your message here...';
     elements.sendMessageBtn.style.opacity = '1';
     elements.newMessageInput.style.opacity = '1';
+    elements.uploadFilesBtn.style.opacity = '1';
   }
   
   if (!canClose) {

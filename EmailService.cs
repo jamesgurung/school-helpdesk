@@ -55,7 +55,7 @@ public static class EmailService
     var client = new PostmarkClient(_serverToken);
     var message = new PostmarkMessage
     {
-      To = to,
+      To = _debugEmail ?? to,
       Subject = subject,
       HtmlBody = ComposeHtmlEmail(body, signature),
       TextBody = ComposeTextEmail(body, signature),
@@ -75,16 +75,14 @@ public static class EmailService
 
   public static string ComposeHtmlEmail(string body, string senderName)
   {
-    var message = TextFormatting.ToParagraphs(TextFormatting.AppendSignature(body, senderName));
-    var html = School.Instance.HtmlEmailTemplate.Replace("{{BODY}}", message, StringComparison.OrdinalIgnoreCase);
+    var html = School.Instance.HtmlEmailTemplate.Replace("{{BODY}}", body, StringComparison.OrdinalIgnoreCase);
 
     return PreMailer.Net.PreMailer.MoveCssInline(html, true, stripIdAndClassAttributes: true, removeComments: true).Html;
   }
 
   public static string ComposeTextEmail(string body, string senderName)
   {
-    var message = TextFormatting.AppendSignature(body, senderName);
-    return School.Instance.TextEmailTemplate.Replace("{{BODY}}", message, StringComparison.OrdinalIgnoreCase);
+    return School.Instance.TextEmailTemplate.Replace("{{BODY}}", body, StringComparison.OrdinalIgnoreCase);
   }
 
   public static string GetReplySubject(string messageSubject)

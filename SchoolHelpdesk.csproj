@@ -15,13 +15,11 @@
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="HtmlSanitizer" Version="9.1.885-beta" />
     <PackageReference Include="LigerShark.WebOptimizer.Core" Version="3.0.436" />
-    <PackageReference Include="Markdig" Version="0.41.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0-preview.4.25258.110" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1-Preview.1" />
     <PackageReference Include="OpenAI" Version="2.2.0-beta.4" />
     <PackageReference Include="Postmark" Version="5.2.0" />
     <PackageReference Include="PreMailer.Net" Version="2.6.0" />
-    <PackageReference Include="ReverseMarkdown" Version="4.7.0" />
   </ItemGroup>
 
 </Project>
