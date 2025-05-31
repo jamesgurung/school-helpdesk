@@ -581,6 +581,9 @@ h1 {
 .message-content {
   color: var(--text);
   line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 12px 0 6px;
 }
 
 .message-content p {

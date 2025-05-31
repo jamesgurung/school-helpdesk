@@ -31,22 +31,31 @@ public static partial class EmailService
   public static async Task ProcessInboundAsync(PostmarkInboundWebhookMessage message, string authKey)
   {
     if (authKey != _authKey || message is null) return;
-    var messageId = message.GetHeader("message-id");
 
+    var spamHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "x-spam-status", StringComparison.OrdinalIgnoreCase))?.Value;
+    if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
+
+    var spfHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "received-spf", StringComparison.OrdinalIgnoreCase))?.Value;
+    if (spfHeader?.StartsWith("fail", StringComparison.OrdinalIgnoreCase) ?? false) return;
+
+    var textBody = string.IsNullOrWhiteSpace(message.TextBody) ? null : message.TextBody.Trim();
+    var htmlBody = string.IsNullOrWhiteSpace(message.HtmlBody) ? null : message.HtmlBody.Trim();
+    var strippedTextReply = string.IsNullOrWhiteSpace(message.StrippedTextReply) ? null : message.StrippedTextReply.Trim();
+    if (textBody is null && htmlBody is null) return;
+
+    var messageId = message.GetHeader("message-id");
     var parents = School.Instance.ParentsByEmail[message.From].ToList();
 
     if (parents.Count == 0)
     {
       // Unknown sender
-      var spamHeader = message.Headers.FirstOrDefault(o => o.Name == "x-spam-status")?.Value;
-      if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
+      if (!(spfHeader?.StartsWith("pass", StringComparison.OrdinalIgnoreCase) ?? false)) return;
       var isStaff = School.Instance.StaffByEmail.ContainsKey(message.From);
       await SendRejectionEmailAsync(message.From, message.Subject, messageId, isStaff ? RejectionReason.StaffSender : RejectionReason.UnknownSender);
       return;
     }
 
     var parentEmail = parents[0].Email;
-    var body = TextFormatting.ParseEmailBody(message.StrippedTextReply, message.TextBody, message.HtmlBody);
 
     var ticketNumberMatch = TicketNumberRegex().Match(message.Subject);
     if (ticketNumberMatch.Success && int.TryParse(ticketNumberMatch.Groups[1].Value, out var ticketNumber))
@@ -56,6 +65,7 @@ public static partial class EmailService
       {
         // Existing ticket for this parent
         var parentName = ticket.ParentName ?? string.Join(" / ", parents.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase));
+        var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, true);
         var attachments = await UploadAttachmentsAsync(message.Attachments);
         var messages = new List<Message>()
         {
@@ -76,7 +86,7 @@ public static partial class EmailService
           {
             AuthorName = parentName,
             IsEmployee = false,
-            IsPrivate = false,
+            IsPrivate = true,
             Timestamp = DateTime.UtcNow,
             Content = "#reopen"
           });
@@ -97,6 +107,7 @@ public static partial class EmailService
       var parentName = parents.Count == 1 ? parents[0].Name : null;
       var students = parents.SelectMany(o => o.Children).DistinctBy(o => (o.FirstName, o.LastName)).ToList();
       var student = students.Count == 1 ? students[0] : null;
+      var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
 
       var ticket = new TicketEntity
       {
@@ -131,8 +142,8 @@ public static partial class EmailService
         }
       };
 
-      await BlobService.AppendMessagesAsync(id, messages);
-      await SendTicketCreatedEmailAsync(parentEmail, parentNames, id, ticket.Title);
+      await BlobService.CreateConversationAsync(id, messages);
+      await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title);
     }
   }
 
@@ -175,15 +186,13 @@ public static partial class EmailService
     return message.Headers.FirstOrDefault(o => string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase))?.Value;
   }
 
-  private static async Task SendTicketCreatedEmailAsync(string parentEmail, string parentName, int id, string title)
+  private static async Task SendTicketCreatedEmailAsync(string parentEmail, int id, string title)
   {
     var subject = $"[Ticket #{id}] {title}";
-    var to = $"\"{parentName.Replace("\"", string.Empty)}\" <{parentEmail}>";
-    var body = $"Dear {parentName}\n\n" +
-      "Thank you for contacting us. We've received your enquiry and created a ticket.\n\n" +
+    var body = "Thank you for contacting us. We've received your enquiry and created a ticket.\n\n" +
       "Our team will review your message and get back to you shortly.\n\n" +
       "Best wishes\n\n" + School.Instance.Name;
-    await SendAsync(to, subject, body, EmailTag.Parent);
+    await SendAsync(parentEmail, subject, body, EmailTag.Parent);
   }
 
   private static async Task SendRejectionEmailAsync(string to, string subject, string messageId, RejectionReason reason)
@@ -196,14 +205,14 @@ public static partial class EmailService
         "If you have an enquiry, please contact reception.",
       RejectionReason.StaffSender =>
         "Email replies from staff are not supported.\n\n" +
-        $"Please sign in to our <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to respond to a ticket.",
+        $"Please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to respond to a ticket.",
       RejectionReason.UnknownTicket =>
         "The ticket number you provided does not exist or is not associated with your email address.\n\n" +
         "Please send a new email to open a fresh ticket.",
       _ =>
         throw new NotImplementedException()
     };
-    await SendAsync(to, replySubject, body, messageId, EmailTag.Unknown);
+    await SendAsync(to, replySubject, body, EmailTag.Unknown, messageId);
   }
 
   private static async Task<List<Attachment>> UploadAttachmentsAsync(List<PostmarkDotNet.Attachment> inboundAttachments)

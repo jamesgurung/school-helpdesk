@@ -40,7 +40,7 @@ public static class Api
 
       var id = await TableService.CreateTicketAsync(ticketEntity);
       await BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = message },
-        new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = $"#assign {ticketEntity.AssigneeName}" });
+        new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = DateTime.UtcNow, Content = $"#assign {ticketEntity.AssigneeName}" });
 
       return Results.Created((string)null, ticketEntity.RowKey);
     });
@@ -81,7 +81,7 @@ public static class Api
         AuthorName = currentUser,
         IsEmployee = true,
         Timestamp = DateTime.UtcNow,
-        IsPrivate = false,
+        IsPrivate = true,
         Content = $"#assign {staff.Name}"
       });
 
@@ -159,7 +159,7 @@ public static class Api
         AuthorName = currentUser,
         IsEmployee = true,
         Timestamp = DateTime.UtcNow,
-        IsPrivate = false,
+        IsPrivate = true,
         Content = payload.IsClosed ? "#close" : "#reopen"
       });
 

@@ -42,6 +42,8 @@ builder.Services.AddWebOptimizer(pipeline =>
   {
     pipeline.MinifyCssFiles("css/*.css");
     pipeline.MinifyJsFiles("js/*.js");
+    pipeline.AddJavaScriptBundle("js/site.js", "js/core.js", "js/date-utils.js", "js/utils.js", "js/api.js", "js/search.js", "js/conversation.js",
+      "js/ticket-list.js", "js/ticket-details.js", "js/ticket-edit.js", "js/modal.js", "js/event-handlers.js");
   }
 });
 

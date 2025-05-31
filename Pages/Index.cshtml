@@ -271,6 +271,9 @@
   const isManager = @isManager.ToString().ToLowerInvariant();
   const currentUser = '@School.Instance.StaffByEmail[HttpContext.User.Identity.Name].Name';
 </script>
+
+@if (Environment.IsDevelopment())
+{
 <script src="/js/core.js"></script>
 <script src="/js/date-utils.js"></script>
 <script src="/js/utils.js"></script>
@@ -282,3 +285,7 @@
 <script src="/js/ticket-edit.js"></script>
 <script src="/js/modal.js"></script>
 <script src="/js/event-handlers.js"></script>
+} else
+{
+<script src="/js/site.js"></script>
+}

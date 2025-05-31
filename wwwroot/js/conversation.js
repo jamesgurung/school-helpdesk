@@ -7,7 +7,7 @@ function renderConversation() {
   state.conversation.forEach((msg, i) => {
     const { isEmployee, isPrivate, authorName, timestamp, content, attachments } = msg;
     
-    if (isEmployee && (content === '#close' || content === '#reopen' || content.startsWith('#assign '))) {
+    if (content === '#close' || content === '#reopen' || content.startsWith('#assign ')) {
       const eventEl = document.createElement('div');
       eventEl.className = 'message-header ticket-event';
       
@@ -51,9 +51,11 @@ function renderConversation() {
       : authorName;
 
     clone.querySelector('.message-date').textContent = formatDateTime(timestamp);
-    clone.querySelector('.message-content').innerHTML = isOnBehalf
-      ? `<p>${content.replace(/\n\n/g, '</p><p>')}</p><p class="reply-note">Replies will be sent directly to the parent/carer.</p>`
-      : `<p>${content.replace(/\n\n/g, '</p><p>')}</p>`;
+    clone.querySelector('.message-content').textContent = content;
+    if (isOnBehalf) {
+      const replyInstructions = '<p class="reply-note">Replies will be sent directly to the parent/carer.</p>';
+      clone.querySelector('.message-content').insertAdjacentHTML('beforeend', replyInstructions);
+    }
 
     if (attachments?.length) renderMessageAttachments(el, attachments);
     elements.conversationContainer.appendChild(clone);
@@ -184,7 +186,7 @@ function addConversationEntry(content) {
     timestamp: new Date().toISOString(),
     authorName: currentUser,
     isEmployee: true,
-    isPrivate: false,
+    isPrivate: true,
     content
   };
   state.conversation.push(entry);
