@@ -30,6 +30,12 @@ public static class TableService
     return ticket.Value;
   }
 
+  public static async Task<TicketEntity> GetTicketAsync(int id)
+  {
+    var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.RowKey == id.ToRowKey()).ToListAsync();
+    return tickets.Count == 1 ? tickets[0] : null;
+  }
+
   public static async Task<List<TicketEntity>> GetAllTicketsAsync()
   {
     var tickets = await ticketsClient.QueryAsync<TicketEntity>().ToListAsync();
@@ -113,12 +119,21 @@ public static class TableService
     await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
   }
 
-  public static async Task UpdateLastParentMessageDateAsync(string assigneeEmail, int id, DateTime? timestamp)
+  public static async Task ClearLastParentMessageDateAsync(string assigneeEmail, int id)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
     var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id.ToRowKey());
-    ticket.Value.WaitingSince = timestamp;
+    ticket.Value.WaitingSince = null;
     await ticketsClient.UpdateEntityAsync(ticket.Value, ETag.All, TableUpdateMode.Replace);
+  }
+
+  public static async Task SetLastParentMessageDateAsync(TicketEntity ticket)
+  {
+    ArgumentNullException.ThrowIfNull(ticket);
+    if (ticket.WaitingSince is not null && !ticket.IsClosed) return;
+    ticket.WaitingSince ??= DateTime.UtcNow;
+    ticket.IsClosed = false;
+    await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
   }
 
   public static async Task LoadLatestTicketIdAsync()

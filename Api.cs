@@ -6,8 +6,6 @@ namespace SchoolHelpdesk;
 
 public static class Api
 {
-  private static readonly HashSet<string> validFileExtensions = new([".pdf", ".docx", ".png", ".jpg", ".jpeg", ".webp", ".heic"], StringComparer.OrdinalIgnoreCase);
-
   public static void MapApiPaths(this WebApplication app)
   {
     app.MapPost("/inbound", [AllowAnonymous] async ([FromBody] PostmarkInboundWebhookMessage message, [FromQuery] string auth) =>
@@ -41,13 +39,8 @@ public static class Api
       }
 
       var id = await TableService.CreateTicketAsync(ticketEntity);
-      await BlobService.CreateMessageAsync(id, new Message
-      {
-        AuthorName = user,
-        IsEmployee = true,
-        Timestamp = DateTime.UtcNow,
-        Content = message
-      });
+      await BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = message },
+        new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = $"#assign {ticketEntity.AssigneeName}" });
 
       return Results.Created((string)null, ticketEntity.RowKey);
     });
@@ -83,7 +76,7 @@ public static class Api
       await TableService.ReassignTicketAsync(payload.AssigneeEmail, id, newAssigneeEmail, staff.Name);
 
       var currentUser = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
-      await BlobService.AppendMessageAsync(id, new Message
+      await BlobService.AppendMessagesAsync(id, new Message
       {
         AuthorName = currentUser,
         IsEmployee = true,
@@ -161,7 +154,7 @@ public static class Api
       await TableService.CloseTicketAsync(payload.AssigneeEmail, id, payload.IsClosed);
 
       var currentUser = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
-      await BlobService.AppendMessageAsync(id, new Message
+      await BlobService.AppendMessagesAsync(id, new Message
       {
         AuthorName = currentUser,
         IsEmployee = true,
@@ -202,33 +195,16 @@ public static class Api
       if (string.IsNullOrWhiteSpace(assigneeEmail))
         return Results.BadRequest("Assignee email is required.");
 
-      var content = form["content"].ToString();
+      var content = TextFormatting.CleanText(form["content"].ToString());
       if (string.IsNullOrWhiteSpace(content))
         return Results.BadRequest("Message content is required.");
 
       if (content.StartsWith('#'))
         return Results.BadRequest("Message content cannot start with a hash (#).");
 
-      var invalidFileNameChars = Path.GetInvalidFileNameChars();
       foreach (var file in form.Files)
       {
-        if (file.Length == 0)
-          return Results.BadRequest("Attachment cannot be empty.");
-
-        if (file.Length > 10 * 1024 * 1024)
-          return Results.BadRequest("Attachment size exceeds the limit of 10 MB.");
-
-        if (!validFileExtensions.Contains(Path.GetExtension(file.FileName)))
-          return Results.BadRequest("Invalid file type.");
-
-        if (file.FileName.Length > 100)
-          return Results.BadRequest("Attachment file name is too long.");
-
-        if (file.FileName.IndexOfAny(invalidFileNameChars) >= 0)
-          return Results.BadRequest("Attachment file name contains invalid characters.");
-
-        if (file.FileName.Contains("..") || file.FileName.Contains('/'))
-          return Results.BadRequest("Attachment file name cannot contain relative paths.");
+        if (!Attachment.ValidateAttachment(file.Name, file.Length, out var errorMessage)) return Results.BadRequest(errorMessage);
       }
 
       var attachments = new List<Attachment>();
@@ -253,11 +229,11 @@ public static class Api
         IsPrivate = isPrivate,
         Attachments = attachments.Count > 0 ? attachments : null
       };
-      await BlobService.AppendMessageAsync(id, message);
+      await BlobService.AppendMessagesAsync(id, message);
 
       if (!isPrivate)
       {
-        await TableService.UpdateLastParentMessageDateAsync(assigneeEmail, id, null);
+        await TableService.ClearLastParentMessageDateAsync(assigneeEmail, id);
       }
 
       if (message.Attachments is not null)

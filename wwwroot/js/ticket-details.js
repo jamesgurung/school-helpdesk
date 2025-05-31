@@ -30,7 +30,7 @@ function openTicketDetails(ticketId) {
   elements.closeTicketBtn.textContent = ticket.isClosed ? 'Reopen Ticket' : 'Close Ticket';
   updateCloseTicketButtonText();
   elements.ticketDetails.scrollTop = 0;
-  elements.conversationContainer.innerHTML = '<div style="text-align: center">Loading conversation...</div>';
+  elements.conversationContainer.innerHTML = '<div style="text-align: center; padding: 12px">Loading conversation...</div>';
   elements.sendMessageBtn.disabled = true;
   elements.newMessageInput.disabled = true;
   elements.internalNoteCheckbox.disabled = true;
@@ -259,8 +259,7 @@ function updateMessageControlsState(ticket) {
   }
   
   if (!canClose) {
-    elements.closeTicketBtn.style.opacity = '0.5';
-  } else {
+    elements.closeTicketBtn.style.opacity = '0.5';  } else {
     elements.closeTicketBtn.style.opacity = '1';
   }
 }

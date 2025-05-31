@@ -17,6 +17,23 @@ public class Message
 
 public class Attachment
 {
+  private static readonly HashSet<string> validFileExtensions =
+    new([".pdf", ".docx", ".doc", ".odt", ".xlsx", ".xls", ".pptx", ".ppt", ".csv", ".txt", ".png", ".jpg", ".jpeg", ".webp", ".heic"], StringComparer.OrdinalIgnoreCase);
+
+  private static readonly char[] invalidFileNameChars = Path.GetInvalidFileNameChars();
+
+  public static bool ValidateAttachment(string fileName, long contentLength, out string error)
+  {
+    if (contentLength == 0) { error = "Attachment cannot be empty."; return false; }
+    if (contentLength > 10 * 1024 * 1024) { error = "Attachment size exceeds the limit of 10 MB."; return false; }
+    if (!validFileExtensions.Contains(Path.GetExtension(fileName))) { error = "Invalid file type."; return false; }
+    if (fileName.Length > 100) { error = "Attachment file name is too long."; return false; }
+    if (fileName.IndexOfAny(invalidFileNameChars) >= 0) { error = "Attachment file name contains invalid characters."; return false; }
+    if (fileName.Contains("..") || fileName.Contains('/')) { error = "Attachment file name cannot contain relative paths."; return false; }
+    error = null;
+    return true;
+  }
+
   public string FileName { get; set; }
   public string Url { get; set; }
 }

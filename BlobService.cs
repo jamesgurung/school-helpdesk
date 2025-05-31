@@ -38,20 +38,20 @@ public static class BlobService
     return messages;
   }
 
-  public static async Task CreateMessageAsync(int ticketId, Message message)
+  public static async Task CreateConversationAsync(int ticketId, params List<Message> messages)
   {
     var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
-    var json = JsonSerializer.Serialize(new[] { message }, JsonSerializerOptions.Web);
+    var json = JsonSerializer.Serialize(messages, JsonSerializerOptions.Web);
     using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
     await blobClient.UploadAsync(stream);
   }
 
-  public static async Task AppendMessageAsync(int ticketId, Message message)
+  public static async Task AppendMessagesAsync(int ticketId, params List<Message> messages)
   {
     var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
     var existingContent = await blobClient.DownloadContentAsync();
     var existingMessages = JsonSerializer.Deserialize<List<Message>>(existingContent.Value.Content.ToString(), JsonSerializerOptions.Web) ?? [];
-    existingMessages.Add(message);
+    existingMessages.AddRange(messages);
     var json = JsonSerializer.Serialize(existingMessages, JsonSerializerOptions.Web);
     using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
     await blobClient.UploadAsync(stream, true);

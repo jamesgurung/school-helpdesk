@@ -1,21 +1,30 @@
 ﻿using Ganss.Xss;
+using System.Net;
 
 namespace SchoolHelpdesk;
 
 public static class TextFormatting
 {
-  public static EmailBody ParseEmailBody(string originalHtml)
+  public static string CleanText(string text)
+  {
+    return string.IsNullOrWhiteSpace(text) ? string.Empty : WebUtility.HtmlEncode(text).Replace("\r", "");
+  }
+
+  public static EmailBody ParseEmailBody(string strippedTextReply, string textBody, string htmlBody)
   {
     var sanitizer = new HtmlSanitizer();
     sanitizer.AllowedTags.Remove("img");
-    var sanitizedHtml = sanitizer.Sanitize(originalHtml);
+    var sanitizedHtml = sanitizer.Sanitize(htmlBody);
 
-    var messageText = ""; // ExtractLatestMessageInPlainText(sanitizedHtml);
+    if (string.IsNullOrEmpty(strippedTextReply))
+    {
+      strippedTextReply = textBody;
+    }
 
     return new EmailBody
     {
       SanitizedHtml = sanitizedHtml,
-      MessageText = messageText
+      MessageText = strippedTextReply
     };
   }
 }

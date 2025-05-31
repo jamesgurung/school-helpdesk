@@ -62,6 +62,7 @@ function confirmNavigationWithUnsentText(actionDescription, callback) {
   if (!hasUnsentText()) { callback(); return; }
   if (confirm(`You have unsent text in the message box. Are you sure you want to ${actionDescription}? Your unsent text will be lost.`)) {
     elements.newMessageInput.value = '';
+    autoExpandTextarea(elements.newMessageInput);
     callback();
   }
 }
@@ -94,4 +95,10 @@ function canEditField(ticket, fieldType) {
 function canSendMessages(ticket) {
   const { hasParent, hasStudent, hasAssignee } = getTicketValidationStatus(ticket);
   return hasParent && hasStudent && hasAssignee;
+}
+
+function autoExpandTextarea(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
+  elements.ticketDetails.scrollTop = elements.ticketDetails.scrollHeight;
 }

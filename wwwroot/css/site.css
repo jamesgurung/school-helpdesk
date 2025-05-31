@@ -246,6 +246,10 @@ h1 {
   .action-buttons {
     align-self: flex-end;
   }
+
+  .message-date {
+    display: none;
+  }
 }
 
 .container {
@@ -522,13 +526,13 @@ h1 {
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 0.75rem;
+  padding: 4px 0.75rem;
   margin-bottom: 0.75rem;
   background-color: var(--bg);
 }
 
 .message {
-  margin-bottom: 0.75rem;
+  margin: 12px 0;
   padding: 0.75rem;
   border-radius: 4px;
   background-color: var(--white);
@@ -579,6 +583,10 @@ h1 {
   line-height: 1.4;
 }
 
+.message-content p {
+  margin-top: 10px;
+}
+
 .ticket-event {
   margin: 12px;
 }
@@ -587,10 +595,10 @@ h1 {
   color: var(--text-light);
 }
 
-.reply-note {
+.message-content p.reply-note {
   font-size: 0.85rem;
   color: var(--text-light);
-  margin-top: 0.5rem;
+  margin-top: 14px;
 }
 
 .info-section {
@@ -761,10 +769,11 @@ h1 {
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  resize: vertical;
+  resize: none;
   min-height: 80px;
   outline: none;
   line-height: 1.4;
+  overflow: hidden;
 }
 
 .new-message textarea:focus {
@@ -904,7 +913,7 @@ button {
   background-color: var(--primary-bg-light);
 }
 
-#send-message {
+#send-message, #close-ticket {
   width: 127px;
 }
 

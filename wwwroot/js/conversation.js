@@ -24,7 +24,7 @@ function renderConversation() {
         icon = 'assignment_ind';
       }
       
-      eventEl.innerHTML = `<div class="message-author"><div class="message-icon material-symbols-rounded">${icon}</div><div class="author-name">${eventText}</div></div><div>${formatDateTime(timestamp)}</div>`;
+      eventEl.innerHTML = `<div class="message-author"><div class="message-icon material-symbols-rounded">${icon}</div><div class="author-name">${eventText}</div></div><div class="message-date">${formatDateTime(timestamp)}</div>`;
       elements.conversationContainer.appendChild(eventEl);
       return;
     }
@@ -52,8 +52,8 @@ function renderConversation() {
 
     clone.querySelector('.message-date').textContent = formatDateTime(timestamp);
     clone.querySelector('.message-content').innerHTML = isOnBehalf
-      ? `${content}<p class="reply-note">Your reply will be sent directly to the parent/carer.</p>`
-      : content;
+      ? `<p>${content.replace(/\n\n/g, '</p><p>')}</p><p class="reply-note">Replies will be sent directly to the parent/carer.</p>`
+      : `<p>${content.replace(/\n\n/g, '</p><p>')}</p>`;
 
     if (attachments?.length) renderMessageAttachments(el, attachments);
     elements.conversationContainer.appendChild(clone);
@@ -112,9 +112,9 @@ async function sendMessage() {
   elements.sendMessageBtn.disabled = true;
   elements.sendMessageBtn.textContent = 'Sending...';
   try {
-    const msg = await apiSendMessage(ticket.id, ticket.assigneeEmail, content, isPrivate, files);
-    state.conversation.push(msg);
+    const msg = await apiSendMessage(ticket.id, ticket.assigneeEmail, content, isPrivate, files);    state.conversation.push(msg);
     elements.newMessageInput.value = '';
+    autoExpandTextarea(elements.newMessageInput);
     elements.internalNoteCheckbox.checked = false;
     elements.newMessageInput.classList.remove('internal-note');
     elements.messageAttachments.value = '';

@@ -65,10 +65,10 @@ function resetDetailsView() {
   elements.detailsEmpty.style.display = 'flex';
   elements.detailsContent.style.display = 'none';
   elements.ticketDetails.classList.remove('open');
-
   elements.internalNoteCheckbox.checked = false;
   elements.newMessageInput.classList.remove('internal-note');
   elements.newMessageInput.value = '';
+  autoExpandTextarea(elements.newMessageInput);
   elements.messageAttachments.value = '';
   elements.attachmentList.innerHTML = '';
   elements.sendMessageBtn.textContent = 'Send Message';
