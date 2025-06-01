@@ -55,7 +55,7 @@ function resetNewTicketForm() {
 }
 
 async function createNewTicket() {
-  const title = elements.ticketTitleFormInput.value.trim();
+  const title = elements.ticketTitleFormInput.value.trim().substring(0, 40);
   const studentValue = elements.studentSelectInput.value;
   const assignee = state.activeAssignee;
   const message = elements.messageInput.value.trim();

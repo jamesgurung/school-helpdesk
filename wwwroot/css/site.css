@@ -248,7 +248,7 @@ h1 {
   }
 
   .message-date {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -323,9 +323,16 @@ h1 {
 
 .ticket-header {
   display: flex;
-  justify-content: space-between;
+  gap: 10px;
   align-items: center;
+  vertical-align: middle;
   margin-bottom: 3px;
+}
+
+.ticket-id {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  margin-top: 2px;
 }
 
 .ticket-title {

@@ -93,6 +93,10 @@ public static partial class EmailService
         }
         await BlobService.AppendMessagesAsync(ticketNumber, messages);
         await TableService.SetLastParentMessageDateAsync(ticket);
+        if (ticket.PartitionKey != "unassigned" && School.Instance.StaffByEmail.TryGetValue(ticket.PartitionKey, out var assignee))
+        {
+          await SendTicketUpdateEmailAsync(ticketNumber, ticket, assignee, TicketUpdateAction.Updated);
+        }
       }
       else
       {
@@ -108,12 +112,14 @@ public static partial class EmailService
       var students = parents.SelectMany(o => o.Children).DistinctBy(o => (o.FirstName, o.LastName)).ToList();
       var student = students.Count == 1 ? students[0] : null;
       var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
+      var subject = message.Subject.Trim();
+      if (subject.Length > 40) subject = subject[..37] + "...";
 
       var ticket = new TicketEntity
       {
         PartitionKey = "unassigned",
         AssigneeName = null,
-        Title = message.Subject,
+        Title = subject,
         ParentEmail = parentEmail,
         ParentName = parentName,
         ParentRelationship = parentName is null ? null : student?.ParentRelationship,
@@ -143,41 +149,60 @@ public static partial class EmailService
       };
 
       await BlobService.CreateConversationAsync(id, messages);
-      await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title);
+      await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title, null, null);
 
       if (School.Instance.NotifyFirstManager && School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var manager))
       {
-        await SendAssignEmailAsync(id, ticket, manager, AssignAction.NotifyNew);
+        await SendTicketUpdateEmailAsync(id, ticket, manager, TicketUpdateAction.NotifyNew);
       }
     }
   }
 
-  public static async Task SendAssignEmailAsync(int id, TicketEntity ticket, Staff staff, AssignAction action)
+  public static async Task SendTicketCreatedEmailAsync(string parentEmail, int id, string title, string createdBy, string parentSalutation)
+  {
+    var subject = $"[Ticket #{id}] {title}";
+    var body = createdBy is null || parentSalutation is null
+      ? ("Thank you for contacting us. We've received your enquiry and created a ticket.\n\n" +
+        "Our team will review your message and get back to you shortly.\n\n" +
+        "Best wishes\n\n" + School.Instance.Name)
+      : ($"Dear {parentSalutation}\n\n" +
+        $"Thank you for contacting us. {createdBy} has created a helpdesk ticket for you.\n\n" +
+        "Our team will review your enquiry and get back to you shortly.\n\n" +
+        "Best wishes\n\n" + School.Instance.Name);
+    await SendAsync(parentEmail, subject, body, EmailTag.Parent);
+  }
+
+  public static async Task SendTicketUpdateEmailAsync(int id, TicketEntity ticket, Staff staff, TicketUpdateAction action)
   {
     ArgumentNullException.ThrowIfNull(ticket);
     ArgumentNullException.ThrowIfNull(staff);
 
     var (heading, intro, outro) = action switch
     {
-      AssignAction.Assigned => (
+      TicketUpdateAction.Assigned => (
         "New Ticket",
         "We've received a new enquiry and thought you might be the best person to support:\n\n",
         $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
       ),
-      AssignAction.Unassigned => (
+      TicketUpdateAction.Unassigned => (
         "Ticket Reassigned",
         "The following enquiry has been transferred to another member of staff:\n\n",
         "No further action is required on your part.\n\n"
       ),
-      AssignAction.Reminder => (
+      TicketUpdateAction.Reminder => (
         "Ticket Reminder",
         "This is a gentle reminder about the open helpdesk enquiry below:\n\n",
         $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
       ),
-      AssignAction.NotifyNew => (
+      TicketUpdateAction.NotifyNew => (
         "Ticket Received",
         "A new helpdesk enquiry has been received by email:\n\n",
         $"Please assign a member of staff on the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a>.\n\n"
+      ),
+      TicketUpdateAction.Updated => (
+        "Response Received",
+        "The parent/carer has emailed a new reply to this ticket:\n\n",
+        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
       ),
       _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
     };
@@ -241,15 +266,6 @@ public static partial class EmailService
     return message.Headers.FirstOrDefault(o => string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase))?.Value;
   }
 
-  private static async Task SendTicketCreatedEmailAsync(string parentEmail, int id, string title)
-  {
-    var subject = $"[Ticket #{id}] {title}";
-    var body = "Thank you for contacting us. We've received your enquiry and created a ticket.\n\n" +
-      "Our team will review your message and get back to you shortly.\n\n" +
-      "Best wishes\n\n" + School.Instance.Name;
-    await SendAsync(parentEmail, subject, body, EmailTag.Parent);
-  }
-
   private static async Task SendRejectionEmailAsync(string to, string subject, string messageId, RejectionReason reason)
   {
     var replySubject = subject.StartsWith("Re: ", StringComparison.OrdinalIgnoreCase) ? subject : ("Re: " + subject);
@@ -302,10 +318,11 @@ public enum RejectionReason
   UnknownTicket
 }
 
-public enum AssignAction
+public enum TicketUpdateAction
 {
   Assigned,
   Unassigned,
   Reminder,
-  NotifyNew
+  NotifyNew,
+  Updated
 }

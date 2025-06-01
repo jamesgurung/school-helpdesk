@@ -15,7 +15,7 @@ async function updateTicketTitle() {
   const ticket = getCurrentTicket();
   if (!ticket) return;
 
-  const newTitle = elements.ticketTitleInput.innerText.trim();
+  const newTitle = elements.ticketTitleInput.innerText.trim().substring(0, 40);
   if (newTitle === ticket.title) return;
 
   try {

@@ -14,6 +14,7 @@ function renderTickets(status) {
     const ticketClone = document.getElementById('ticket-item-template').content.cloneNode(true);
     const ticketElement = ticketClone.querySelector('.ticket-item');
     ticketElement.dataset.id = ticket.id;
+    ticketClone.querySelector('.ticket-id').textContent = '#' + parseInt(ticket.id);
     ticketClone.querySelector('.ticket-title').textContent = ticket.title;
     
     const studentElement = ticketClone.querySelector('.student-value span:not(.material-symbols-rounded)');

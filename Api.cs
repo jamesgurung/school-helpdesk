@@ -26,22 +26,51 @@ public static class Api
 
     group.MapPost("/tickets", [Authorize(Roles = AuthConstants.Manager)] async (NewTicketEntity ticket, HttpContext context) =>
     {
-      if (ticket is null || string.IsNullOrWhiteSpace(ticket.PartitionKey))
-      {
+      if (ticket is null)
         return Results.BadRequest("Ticket data is required.");
-      }
+
+      if (string.IsNullOrWhiteSpace(ticket.PartitionKey) || string.IsNullOrWhiteSpace(ticket.AssigneeName))
+        return Results.BadRequest("Assignee email and name are required.");
+
+      if (string.IsNullOrWhiteSpace(ticket.ParentEmail) || string.IsNullOrWhiteSpace(ticket.ParentName) || string.IsNullOrWhiteSpace(ticket.ParentRelationship))
+        return Results.BadRequest("Parent email, name, and relationship are required.");
+
+      if (string.IsNullOrWhiteSpace(ticket.StudentFirstName) || string.IsNullOrWhiteSpace(ticket.StudentLastName) || string.IsNullOrWhiteSpace(ticket.TutorGroup))
+        return Results.BadRequest("Student first name, last name, and tutor group are required.");
+
+      if (string.IsNullOrEmpty(ticket.Title) || ticket.Title.Length > 40)
+        return Results.BadRequest("Ticket title is required and must be 40 characters or less.");
+
+      if (ticket.IsClosed)
+        return Results.BadRequest("Cannot create a closed ticket.");
+
+      var message = ticket?.Message?.Trim();
+
+      if (string.IsNullOrWhiteSpace(message))
+        return Results.BadRequest("Initial message is required.");
+
+      if (message.StartsWith('#'))
+        return Results.BadRequest("Message content cannot start with a hash (#).");
+
+      var parent = School.Instance.ParentsByEmail[ticket.ParentEmail].FirstOrDefault(p => p.Name == ticket.ParentName);
+
+      if (parent is null)
+        return Results.BadRequest("Parent does not exist.");
+
+      var hasChild = parent.Children.Any(c => string.Equals(c.FirstName, ticket.StudentFirstName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(c.LastName, ticket.StudentLastName, StringComparison.OrdinalIgnoreCase) && string.Equals(c.TutorGroup, ticket.TutorGroup, StringComparison.OrdinalIgnoreCase));
+
+      if (!hasChild)
+        return Results.BadRequest("Student does not match any child of the parent.");
 
       var user = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
       var ticketEntity = ticket as TicketEntity;
-      var message = ticket?.Message?.Trim();
-      if (string.IsNullOrWhiteSpace(message))
-      {
-        return Results.BadRequest("Initial message is required.");
-      }
 
       var id = await TableService.CreateTicketAsync(ticketEntity);
       await BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = message },
         new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = DateTime.UtcNow, Content = $"#assign {ticketEntity.AssigneeName}" });
+
+      await EmailService.SendTicketCreatedEmailAsync(parent.Email, id, ticket.Title, user, GetSalutation(parent.Name));
 
       return Results.Created((string)null, ticketEntity.RowKey);
     });
@@ -86,10 +115,10 @@ public static class Api
         Content = $"#assign {staff.Name}"
       });
 
-      await EmailService.SendAssignEmailAsync(id, ticket, staff, AssignAction.Assigned);
+      await EmailService.SendTicketUpdateEmailAsync(id, ticket, staff, TicketUpdateAction.Assigned);
       if (payload.AssigneeEmail != "unassigned" && School.Instance.StaffByEmail.TryGetValue(payload.AssigneeEmail, out var oldAssignee))
       {
-        await EmailService.SendAssignEmailAsync(id, ticket, oldAssignee, AssignAction.Unassigned);
+        await EmailService.SendTicketUpdateEmailAsync(id, ticket, oldAssignee, TicketUpdateAction.Unassigned);
       }
 
       return Results.NoContent();
@@ -177,6 +206,9 @@ public static class Api
     {
       if (string.IsNullOrWhiteSpace(payload?.NewTitle))
         return Results.BadRequest("Ticket title is required.");
+
+      if (payload.NewTitle.Length > 40)
+        return Results.BadRequest("Ticket title must be 40 characters or less.");
 
       if (!context.User.IsInRole(AuthConstants.Manager))
         return Results.Forbid();

@@ -109,6 +109,7 @@
   <div class="ticket-item">
     <div class="ticket-header">
       <div class="ticket-title"></div>
+      <div class="ticket-id"></div>
     </div>
 
     <div class="ticket-info-grid">
@@ -223,10 +224,9 @@
             <option value="" disabled selected>Select a student</option>
           </select>
         </div>
-
         <div class="form-group">
           <label for="ticket-title-input">Ticket Title</label>
-          <input type="text" id="ticket-title-input" placeholder="Enter a descriptive title" required autocomplete="off" data-lpignore="true" data-form-type="other">
+          <input type="text" id="ticket-title-input" placeholder="Enter a descriptive title" required autocomplete="off" data-lpignore="true" data-form-type="other" maxlength="40">
         </div>
 
         <div class="form-group">

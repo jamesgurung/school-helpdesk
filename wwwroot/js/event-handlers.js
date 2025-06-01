@@ -24,9 +24,20 @@ function setupTabNavigation() {
 
 function setupTicketDetails() {
   elements.backBtn.addEventListener('click', () => confirmNavigationWithUnsentText('go back', resetDetailsView));
-  
-  if (isManager) {
+    if (isManager) {
     elements.ticketTitleInput.addEventListener('blur', updateTicketTitle);
+    elements.ticketTitleInput.addEventListener('input', e => {
+      const text = e.target.innerText;
+      if (text.length > 40) {
+        e.target.innerText = text.substring(0, 40);
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(e.target);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    });
     elements.ticketTitleInput.addEventListener('keydown', e => { 
       if (e.key === 'Enter') { 
         e.preventDefault(); 

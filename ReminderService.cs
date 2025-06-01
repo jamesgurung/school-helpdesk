@@ -14,6 +14,8 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
       var ukNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, ukTimeZone);
       var ukNext = new DateTime(ukNow.Year, ukNow.Month, ukNow.Day, 7, 30, 0);
       if (ukNow >= ukNext) ukNext = ukNext.AddDays(1);
+      if (ukNext.DayOfWeek == DayOfWeek.Saturday) ukNext = ukNext.AddDays(2);
+      else if (ukNext.DayOfWeek == DayOfWeek.Sunday) ukNext = ukNext.AddDays(1);
       var utcNext = TimeZoneInfo.ConvertTimeToUtc(ukNext, ukTimeZone);
       var delay = utcNext - utcNow;
       if (delay < TimeSpan.Zero) delay = TimeSpan.Zero;
@@ -40,7 +42,7 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
     {
       var id = int.Parse(ticket.RowKey);
       if (!School.Instance.StaffByEmail.TryGetValue(ticket.PartitionKey, out var staff)) continue;
-      await EmailService.SendAssignEmailAsync(id, ticket, staff, AssignAction.Reminder);
+      await EmailService.SendTicketUpdateEmailAsync(id, ticket, staff, TicketUpdateAction.Reminder);
     }
   }
 }
