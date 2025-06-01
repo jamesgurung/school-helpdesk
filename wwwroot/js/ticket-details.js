@@ -22,6 +22,9 @@ function openTicketDetails(ticketId) {
   renderAssigneeInfo(ticket);
   elements.internalNoteCheckbox.checked = false;
   elements.newMessageInput.classList.remove('internal-note');
+  elements.salutation.style.opacity = '1';
+  elements.valediction.style.opacity = '1';
+  elements.salutation.querySelector('span').textContent = getSalutation(ticket.parentName);
   elements.sendMessageBtn.textContent = 'Send Message';
   elements.detailsEmpty.style.display = 'none';
   elements.detailsContent.style.display = 'block';

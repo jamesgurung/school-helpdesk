@@ -115,7 +115,12 @@ public static class BlobService
       staff = csv.GetRecords<CsvStaff>().Where(s => !string.IsNullOrWhiteSpace(s.Email)).OrderBy(s => s.LastName).ThenBy(s => s.FirstName).ThenBy(s => s.Email).ToList();
     }
 
-    School.Instance.StaffByEmail = staff.ToDictionary(s => s.Email, s => new Staff { Email = s.Email, Name = $"{s.Title} {s.FirstName[0]} {s.LastName}" }, StringComparer.OrdinalIgnoreCase);
+    School.Instance.StaffByEmail = staff.ToDictionary(s => s.Email, s => new Staff
+    {
+      Email = s.Email,
+      Name = $"{s.Title} {s.FirstName[0]} {s.LastName}",
+      FirstName = s.FirstName
+    }, StringComparer.OrdinalIgnoreCase);
 
     var studentsByParent = students
       .Select(s => new

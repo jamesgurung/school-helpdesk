@@ -99,6 +99,15 @@ function canSendMessages(ticket) {
 
 function autoExpandTextarea(textarea) {
   textarea.style.height = 'auto';
-  textarea.style.height = Math.max(80, textarea.scrollHeight) + 'px';
+  textarea.style.height = Math.max(150, textarea.scrollHeight) + 'px';
   elements.ticketDetails.scrollTop = elements.ticketDetails.scrollHeight;
+}
+
+function getSalutation(addressee) {
+  if (!addressee) return 'Parent/Carer';
+  const [a, b, ...c] = addressee.split(' ');
+  const parts = c.length ? [a, b, c.join(' ')] : b ? [a, b] : [a];
+  if (parts.length === 3 && parts[1].length === 1) return `${parts[0]} ${parts[2]}`;
+  if (parts.length >= 2) return addressee;
+  return 'Parent/Carer';
 }

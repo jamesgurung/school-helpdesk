@@ -7,6 +7,7 @@ function setupEventListeners() {
   setupAssigneeFeatures();
   setupTicketEditFeatures();
   setupDocumentClickHandlers();
+  setupIFrameStyles();
 }
 
 function setupTabNavigation() {
@@ -47,6 +48,8 @@ function setupTicketDetails() {
     if (!elements.sendMessageBtn.disabled) {
       elements.sendMessageBtn.textContent = adding ? 'Add Note' : 'Send Message';
     }
+    elements.salutation.style.opacity = adding ? '0.2' : '1';
+    elements.valediction.style.opacity = adding ? '0.2' : '1';
     updateCloseTicketButtonText();
   });
 }
@@ -184,8 +187,10 @@ function setupAssigneeEditListeners() {
 
 function setupTicketEditFeatures() { 
   if (isManager) { 
-    elements.studentSelect.addEventListener('change', updateTicketStudent); 
-    elements.parentSelect.addEventListener('change', updateTicketParent); 
+    elements.studentSelect.addEventListener('change', function() { this.blur(); }); 
+    elements.studentSelect.addEventListener('blur', updateTicketStudent); 
+    elements.parentSelect.addEventListener('change', function() { this.blur(); }); 
+    elements.parentSelect.addEventListener('blur', updateTicketParent); 
   } 
 }
 
@@ -212,6 +217,9 @@ function setupDocumentClickHandlers() {
     if (e.target.id === 'image-modal') {
       closeImageModal();
     }
+    if (e.target.id === 'original-email-modal') {
+      closeOriginalEmailModal();
+    }
   });
   document.addEventListener('keydown', e => { 
     if (e.key === 'Escape') { 
@@ -221,8 +229,19 @@ function setupDocumentClickHandlers() {
       if (document.getElementById('image-modal').style.display === 'block') {
         closeImageModal(); 
       }
+      if (document.getElementById('original-email-modal').style.display === 'block') {
+        closeOriginalEmailModal(); 
+      }
     } 
   });
+}
+
+function setupIFrameStyles() {
+  elements.iframe.onload = () => {
+    const style = elements.iframe.contentDocument.createElement('style');
+    style.textContent = '* { margin: 0; } html { padding: 10px; }';
+    elements.iframe.contentDocument.head.appendChild(style);
+  };
 }
 
 function updateCloseTicketButtonText() {

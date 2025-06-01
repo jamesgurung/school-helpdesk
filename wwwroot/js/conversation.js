@@ -5,7 +5,7 @@ function renderConversation() {
   const template = document.getElementById('message-template').content;
 
   state.conversation.forEach((msg, i) => {
-    const { isEmployee, isPrivate, authorName, timestamp, content, attachments } = msg;
+    const { isEmployee, isPrivate, authorName, timestamp, content, attachments, originalEmail } = msg;
     
     if (content === '#close' || content === '#reopen' || content.startsWith('#assign ')) {
       const eventEl = document.createElement('div');
@@ -51,6 +51,16 @@ function renderConversation() {
       : authorName;
 
     clone.querySelector('.message-date').textContent = formatDateTime(timestamp);
+    
+    if (originalEmail) {
+      const dateContainer = clone.querySelector('.message-date');
+      const emailIcon = document.createElement('span');
+      emailIcon.className = 'material-symbols-rounded original-email-icon';
+      emailIcon.textContent = 'email';
+      emailIcon.title = 'View original email';
+      emailIcon.onclick = () => showOriginalEmailModal(originalEmail);
+      dateContainer.insertAdjacentElement('afterbegin', emailIcon);
+    }
     clone.querySelector('.message-content').textContent = content;
     if (isOnBehalf) {
       const replyInstructions = '<p class="reply-note">Replies will be sent directly to the parent/carer.</p>';
@@ -72,6 +82,13 @@ function showImageModal(src, name) {
   document.getElementById('image-caption').textContent = name;
 }
 const closeImageModal = () => document.getElementById('image-modal').style.display = 'none';
+
+function showOriginalEmailModal(html) {
+  const modal = document.getElementById('original-email-modal');
+  modal.style.display = 'block';
+  elements.iframe.srcdoc = html;
+}
+const closeOriginalEmailModal = () => document.getElementById('original-email-modal').style.display = 'none';
 
 function renderMessageAttachments(container, attachments) {
   const wrap = document.createElement('div');
@@ -114,11 +131,14 @@ async function sendMessage() {
   elements.sendMessageBtn.disabled = true;
   elements.sendMessageBtn.textContent = 'Sending...';
   try {
-    const msg = await apiSendMessage(ticket.id, ticket.assigneeEmail, content, isPrivate, files);    state.conversation.push(msg);
+    const msg = await apiSendMessage(ticket.id, ticket.assigneeEmail, content, isPrivate, files);
+    state.conversation.push(msg);
     elements.newMessageInput.value = '';
     autoExpandTextarea(elements.newMessageInput);
     elements.internalNoteCheckbox.checked = false;
     elements.newMessageInput.classList.remove('internal-note');
+    elements.salutation.style.opacity = '1';
+    elements.valediction.style.opacity = '1';
     elements.messageAttachments.value = '';
     elements.attachmentList.innerHTML = '';
     renderConversation();

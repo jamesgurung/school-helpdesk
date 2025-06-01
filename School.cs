@@ -1,4 +1,6 @@
-﻿namespace SchoolHelpdesk;
+﻿using System.Text.Json.Serialization;
+
+namespace SchoolHelpdesk;
 
 public class School
 {
@@ -61,4 +63,6 @@ public class Staff
 {
   public string Email { get; set; }
   public string Name { get; set; }
+  [JsonIgnore]
+  public string FirstName { get; set; }
 }

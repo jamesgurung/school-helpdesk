@@ -69,7 +69,7 @@ public static class TableService
     return id;
   }
 
-  public static async Task ReassignTicketAsync(string assigneeEmail, int id, string newAssigneeEmail, string newAssigneeName)
+  public static async Task<TicketEntity> ReassignTicketAsync(string assigneeEmail, int id, string newAssigneeEmail, string newAssigneeName)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
     ArgumentNullException.ThrowIfNull(newAssigneeEmail);
@@ -80,6 +80,7 @@ public static class TableService
     ticket.Value.AssigneeName = newAssigneeName;
     await ticketsClient.AddEntityAsync(ticket.Value);
     await ticketsClient.DeleteEntityAsync(assigneeEmail, rowKey);
+    return ticket.Value;
   }
 
   public static async Task RenameTicketAsync(string assigneeEmail, int id, string newTitle)

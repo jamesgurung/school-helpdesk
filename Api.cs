@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PostmarkDotNet;
 using PostmarkDotNet.Webhooks;
 
 namespace SchoolHelpdesk;
@@ -73,7 +74,7 @@ public static class Api
       if (!School.Instance.StaffByEmail.TryGetValue(newAssigneeEmail, out var staff))
         return Results.BadRequest("New assignee email does not match any staff member.");
 
-      await TableService.ReassignTicketAsync(payload.AssigneeEmail, id, newAssigneeEmail, staff.Name);
+      var ticket = await TableService.ReassignTicketAsync(payload.AssigneeEmail, id, newAssigneeEmail, staff.Name);
 
       var currentUser = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
       await BlobService.AppendMessagesAsync(id, new Message
@@ -84,6 +85,12 @@ public static class Api
         IsPrivate = true,
         Content = $"#assign {staff.Name}"
       });
+
+      await EmailService.SendAssignEmailAsync(id, ticket, staff, AssignAction.Assigned);
+      if (payload.AssigneeEmail != "unassigned" && School.Instance.StaffByEmail.TryGetValue(payload.AssigneeEmail, out var oldAssignee))
+      {
+        await EmailService.SendAssignEmailAsync(id, ticket, oldAssignee, AssignAction.Unassigned);
+      }
 
       return Results.NoContent();
     });
@@ -180,9 +187,6 @@ public static class Api
 
     group.MapPost("/tickets/{id:int}/message", async (int id, HttpContext context) =>
     {
-      if (!context.User.IsInRole(AuthConstants.Manager) && !await TableService.TicketExistsAsync(context.User.Identity.Name, id))
-        return Results.Forbid();
-
       if (!context.Request.HasFormContentType)
         return Results.BadRequest("Request must be a form.");
 
@@ -207,18 +211,39 @@ public static class Api
         if (!Attachment.ValidateAttachment(file.Name, file.Length, out var errorMessage)) return Results.BadRequest(errorMessage);
       }
 
-      var attachments = new List<Attachment>();
+      if (!context.User.IsInRole(AuthConstants.Manager) && assigneeEmail != context.User.Identity.Name)
+        return Results.Forbid();
+
+      var ticket = await TableService.GetTicketAsync(assigneeEmail, id);
+
+      if (ticket.StudentFirstName is null || ticket.ParentName is null || ticket.AssigneeName is null)
+        return Results.BadRequest("Ticket must have a student, parent, and assignee before adding a message.");
+
+      var attachments = new List<Attachment>(form.Files.Count);
+      var postmarkAttachments = new List<PostmarkMessageAttachment>(form.Files.Count);
       foreach (var file in form.Files)
       {
         using var stream = file.OpenReadStream();
         var blobName = await BlobService.UploadAttachmentAsync(stream, file.FileName);
-        attachments.Add(new Attachment
+        attachments.Add(new()
         {
           FileName = file.FileName,
           Url = blobName
         });
+        if (isPrivate) continue;
+        stream.Position = 0;
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        var bytes = memoryStream.ToArray();
+        postmarkAttachments.Add(new()
+        {
+          Name = file.FileName,
+          Content = Convert.ToBase64String(bytes),
+          ContentType = file.ContentType
+        });
       }
 
+      var tasks = new List<Task>(3);
       var user = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
       var message = new Message
       {
@@ -229,12 +254,15 @@ public static class Api
         IsPrivate = isPrivate,
         Attachments = attachments.Count > 0 ? attachments : null
       };
-      await BlobService.AppendMessagesAsync(id, message);
+      tasks.Add(BlobService.AppendMessagesAsync(id, message));
 
       if (!isPrivate)
       {
-        await TableService.ClearLastParentMessageDateAsync(assigneeEmail, id);
+        tasks.Add(EmailService.SendParentReplyAsync(id, ticket, message, postmarkAttachments));
+        tasks.Add(TableService.ClearLastParentMessageDateAsync(assigneeEmail, id));
       }
+
+      await Task.WhenAll(tasks);
 
       if (message.Attachments is not null)
       {

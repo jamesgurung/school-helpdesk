@@ -147,7 +147,51 @@ public static partial class EmailService
     }
   }
 
-  public static async Task SendAsync(string to, string subject, string body, string tag, string threadId = null)
+  public static async Task SendAssignEmailAsync(int id, TicketEntity ticket, Staff staff, AssignAction action)
+  {
+    ArgumentNullException.ThrowIfNull(ticket);
+    ArgumentNullException.ThrowIfNull(staff);
+
+    var (verb, intro, outro) = action switch
+    {
+      AssignAction.Assigned => (
+        "Assigned",
+        "We've received a new enquiry and thought you might be the best person to support:\n\n",
+        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
+      ),
+      AssignAction.Unassigned => (
+        "Unassigned",
+        "The following enquiry has been transferred to another member of staff:\n\n",
+        "No further action is required on your part.\n\n"
+      ),
+      AssignAction.Reminder => (
+        "Reminder",
+        "This is a gentle reminder about the open helpdesk enquiry below:\n\n",
+        "When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
+      ),
+      _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
+    };
+
+    var subject = $"Ticket {verb} - {ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}";
+    var body = $"Hi {staff.FirstName}\n\n" + intro +
+      $"<b>Title:</b> [#{id}] {ticket.Title}\n" +
+      $"<b>Parent/Carer:</b> {ticket.ParentName}\n" +
+      $"<b>Student:</b> {ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}\n\n" + outro +
+      "Best wishes\n\n" + School.Instance.Name;
+    await SendAsync(staff.Email, subject, body, EmailTag.Staff);
+  }
+
+  public static async Task SendParentReplyAsync(int id, TicketEntity ticket, Message message, List<PostmarkMessageAttachment> attachments)
+  {
+    ArgumentNullException.ThrowIfNull(ticket);
+    var subject = $"[Ticket #{id}] {ticket.Title}";
+    var body = $"<b>{message.AuthorName} has responded to your enquiry:</b>\n\n" +
+      $"Dear {GetSalutation(ticket.ParentName)}\n\n{message.Content}\n\n" +
+      $"Best wishes\n\n{GetSalutation(message.AuthorName)}";
+    await SendAsync(ticket.ParentEmail, subject, body, EmailTag.Parent, null, attachments);
+  }
+
+  private static async Task SendAsync(string to, string subject, string body, string tag, string threadId = null, List<PostmarkMessageAttachment> attachments = null)
   {
     var client = new PostmarkClient(_serverToken);
     var message = new PostmarkMessage
@@ -159,6 +203,7 @@ public static partial class EmailService
       From = $"\"{School.Instance.Name}\" <{School.Instance.HelpdeskEmail}>",
       Tag = tag,
       MessageStream = "outbound",
+      Attachments = attachments,
       TrackOpens = false,
       TrackLinks = LinkTrackingOptions.None
     };
@@ -170,14 +215,16 @@ public static partial class EmailService
     await client.SendMessageAsync(message);
   }
 
-  public static string ComposeHtmlEmail(string body)
+  private static string ComposeHtmlEmail(string body)
   {
-    var html = School.Instance.HtmlEmailTemplate.Replace("{{BODY}}", body.Replace("\n", "<br>"), StringComparison.OrdinalIgnoreCase);
+    body = body.Replace("\n", "<br>", StringComparison.OrdinalIgnoreCase).Trim();
+    var html = School.Instance.HtmlEmailTemplate.Replace("{{BODY}}", body, StringComparison.OrdinalIgnoreCase);
     return PreMailer.Net.PreMailer.MoveCssInline(html, true, stripIdAndClassAttributes: true, removeComments: true).Html;
   }
 
-  public static string ComposeTextEmail(string body)
+  private static string ComposeTextEmail(string body)
   {
+    body = body.Replace("<b>", string.Empty, StringComparison.OrdinalIgnoreCase).Replace("</b>", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
     return School.Instance.TextEmailTemplate.Replace("{{BODY}}", body, StringComparison.OrdinalIgnoreCase);
   }
 
@@ -229,6 +276,13 @@ public static partial class EmailService
     return attachments.Count == 0 ? null : attachments;
   }
 
+  private static string GetSalutation(string addressee)
+  {
+    if (string.IsNullOrEmpty(addressee)) return "Parent/Carer";
+    var tokens = addressee.Split(' ', 3);
+    return tokens.Length == 3 && tokens[1].Length == 1 ? $"{tokens[0]} {tokens[2]}" : (tokens.Length >= 2 ? addressee : "Parent/Carer");
+  }
+
   [GeneratedRegex(@"\[Ticket\s*#(\d+)\]")]
   private static partial Regex TicketNumberRegex();
 }
@@ -245,4 +299,11 @@ public enum RejectionReason
   UnknownSender,
   StaffSender,
   UnknownTicket
+}
+
+public enum AssignAction
+{
+  Assigned,
+  Unassigned,
+  Reminder
 }

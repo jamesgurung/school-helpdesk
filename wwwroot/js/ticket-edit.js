@@ -19,9 +19,9 @@ async function updateTicketTitle() {
   if (newTitle === ticket.title) return;
 
   try {
-    await apiUpdateTicketTitle(ticket.id, ticket.assigneeEmail, newTitle);
     ticket.title = newTitle;
     renderTicketInList(ticket);
+    await apiUpdateTicketTitle(ticket.id, ticket.assigneeEmail, newTitle);
   } catch (error) {
     console.error('Failed to update title:', error);
     elements.ticketTitleInput.innerText = ticket.title;
@@ -41,7 +41,7 @@ async function updateTicketStudent() {
   if (!student) return;
 
   try {
-    await apiUpdateTicketStudent(ticket.id, ticket.assigneeEmail, firstName, lastName, student.tutorGroup);
+    const isChanged = ticket.studentFirstName !== firstName || ticket.studentLastName !== lastName;
     ticket.studentFirstName = firstName;
     ticket.studentLastName = lastName;
     ticket.tutorGroup = student.tutorGroup;
@@ -51,6 +51,8 @@ async function updateTicketStudent() {
     renderParentInfo(ticket);
     renderAssigneeInfo(ticket);
     updateMessageControlsState(ticket);
+    if (!isChanged) return;
+    await apiUpdateTicketStudent(ticket.id, ticket.assigneeEmail, firstName, lastName, student.tutorGroup);
   } catch (error) {
     console.error('Failed to update student:', error);
     elements.studentSelect.value = `${ticket.studentFirstName}|${ticket.studentLastName}`;
@@ -68,9 +70,8 @@ async function updateTicketParent() {
   if (!selectedParent) return;
 
   try {
-    await apiUpdateTicketParent(ticket.id, ticket.assigneeEmail, parentName);
+    const isChanged = ticket.parentName !== parentName;
     ticket.parentName = parentName;
-    ticket.parentEmail = parentEmail;
 
     const newChildren = selectedParent.children;
     const currentStudent = newChildren.find(child =>
@@ -87,6 +88,9 @@ async function updateTicketParent() {
     renderStudentInfo(ticket, newChildren);
     renderParentInfo(ticket);
     updateMessageControlsState(ticket);
+    elements.salutation.querySelector('span').textContent = getSalutation(parentName);
+    if (!isChanged) return;
+    await apiUpdateTicketParent(ticket.id, ticket.assigneeEmail, parentName);
   } catch (error) {
     console.error('Failed to update parent:', error);
     const currentParents = getTicketParents();
@@ -111,7 +115,6 @@ async function updateTicketAssignee() {
   }
 
   try {
-    await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
     ticket.assigneeEmail = state.activeEditAssignee.email;
     ticket.assigneeName = state.activeEditAssignee.name;
     addConversationEntry(`#assign ${state.activeEditAssignee.name}`);
@@ -119,6 +122,7 @@ async function updateTicketAssignee() {
     renderAssigneeInfo(ticket);
     state.activeEditAssignee = null;
     updateMessageControlsState(ticket);
+    await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
   } catch (error) {
     console.error('Failed to update assignee:', error);
   }
@@ -131,13 +135,13 @@ async function toggleTicketStatus() {
   const newStatus = !ticket.isClosed;
 
   try {
-    await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, newStatus);
     ticket.isClosed = newStatus;
     addConversationEntry(newStatus ? '#close' : '#reopen');
     renderTickets(state.activeTab);    
     elements.closeTicketBtn.textContent = newStatus ? 'Reopen Ticket' : 'Close Ticket';
     updateCloseTicketButtonText();
     updateMessageControlsState(ticket);
+    await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, newStatus);
   } catch (error) {
     console.error('Failed to update ticket status:', error);
   }
@@ -148,9 +152,6 @@ function toggleSelectEdit(selectEl, infoSection, getOptions, updateFn) {
   if (options.length <= 1) return;
   const infoContainer = infoSection.querySelector('.info-container');
   if (selectEl.parentElement === infoSection) {
-    selectEl.removeEventListener('change', selectEl._changeHandler);
-    selectEl.removeEventListener('blur', selectEl._blurHandler);
-    selectEl._blurPrevented = true;
     updateFn();
     selectEl.classList.add('hidden-select');
     document.querySelector('.hidden-selects').appendChild(selectEl);
@@ -161,20 +162,6 @@ function toggleSelectEdit(selectEl, infoSection, getOptions, updateFn) {
     infoSection.appendChild(selectEl);
     selectEl.style.display = 'block';
     selectEl.focus();
-    selectEl._changeHandler = () => {
-      selectEl._blurPrevented = true;
-      toggleSelectEdit(selectEl, infoSection, getOptions, updateFn);
-    };
-    selectEl._blurHandler = () => {
-      setTimeout(() => {
-        if (!selectEl._blurPrevented && document.activeElement !== selectEl) {
-          toggleSelectEdit(selectEl, infoSection, getOptions, updateFn);
-        }
-        selectEl._blurPrevented = false;
-      }, 100);
-    };
-    selectEl.addEventListener('change', selectEl._changeHandler, { once: true });
-    selectEl.addEventListener('blur', selectEl._blurHandler, { once: true });
   }
 }
 

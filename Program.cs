@@ -35,10 +35,11 @@ builder.Services.Configure<RouteOptions>(options => { options.LowercaseUrls = tr
 builder.Services.Configure<JsonOptions>(options => { options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase; });
 builder.Services.AddRazorPages(options => { options.Conventions.AllowAnonymousToFolder("/auth"); });
 
-var minify = !builder.Environment.IsDevelopment();
+var isProduction = !builder.Environment.IsDevelopment();
+
 builder.Services.AddWebOptimizer(pipeline =>
 {
-  if (minify)
+  if (isProduction)
   {
     pipeline.MinifyCssFiles("css/*.css");
     pipeline.MinifyJsFiles("js/*.js");
@@ -46,6 +47,11 @@ builder.Services.AddWebOptimizer(pipeline =>
       "js/ticket-list.js", "js/ticket-details.js", "js/ticket-edit.js", "js/modal.js", "js/event-handlers.js");
   }
 });
+
+if (isProduction)
+{
+  builder.Services.AddHostedService<ReminderService>();
+}
 
 var app = builder.Build();
 

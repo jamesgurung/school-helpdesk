@@ -77,7 +77,9 @@
       <h3 class="section-heading">Conversation</h3>
       <div class="conversation" id="conversation"></div>
       <div class="new-message">
+        <div id="salutation">Dear <span>Parent/Carer</span></div>
         <textarea id="new-message" placeholder="Type your message here..."></textarea>
+        <div id="valediction">Best wishes<br /><span></span></div>
         <div class="message-attachment-controls">
           <div id="attachment-list" class="attachment-list"></div>
         </div>
@@ -261,6 +263,18 @@
     <span class="close-modal material-symbols-rounded" onclick="closeImageModal()">close</span>
     <img id="modal-image" class="modal-image">
     <div id="image-caption" class="image-caption"></div>
+  </div>
+</div>
+
+<div class="modal" id="original-email-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Email Received</h2>
+      <span class="close-modal material-symbols-rounded" onclick="closeOriginalEmailModal()">close</span>
+    </div>
+    <div class="modal-body">
+      <iframe id="original-email-frame" sandbox="allow-same-origin" srcdoc=""></iframe>
+    </div>
   </div>
 </div>
 

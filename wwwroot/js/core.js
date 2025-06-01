@@ -43,7 +43,10 @@ const elements = {
   parentInfo: document.getElementById('parent-info'),
   assigneeInfoDisplay: document.getElementById('assignee-info'),
   assigneeNameDisplay: document.getElementById('assignee-name-display'),
-  assigneeEditIcon: document.getElementById('assignee-edit-icon')
+  assigneeEditIcon: document.getElementById('assignee-edit-icon'),
+  iframe: document.getElementById('original-email-frame'),
+  salutation: document.getElementById('salutation'),
+  valediction: document.getElementById('valediction')
 };
 
 const state = {
@@ -147,6 +150,7 @@ async function init() {
     setupEventListeners();
     populateNewTicketForm();
     state.timeUpdateInterval = setInterval(updateAllElapsedTimes, 1000);
+    elements.valediction.querySelector('span').textContent = getSalutation(currentUser);
   } catch (error) {
     console.error('Failed to initialize the app:', error);
     await fetchUsers();

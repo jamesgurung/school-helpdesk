@@ -67,6 +67,9 @@ function resetDetailsView() {
   elements.ticketDetails.classList.remove('open');
   elements.internalNoteCheckbox.checked = false;
   elements.newMessageInput.classList.remove('internal-note');
+  elements.salutation.style.opacity = '1';
+  elements.valediction.style.opacity = '1';
+  elements.salutation.querySelector('span').textContent = 'Parent/Carer';
   elements.newMessageInput.value = '';
   autoExpandTextarea(elements.newMessageInput);
   elements.messageAttachments.value = '';
