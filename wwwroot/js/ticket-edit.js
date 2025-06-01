@@ -132,16 +132,18 @@ async function toggleTicketStatus() {
   const ticket = getCurrentTicket();
   if (!ticket) return;
 
-  const newStatus = !ticket.isClosed;
-
   try {
-    ticket.isClosed = newStatus;
-    addConversationEntry(newStatus ? '#close' : '#reopen');
-    renderTickets(state.activeTab);    
-    elements.closeTicketBtn.textContent = newStatus ? 'Reopen Ticket' : 'Close Ticket';
-    updateCloseTicketButtonText();
-    updateMessageControlsState(ticket);
-    await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, newStatus);
+    ticket.isClosed = !ticket.isClosed;
+    if (ticket.isClosed) {
+      resetDetailsView();
+    } else {
+      addConversationEntry('#reopen');
+      elements.closeTicketBtn.textContent = 'Close Ticket';
+      updateCloseTicketButtonText();
+      updateMessageControlsState(ticket);
+    }
+    renderTickets(state.activeTab);
+    await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, ticket.isClosed);
   } catch (error) {
     console.error('Failed to update ticket status:', error);
   }

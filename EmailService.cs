@@ -64,7 +64,7 @@ public static partial class EmailService
       if (ticket is not null && string.Equals(ticket.ParentEmail, parentEmail, StringComparison.OrdinalIgnoreCase))
       {
         // Existing ticket for this parent
-        var parentName = ticket.ParentName ?? string.Join(" / ", parents.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase));
+        var parentName = ticket.ParentName ?? "Parent/Carer";
         var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, true);
         var attachments = await UploadAttachmentsAsync(message.Attachments);
         var messages = new List<Message>()
@@ -107,7 +107,6 @@ public static partial class EmailService
     else
     {
       // New ticket
-      var parentNames = string.Join(" / ", parents.Select(p => p.Name).Distinct(StringComparer.OrdinalIgnoreCase));
       var parentName = parents.Count == 1 ? parents[0].Name : null;
       var students = parents.SelectMany(o => o.Children).DistinctBy(o => (o.FirstName, o.LastName)).ToList();
       var student = students.Count == 1 ? students[0] : null;
@@ -138,7 +137,7 @@ public static partial class EmailService
       {
         new()
         {
-          AuthorName = parentNames,
+          AuthorName = parentName ?? "Parent/Carer",
           IsEmployee = false,
           IsPrivate = false,
           Timestamp = DateTime.UtcNow,
@@ -181,38 +180,39 @@ public static partial class EmailService
     {
       TicketUpdateAction.Assigned => (
         "New Ticket",
-        "We've received a new enquiry and thought you might be the best person to support:\n\n",
-        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
+        "You have received a new enquiry through our helpdesk:",
+        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond."
       ),
       TicketUpdateAction.Unassigned => (
         "Ticket Reassigned",
-        "The following enquiry has been transferred to another member of staff:\n\n",
-        "No further action is required on your part.\n\n"
+        "The following enquiry has been transferred to another member of staff:",
+        "No further action is required on your part."
       ),
       TicketUpdateAction.Reminder => (
         "Ticket Reminder",
-        "This is a gentle reminder about the open helpdesk enquiry below:\n\n",
-        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
+        "This is a gentle reminder about the open helpdesk enquiry below:",
+        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond."
       ),
       TicketUpdateAction.NotifyNew => (
         "Ticket Received",
-        "A new helpdesk enquiry has been received by email:\n\n",
-        $"Please assign a member of staff on the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a>.\n\n"
+        "A new helpdesk enquiry has been received by email:",
+        $"Please assign a member of staff on the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a>."
       ),
       TicketUpdateAction.Updated => (
         "Response Received",
-        "The parent/carer has emailed a new reply to this ticket:\n\n",
-        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
+        "You have received a new reply to this enquiry:",
+        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond."
       ),
       _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
     };
 
-    var subject = $"{heading} - {ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}";
-    var body = $"Hi {staff.FirstName}\n\n{intro}" +
-      $"<b>Title:</b> [#{id}] {ticket.Title}\n" +
-      $"<b>Parent/Carer:</b> {ticket.ParentName ?? ticket.ParentEmail}\n" +
-      $"<b>Student:</b> {(ticket.StudentFirstName is null ? "Not Set" : $"{ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}")}\n\n{outro}" +
-      $"Best wishes\n\n{School.Instance.Name}";
+    var studentName = ticket.StudentFirstName is null ? null : $"{ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}";
+    var subject = $"{heading}{(studentName is null ? string.Empty : $" - {studentName}")}";
+    var body = $"Hi {staff.FirstName}\n\n{intro}\n\n" +
+      $"<b>Ticket #{id}</b>\n" +
+      $"<b>{ticket.Title}</b>\n" +
+      $"<b>From {ticket.ParentName ?? ticket.ParentEmail}{(studentName is null ? string.Empty : $" (re. {studentName})")}</b>\n\n" +
+      $"{outro}\n\nBest wishes\n\n{School.Instance.Name}";
     await SendAsync(staff.Email, subject, body, EmailTag.Staff);
   }
 
@@ -220,7 +220,7 @@ public static partial class EmailService
   {
     ArgumentNullException.ThrowIfNull(ticket);
     var subject = $"[Ticket #{id}] {ticket.Title}";
-    var body = $"<b>Your enquiry has received a response from {message.AuthorName}:</b>\n\n{TextFormatting.CleanText(message.Content)}";
+    var body = $"<b>Your enquiry received a response from {message.AuthorName}:</b>\n\n{TextFormatting.CleanText(message.Content)}";
     await SendAsync(ticket.ParentEmail, subject, body, EmailTag.Parent, null, attachments);
   }
 

@@ -223,18 +223,8 @@ function renderTicketInList(ticket) {
 async function closeTicket() {
   const ticket = getCurrentTicket();
   if (!ticket) return;
-  
-  // Only allow closing if all fields are complete or if ticket is already closed (reopening)
-  if (!ticket.isClosed && !canSendMessages(ticket)) {
-    return;
-  }
-
-  const hasMessage = elements.newMessageInput.value.trim().length > 0;
-
-  if (hasMessage) {
-    await sendMessage();
-  }
-
+  if (!ticket.isClosed && !canSendMessages(ticket)) return;
+  if (elements.newMessageInput.value.trim().length > 0) await sendMessage();
   toggleTicketStatus();
 }
 
