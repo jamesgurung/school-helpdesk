@@ -206,6 +206,9 @@ function setupTicketEditFeatures() {
 }
 
 function setupDocumentClickHandlers() {
+  document.getElementById('close-image-modal').addEventListener('click', closeImageModal);
+  document.getElementById('close-original-email-modal').addEventListener('click', closeOriginalEmailModal);
+  
   document.addEventListener('click', e => {
     if (!elements.parentSearchInput.contains(e.target) && !elements.parentAutocompleteResults.contains(e.target)) {
       elements.parentAutocompleteResults.style.display = 'none';

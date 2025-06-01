@@ -260,7 +260,7 @@
 
 <div class="modal" id="image-modal">
   <div class="image-modal-content">
-    <span class="close-modal material-symbols-rounded" onclick="closeImageModal()">close</span>
+    <span class="close-modal material-symbols-rounded" id="close-image-modal">close</span>
     <img id="modal-image" class="modal-image">
     <div id="image-caption" class="image-caption"></div>
   </div>
@@ -270,7 +270,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h2>Email Received</h2>
-      <span class="close-modal material-symbols-rounded" onclick="closeOriginalEmailModal()">close</span>
+      <span class="close-modal material-symbols-rounded" id="close-original-email-modal">close</span>
     </div>
     <div class="modal-body">
       <iframe id="original-email-frame" sandbox="allow-same-origin" srcdoc=""></iframe>

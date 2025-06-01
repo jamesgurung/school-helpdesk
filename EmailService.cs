@@ -111,7 +111,7 @@ public static partial class EmailService
       var students = parents.SelectMany(o => o.Children).DistinctBy(o => (o.FirstName, o.LastName)).ToList();
       var student = students.Count == 1 ? students[0] : null;
       var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
-      var subject = message.Subject.Trim();
+      var subject = string.IsNullOrWhiteSpace(message.Subject) ? "Enquiry" : message.Subject.Trim();
       if (subject.Length > 40) subject = subject[..37] + "...";
 
       var ticket = new TicketEntity
