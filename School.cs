@@ -11,6 +11,7 @@ public class School
   public string HelpdeskEmail { get; set; }
   public string DebugEmail { get; set; }
   public string SyncApiKey { get; set; }
+  public bool NotifyFirstManager { get; set; }
   public IList<string> Admins { get; set; }
   public IList<string> Managers { get; set; }
 

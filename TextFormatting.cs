@@ -18,7 +18,7 @@ public static partial class TextFormatting
 
   public static string CleanText(string text)
   {
-    return string.IsNullOrWhiteSpace(text) ? string.Empty : WebUtility.HtmlEncode(text).Replace("\r", "");
+    return string.IsNullOrWhiteSpace(text) ? string.Empty : WebUtility.HtmlEncode(text).Replace("\r", "").Trim();
   }
 
   public static EmailBody ParseEmailBody(string textBody, string htmlBody, string strippedTextReply, bool extractReply)

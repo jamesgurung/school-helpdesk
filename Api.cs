@@ -199,7 +199,7 @@ public static class Api
       if (string.IsNullOrWhiteSpace(assigneeEmail))
         return Results.BadRequest("Assignee email is required.");
 
-      var content = TextFormatting.CleanText(form["content"].ToString());
+      var content = form["content"].ToString();
       if (string.IsNullOrWhiteSpace(content))
         return Results.BadRequest("Message content is required.");
 
@@ -243,8 +243,13 @@ public static class Api
         });
       }
 
-      var tasks = new List<Task>(3);
       var user = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
+      if (!isPrivate)
+      {
+        content = $"Dear {GetSalutation(ticket.ParentName)}\n\n{content}\n\nBest wishes\n\n{GetSalutation(user)}";
+      }
+
+      var tasks = new List<Task>(3);
       var message = new Message
       {
         AuthorName = user,
@@ -303,5 +308,12 @@ public static class Api
       await BlobService.LoadConfigAsync();
       return Results.NoContent();
     });
+  }
+
+  private static string GetSalutation(string addressee)
+  {
+    if (string.IsNullOrEmpty(addressee)) return "Parent/Carer";
+    var tokens = addressee.Split(' ', 3);
+    return tokens.Length == 3 && tokens[1].Length == 1 ? $"{tokens[0]} {tokens[2]}" : (tokens.Length >= 2 ? addressee : "Parent/Carer");
   }
 }

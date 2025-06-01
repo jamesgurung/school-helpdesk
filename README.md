@@ -1,8 +1,22 @@
 # School Helpdesk
 
-School Helpdesk is a free, open-source web application that that makes it easy for parents and carers to submit tickets for streamlined communication with school staff.
+School Helpdesk is a free, open-source web application designed to streamline communication between parents/carers and staff.
 
-> :warning: This project is in early development and it is not yet ready for production use.
+Bring your own Postmark account and OpenAI key and deploy effortlessly to Microsoft Azure.
+
+![Screenshot of School Helpdesk](examples/screenshot.png)
+
+### Features
+
+* A simple, professional ticketing interface
+* Email-based ticket submission, filtered by an allowlist of verified parent addresses
+* Tagging of parent and student information
+* Ticket assignment to specific staff members
+* Automated update notifications and follow-up reminders
+* Customisable email templates
+* Role-based access control for managers and staff
+* Support for all screen sizes, including mobile
+* Single sign-on (SSO) using Microsoft 365
 
 ### Setup
 
@@ -61,11 +75,12 @@ School Helpdesk is a free, open-source web application that that makes it easy f
     * `Postmark__InboundAuthKey` - a secret UUID of your choice, used to verify that incoming emails are from Postmark
     * `Postmark__ServerToken` - the token for your Postmark server
     * `School__Admins__0` - the email address of the first admin user, who has full administrative access (subsequent admins can be configured by adding items with incrementing indices)
-    * `School__Managers__0` - the email address of the first manager, who can create, view, and edit all tickets (subsequent managers can be configured by adding items with incrementing indices)
     * `School__AppWebsite` - the host name where this app will be hosted, e.g. `example.com`
     * `School__HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
+    * `School__Managers__0` - the email address of the first manager, who can create, view, and edit all tickets (subsequent managers can be configured by adding items with incrementing indices)
     * `School__Name` - the name of your school
-    * `School__SyncApiKey` - a secret key to be used when updating the `students.csv` and `staff.csv` files with an automated script (optional)
+    * `School__NotifyFirstManager` - set to `true` if you want the first manager configured above to be notified of new tickets submitted by email
+    * `School__SyncApiKey` - the secret key to use if you update the `students.csv` and `staff.csv` files with an automated script (optional)
 
 10. Configure your Postmark server's Default Inbound Stream settings:
     * Set the webhook to `https://<app-website-domain>/inbound?auth=<authkey>`

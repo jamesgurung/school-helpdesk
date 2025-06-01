@@ -144,6 +144,11 @@ public static partial class EmailService
 
       await BlobService.CreateConversationAsync(id, messages);
       await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title);
+
+      if (School.Instance.NotifyFirstManager && School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var manager))
+      {
+        await SendAssignEmailAsync(id, ticket, manager, AssignAction.NotifyNew);
+      }
     }
   }
 
@@ -152,32 +157,37 @@ public static partial class EmailService
     ArgumentNullException.ThrowIfNull(ticket);
     ArgumentNullException.ThrowIfNull(staff);
 
-    var (verb, intro, outro) = action switch
+    var (heading, intro, outro) = action switch
     {
       AssignAction.Assigned => (
-        "Assigned",
+        "New Ticket",
         "We've received a new enquiry and thought you might be the best person to support:\n\n",
         $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
       ),
       AssignAction.Unassigned => (
-        "Unassigned",
+        "Ticket Reassigned",
         "The following enquiry has been transferred to another member of staff:\n\n",
         "No further action is required on your part.\n\n"
       ),
       AssignAction.Reminder => (
-        "Reminder",
+        "Ticket Reminder",
         "This is a gentle reminder about the open helpdesk enquiry below:\n\n",
-        "When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
+        $"When you have a moment, please sign in to the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond.\n\n"
+      ),
+      AssignAction.NotifyNew => (
+        "Ticket Received",
+        "A new helpdesk enquiry has been received by email:\n\n",
+        $"Please assign a member of staff on the <a href=\"{School.Instance.AppWebsite}\">helpdesk portal</a>.\n\n"
       ),
       _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
     };
 
-    var subject = $"Ticket {verb} - {ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}";
-    var body = $"Hi {staff.FirstName}\n\n" + intro +
+    var subject = $"{heading} - {ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}";
+    var body = $"Hi {staff.FirstName}\n\n{intro}" +
       $"<b>Title:</b> [#{id}] {ticket.Title}\n" +
-      $"<b>Parent/Carer:</b> {ticket.ParentName}\n" +
-      $"<b>Student:</b> {ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}\n\n" + outro +
-      "Best wishes\n\n" + School.Instance.Name;
+      $"<b>Parent/Carer:</b> {ticket.ParentName ?? ticket.ParentEmail}\n" +
+      $"<b>Student:</b> {(ticket.StudentFirstName is null ? "Not Set" : $"{ticket.StudentFirstName} {ticket.StudentLastName} {ticket.TutorGroup}")}\n\n{outro}" +
+      $"Best wishes\n\n{School.Instance.Name}";
     await SendAsync(staff.Email, subject, body, EmailTag.Staff);
   }
 
@@ -185,9 +195,7 @@ public static partial class EmailService
   {
     ArgumentNullException.ThrowIfNull(ticket);
     var subject = $"[Ticket #{id}] {ticket.Title}";
-    var body = $"<b>{message.AuthorName} has responded to your enquiry:</b>\n\n" +
-      $"Dear {GetSalutation(ticket.ParentName)}\n\n{message.Content}\n\n" +
-      $"Best wishes\n\n{GetSalutation(message.AuthorName)}";
+    var body = $"<b>Your enquiry has received a response from {message.AuthorName}:</b>\n\n{TextFormatting.CleanText(message.Content)}";
     await SendAsync(ticket.ParentEmail, subject, body, EmailTag.Parent, null, attachments);
   }
 
@@ -276,13 +284,6 @@ public static partial class EmailService
     return attachments.Count == 0 ? null : attachments;
   }
 
-  private static string GetSalutation(string addressee)
-  {
-    if (string.IsNullOrEmpty(addressee)) return "Parent/Carer";
-    var tokens = addressee.Split(' ', 3);
-    return tokens.Length == 3 && tokens[1].Length == 1 ? $"{tokens[0]} {tokens[2]}" : (tokens.Length >= 2 ? addressee : "Parent/Carer");
-  }
-
   [GeneratedRegex(@"\[Ticket\s*#(\d+)\]")]
   private static partial Regex TicketNumberRegex();
 }
@@ -305,5 +306,6 @@ public enum AssignAction
 {
   Assigned,
   Unassigned,
-  Reminder
+  Reminder,
+  NotifyNew
 }
