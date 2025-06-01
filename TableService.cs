@@ -1,5 +1,6 @@
 ﻿using Azure;
 using Azure.Data.Tables;
+using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
 namespace SchoolHelpdesk;
@@ -175,6 +176,7 @@ public class TicketEntity : ITableEntity
 
 public class NewTicketEntity : TicketEntity
 {
+  [IgnoreDataMember]
   public string Message { get; set; }
 }
 

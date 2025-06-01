@@ -32,6 +32,9 @@ public static class Api
       if (string.IsNullOrWhiteSpace(ticket.PartitionKey) || string.IsNullOrWhiteSpace(ticket.AssigneeName))
         return Results.BadRequest("Assignee email and name are required.");
 
+      if (!School.Instance.StaffByEmail.TryGetValue(ticket.PartitionKey, out var assignee))
+        return Results.BadRequest("Assignee email does not match any staff member.");
+
       if (string.IsNullOrWhiteSpace(ticket.ParentEmail) || string.IsNullOrWhiteSpace(ticket.ParentName) || string.IsNullOrWhiteSpace(ticket.ParentRelationship))
         return Results.BadRequest("Parent email, name, and relationship are required.");
 
@@ -67,11 +70,14 @@ public static class Api
       var ticketEntity = ticket as TicketEntity;
 
       var id = await TableService.CreateTicketAsync(ticketEntity);
-      await BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = message },
-        new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = DateTime.UtcNow, Content = $"#assign {ticketEntity.AssigneeName}" });
-
-      await EmailService.SendTicketCreatedEmailAsync(parent.Email, id, ticket.Title, user, GetSalutation(parent.Name));
-
+      var tasks = new List<Task>
+      {
+        BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = message },
+          new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = DateTime.UtcNow, Content = $"#assign {assignee.Name}" }),
+        EmailService.SendTicketCreatedEmailAsync(parent.Email, id, ticket.Title, user, GetSalutation(parent.Name)),
+        EmailService.SendTicketUpdateEmailAsync(id, ticketEntity, assignee, TicketUpdateAction.Assigned)
+      };
+      await Task.WhenAll(tasks);
       return Results.Created((string)null, ticketEntity.RowKey);
     });
 

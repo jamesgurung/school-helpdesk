@@ -6,6 +6,7 @@ function openNewTicketModal() {
 }
 
 function closeNewTicketModal() {
+  elements.createNewTicketBtn.disabled = false;
   elements.newTicketModal.style.display = 'none';
   elements.newTicketForm.reset();
   elements.parentAutocompleteResults.style.display = 'none';
@@ -91,7 +92,7 @@ async function createNewTicket() {
     parentRelationship: selectedChild?.parentRelationship || '',
     message: message
   };
-
+  elements.createNewTicketBtn.disabled = true;
   const newTicketId = await apiCreateTicket(newTicketData);
 
   const newTicket = {
