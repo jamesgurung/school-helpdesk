@@ -72,7 +72,8 @@
   align-items: center;
   justify-content: center;
   height: 90dvh;
-  padding: 0;
+  padding: 0 20px;
+  text-align: center;
 }
 
 .landing h1 {

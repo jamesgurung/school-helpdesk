@@ -27,8 +27,9 @@ Bring your own Postmark account and OpenAI key and deploy effortlessly to Micros
 2. Create an [OpenAI](https://platform.openai.com) account and generate an API key.
 
 3. Create a general purpose v2 storage account in [Microsoft Azure](http://portal.azure.com), and within it create:
-    * Table: `tickets`
     * Blob containers: `config`, `messages`, and `attachments`
+    * Queue: `emails`
+    * Table: `tickets`
 
 4. Within the `config` blob container:
 

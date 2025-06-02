@@ -29,6 +29,15 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
       {
         logger.LogError("Error sending reminder emails");
       }
+      try
+      {
+        await QueueService.ProcessPendingEmailsAsync();
+        logger.LogInformation("Processed pending emails from queue");
+      }
+      catch
+      {
+        logger.LogError("Error processing pending emails from queue");
+      }
     }
   }
 

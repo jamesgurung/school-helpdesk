@@ -122,8 +122,7 @@ async function sendMessage() {
   const content = elements.newMessageInput.value.trim();
   if (!ticket || !content) return;
   if (!canSendMessages(ticket)) return showToast('Please complete all ticket details before sending messages.', 'error');
-  const assignee = staff.find(s => s.email === ticket.assigneeEmail);
-  if (!assignee) return showToast('Please assign this ticket to a staff member before sending a message.', 'error');
+  if (!ticket.assigneeName) return showToast('Please assign this ticket to a staff member before sending a message.', 'error');
 
   const files = Array.from(elements.messageAttachments.files);
   const isPrivate = elements.internalNoteCheckbox.checked;

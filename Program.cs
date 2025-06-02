@@ -21,8 +21,9 @@ var storageAccountKey = builder.Configuration["Azure:StorageAccountKey"];
 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAccountName};AccountKey={storageAccountKey};EndpointSuffix=core.windows.net";
 
 School.Instance = builder.Configuration.GetSection(nameof(School)).Get<School>();
-TableService.Configure(connectionString);
 BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
+QueueService.Configure(connectionString);
+TableService.Configure(connectionString);
 EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"], School.Instance.DebugEmail);
 
 await BlobService.LoadConfigAsync();

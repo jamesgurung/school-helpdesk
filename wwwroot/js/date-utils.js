@@ -8,21 +8,19 @@ function formatDateTime(dateString) {
 
 function calculateTimeElapsed(dateString) {
   const diffMs = new Date() - new Date(dateString);
-  const seconds = Math.floor(diffMs / 1000) % 60;
   const minutes = Math.floor(diffMs / (1000 * 60)) % 60;
   const hours = Math.floor(diffMs / (1000 * 60 * 60)) % 24;
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (days === 0 && hours === 0 && minutes === 0) return `${seconds}s`;
+  if (days === 0 && hours === 0 && minutes === 0) return '<1m';
 
   const timeUnits = [
     { value: days, label: 'd' },
     { value: hours, label: 'h' },
-    { value: minutes, label: 'm' },
-    { value: seconds, label: 's' }
+    { value: minutes, label: 'm' }
   ].filter(unit => unit.value > 0);
 
-  return timeUnits.length ? timeUnits.slice(0, 2).map(unit => `${unit.value}${unit.label}`).join(' ') : '0s';
+  return timeUnits.length ? timeUnits.slice(0, 2).map(unit => `${unit.value}${unit.label}`).join(' ') : '<1m';
 }
 
 function updateAllElapsedTimes() {
