@@ -17,7 +17,7 @@ public static class Api
 
     var group = app.MapGroup("/api").ValidateAntiforgery().RequireAuthorization();
 
-    group.MapGet("/users", () => Results.Content(School.Instance.UsersJson, "application/json"));
+    group.MapGet("/users", [Authorize(Roles = AuthConstants.Manager)] () => Results.Content(School.Instance.UsersJson, "application/json"));
 
     group.MapGet("/refresh", [Authorize(Roles = AuthConstants.Administrator)] async () =>
     {
@@ -91,11 +91,8 @@ public static class Api
       return Results.Ok(messages);
     });
 
-    group.MapPut("/tickets/{id:int}/assignee", async (int id, [FromBody] ChangeAssigneePayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/assignee", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeAssigneePayload payload, HttpContext context) =>
     {
-      if (!context.User.IsInRole(AuthConstants.Manager))
-        return Results.Forbid();
-
       if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
         return Results.BadRequest("Assignee email is required.");
 
@@ -130,11 +127,8 @@ public static class Api
       return Results.NoContent();
     });
 
-    group.MapPut("/tickets/{id:int}/student", async (int id, [FromBody] ChangeStudentPayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/student", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeStudentPayload payload, HttpContext context) =>
     {
-      if (!context.User.IsInRole(AuthConstants.Manager))
-        return Results.Forbid();
-
       if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
         return Results.BadRequest("Assignee email is required.");
 
@@ -155,11 +149,8 @@ public static class Api
       return Results.NoContent();
     });
 
-    group.MapPut("/tickets/{id:int}/parent", async (int id, [FromBody] ChangeParentPayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/parent", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeParentPayload payload, HttpContext context) =>
     {
-      if (!context.User.IsInRole(AuthConstants.Manager))
-        return Results.Forbid();
-
       if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
         return Results.BadRequest("Assignee email is required.");
 
@@ -208,16 +199,13 @@ public static class Api
       return Results.NoContent();
     });
 
-    group.MapPut("/tickets/{id:int}/title", async (int id, [FromBody] ChangeTitlePayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/title", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeTitlePayload payload, HttpContext context) =>
     {
       if (string.IsNullOrWhiteSpace(payload?.NewTitle))
         return Results.BadRequest("Ticket title is required.");
 
       if (payload.NewTitle.Length > 40)
         return Results.BadRequest("Ticket title must be 40 characters or less.");
-
-      if (!context.User.IsInRole(AuthConstants.Manager))
-        return Results.Forbid();
 
       await TableService.RenameTicketAsync(payload.AssigneeEmail, id, payload.NewTitle);
       return Results.NoContent();

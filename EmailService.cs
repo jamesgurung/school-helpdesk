@@ -272,7 +272,7 @@ public static partial class EmailService
     var body = "Sorry, your email could not be delivered. " + reason switch
     {
       RejectionReason.UnknownSender =>
-        "This mailbox is only for use by parents and carers of current students, and we do not have your email address in our records.\n\n" +
+        "This mailbox is only for use by parents and carers of current students, and we do not have your email address as a primary contact in our records.\n\n" +
         "If you have an enquiry, please contact reception.",
       RejectionReason.StaffSender =>
         "Email replies from staff are not supported.\n\n" +
