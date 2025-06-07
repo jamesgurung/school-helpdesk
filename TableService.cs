@@ -40,14 +40,14 @@ public static class TableService
   public static async Task<List<TicketEntity>> GetAllTicketsAsync()
   {
     var tickets = await ticketsClient.QueryAsync<TicketEntity>().ToListAsync();
-    return tickets.OrderByDescending(t => t.Created).ToList();
+    return tickets.OrderByDescending(t => t.Timestamp).ToList();
   }
 
   public static async Task<List<TicketEntity>> GetTicketsByAssigneeAsync(string assigneeEmail)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
     var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.PartitionKey == assigneeEmail).ToListAsync();
-    return tickets.OrderByDescending(t => t.Created).ToList();
+    return tickets.OrderByDescending(t => t.Timestamp).ToList();
   }
 
   public static async Task<bool> TicketExistsAsync(string assigneeEmail, int id)

@@ -36,6 +36,7 @@ public static partial class TextFormatting
     {
       body.MessageText = textBody ?? _markdownConverter.Convert(body.SanitizedHtml);
       if (extractReply) body.MessageText = ExtractReply(body.MessageText);
+      body.MessageText = RemoveEmptyLines(body.MessageText);
     }
 
     body.MessageText = body.MessageText.Trim().TrimStart('#');
@@ -48,6 +49,7 @@ public static partial class TextFormatting
     var normalized = messageBody.Replace("\r", string.Empty);
     var span = normalized.AsSpan();
     var delimiterRegex = ReplyDelimiterRegex();
+    var helpdeskEmail = $"{School.Instance.Name} <{School.Instance.HelpdeskEmail}>";
     var sb = new StringBuilder();
     var pos = 0;
     while (pos < span.Length)
@@ -56,14 +58,41 @@ public static partial class TextFormatting
       var line = nextLf < 0 ? span[pos..] : span.Slice(pos, nextLf);
       pos = nextLf < 0 ? span.Length : pos + nextLf + 1;
       var trimmed = line.Trim();
-      if (trimmed.Length > 0 && delimiterRegex.IsMatch(trimmed.ToString().Replace("*", string.Empty))) break;
+      if (trimmed.Length > 0)
+      {
+        var lineText = trimmed.ToString().Replace("*", string.Empty);
+        if (delimiterRegex.IsMatch(lineText)) break;
+        if (lineText.Contains(helpdeskEmail, StringComparison.OrdinalIgnoreCase)) break;
+      }
       sb.Append(line);
       if (nextLf >= 0) sb.Append('\n');
     }
     return sb.ToString().Trim();
   }
 
-  [GeneratedRegex(@"^(?:On\s.+\swrote:|>+|--\s*$|__\s*$|Sent from my(?:\s+\w+){1,3}\s*$|From:\s.*|[-=_—]{2,}\s*Original Message\s*[-=_—]{2,}|[-=_—]{2,}\s*Forwarded by.*[-=_—]{2,})$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+  public static string RemoveEmptyLines(string text)
+  {
+    if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+    var lines = text.Replace("\r", string.Empty).Split('\n');
+    var builder = new StringBuilder();
+    var blankCount = 0;
+    foreach (var lineText in lines)
+    {
+      var trimmed = lineText.TrimEnd();
+      if (string.IsNullOrWhiteSpace(trimmed))
+      {
+        if (blankCount++ == 0) builder.AppendLine();
+      }
+      else
+      {
+        blankCount = 0;
+        builder.AppendLine(trimmed);
+      }
+    }
+    return builder.ToString().Trim();
+  }
+
+  [GeneratedRegex(@"^(?:On\s.+\swrote:|>+|--\s*$|__\s*$|Sent from my(?:\s+\w+){1,3}\s*$|From:\s.*|[-=_—]{2,}\s*Original Message\s*[-=_—]{2,}|[-=_—]{2,}\s*Forwarded by.*[-=_—]{2,}|Your enquiry received a response from .+:)$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
   private static partial Regex ReplyDelimiterRegex();
 }
 
