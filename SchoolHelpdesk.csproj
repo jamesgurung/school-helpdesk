@@ -11,10 +11,10 @@
   <ItemGroup>
     <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
     <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" Version="1.5.0" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.25.0-beta.1" />
-    <PackageReference Include="Azure.Storage.Queues" Version="12.23.0-beta.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0-beta.1" />
+    <PackageReference Include="Azure.Storage.Queues" Version="12.24.0-beta.1" />
     <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="HtmlSanitizer" Version="9.1.885-beta" />
+    <PackageReference Include="HtmlSanitizer" Version="9.1.887-beta" />
     <PackageReference Include="LigerShark.WebOptimizer.Core" Version="3.0.436" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0-preview.5.25277.114" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1-Preview.1" />

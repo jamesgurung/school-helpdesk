@@ -234,7 +234,7 @@ public static class Api
 
       foreach (var file in form.Files)
       {
-        if (!Attachment.ValidateAttachment(file.Name, file.Length, out var errorMessage)) return Results.BadRequest(errorMessage);
+        if (!Attachment.ValidateAttachment(file.FileName, file.Length, out var errorMessage)) return Results.BadRequest(errorMessage);
       }
 
       if (!context.User.IsInRole(AuthConstants.Manager) && assigneeEmail != context.User.Identity.Name)
