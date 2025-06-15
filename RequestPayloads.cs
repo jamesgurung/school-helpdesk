@@ -38,3 +38,9 @@ public class ChangeParentPayload
   public string AssigneeEmail { get; set; }
   public string NewParentName { get; set; }
 }
+
+public class AIPayload
+{
+  public string AssigneeEmail { get; set; }
+  public string Guidance { get; set; }
+}

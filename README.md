@@ -2,7 +2,7 @@
 
 School Helpdesk is a free, open-source web application designed to streamline communication between parents/carers and staff.
 
-Bring your own Postmark account and OpenAI key and deploy effortlessly to Microsoft Azure.
+Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
 
 ![Screenshot of School Helpdesk](examples/screenshot.png)
 
@@ -24,14 +24,12 @@ Bring your own Postmark account and OpenAI key and deploy effortlessly to Micros
     * Add a sender signature for your school's email domain and verify it using DNS
     * Add a server called `Helpdesk`
 
-2. Create an [OpenAI](https://platform.openai.com) account and generate an API key.
-
-3. Create a general purpose v2 storage account in [Microsoft Azure](http://portal.azure.com), and within it create:
+2. Create a general purpose v2 storage account in [Microsoft Azure](http://portal.azure.com), and within it create:
     * Blob containers: `config`, `messages`, and `attachments`
     * Queue: `emails`
     * Table: `tickets`
 
-4. Within the `config` blob container:
+3. Within the `config` blob container:
 
     * Upload a blank file `keys.xml`. Generate a SAS URL for this file with read/write permissions and a distant expiry. This will be used to store the application's data protection keys so that auth cookies persist across app restarts.
 
@@ -49,7 +47,9 @@ Bring your own Postmark account and OpenAI key and deploy effortlessly to Micros
     
     * Upload `template.html` and `template.txt` templates to use for all outgoing emails. There are sample files in the [examples](examples) folder. Use the token `{{BODY}}` as a placeholder for the email body.
 
-7. Create an Azure app registration.
+4. Create an [Azure AI Foundry](https://ai.azure.com/) project and deploy a model that you would like to use for generating suggested ticket responses.
+
+5. Create an Azure app registration.
     * Name - `School Helpdesk`
     * Redirect URI - `https://<app-website-domain>/signin-oidc`
     * Implicit grant - ID tokens
@@ -57,7 +57,7 @@ Bring your own Postmark account and OpenAI key and deploy effortlessly to Micros
     * API permissions - `Microsoft Graph - User.Read`
     * Token configuration - add an optional claim of type ID: `upn`
 
-8. Create an Azure App Service web app.
+6. Create an Azure App Service web app.
     * Publish mode - Container
     * Operating system - Linux
     * Image source - Other container registries
@@ -65,14 +65,16 @@ Bring your own Postmark account and OpenAI key and deploy effortlessly to Micros
     * Image and tag - `jamesgurung/school-helpdesk:latest`
     * Startup command: (blank)
 
-9. Configure the following environment variables for the web app:
+7. Configure the following environment variables for the web app:
 
+    * `Azure__AIFoundryApiKey` - the API key for your Azure AI Foundry project
+    * `Azure__AIFoundryDeployment` - the name of the deployed model that you would like to use
+    * `Azure__AIFoundryEndpoint` - the endpoint URL for your Azure AI Foundry deployment, up to and including the deployment name; for OpenAI models, this looks like `https://<project>.cognitiveservices.azure.com/openai/deployments/<model>`
     * `Azure__ClientId` - the client ID of your Azure app registration
     * `Azure__DataProtectionBlobUri` - the SAS URL for the keys file you created earlier
-    * `Azure__StorageAccountName` - the name of your Azure Storage account
     * `Azure__StorageAccountKey` - the key for your Azure Storage account
+    * `Azure__StorageAccountName` - the name of your Azure Storage account
     * `Azure__TenantId` - your Azure tenant ID
-    * `OpenAIKey` - the API key for your OpenAI account
     * `Postmark__InboundAuthKey` - a secret UUID of your choice, used to verify that incoming emails are from Postmark
     * `Postmark__ServerToken` - the token for your Postmark server
     * `School__Admins__0` - the email address of the first admin user, who has full administrative access (subsequent admins can be configured by adding items with incrementing indices)
@@ -83,7 +85,7 @@ Bring your own Postmark account and OpenAI key and deploy effortlessly to Micros
     * `School__NotifyFirstManager` - set to `true` if you want the first manager configured above to be notified of new tickets submitted by email
     * `School__SyncApiKey` - the secret key to use if you update the `students.csv` and `staff.csv` files with an automated script (optional)
 
-10. Configure your Postmark server's Default Inbound Stream settings:
+8. Configure your Postmark server's Default Inbound Stream settings:
     * Set the webhook to `https://<app-website-domain>/inbound?auth=<authkey>`
     * On your school's main email server, configure your helpdesk email address to auto-forward to the Postmark inbound email address shown on the settings page
 

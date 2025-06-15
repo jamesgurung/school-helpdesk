@@ -317,9 +317,12 @@ h1 {
 }
 
 .ticket-item-empty {
-  text-align: center;
   color: var(--text-light);
   cursor: default;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ticket-header {

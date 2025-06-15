@@ -74,9 +74,12 @@ public static class Api
       {
         BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = message },
           new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = DateTime.UtcNow, Content = $"#assign {assignee.Name}" }),
-        EmailService.SendTicketCreatedEmailAsync(parent.Email, id, ticket.Title, user, GetSalutation(parent.Name)),
-        EmailService.SendTicketUpdateEmailAsync(id, ticketEntity, assignee, TicketUpdateAction.Assigned)
+        EmailService.SendTicketCreatedEmailAsync(parent.Email, id, ticket.Title, user, GetSalutation(parent.Name))
       };
+      if (ticket.PartitionKey != context.User.Identity.Name)
+      {
+        tasks.Add(EmailService.SendTicketUpdateEmailAsync(id, ticketEntity, assignee, TicketUpdateAction.Assigned));
+      }
       await Task.WhenAll(tasks);
       return Results.Created((string)null, ticketEntity.RowKey);
     });
@@ -119,7 +122,7 @@ public static class Api
       });
 
       await EmailService.SendTicketUpdateEmailAsync(id, ticket, staff, TicketUpdateAction.Assigned);
-      if (payload.AssigneeEmail != "unassigned" && School.Instance.StaffByEmail.TryGetValue(payload.AssigneeEmail, out var oldAssignee))
+      if (payload.AssigneeEmail != "unassigned" && payload.AssigneeEmail != context.User.Identity.Name && School.Instance.StaffByEmail.TryGetValue(payload.AssigneeEmail, out var oldAssignee))
       {
         await EmailService.SendTicketUpdateEmailAsync(id, ticket, oldAssignee, TicketUpdateAction.Unassigned);
       }
@@ -305,7 +308,28 @@ public static class Api
       return Results.Ok(message);
     });
 
-    app.MapPut("/api/people", [AllowAnonymous] async (HttpContext context, [FromHeader(Name = "X-Api-Key")] string auth) =>
+    group.MapPost("/tickets/{id:int}/suggest", async (int id, [FromBody] AIPayload payload, HttpContext context) =>
+    {
+      if (string.IsNullOrWhiteSpace(payload?.Guidance))
+        return Results.BadRequest("Response guidance is required.");
+
+      if (!context.User.IsInRole(AuthConstants.Manager) && context.User.Identity.Name != payload.AssigneeEmail)
+        return Results.Forbid();
+
+      var entity = await TableService.GetTicketAsync(payload.AssigneeEmail, id);
+      var studentName = entity?.StudentFirstName;
+      if (string.IsNullOrEmpty(studentName))
+        return Results.BadRequest("Ticket must be associated with a student.");
+
+      var messages = await BlobService.GetMessagesAsync(id);
+      if (messages is null || messages.Count == 0)
+        return Results.BadRequest("Ticket must have at least one message.");
+
+      var suggestedReply = await AIService.GenerateReplyAsync(studentName, messages, payload.Guidance);
+      return Results.Ok(suggestedReply);
+    });
+
+    app.MapPut("/api/users", [AllowAnonymous] async (HttpContext context, [FromHeader(Name = "X-Api-Key")] string auth) =>
     {
       if (string.IsNullOrEmpty(School.Instance.SyncApiKey)) return Results.Conflict("An sync API key is not configured.");
       if (auth != School.Instance.SyncApiKey) return Results.Unauthorized();

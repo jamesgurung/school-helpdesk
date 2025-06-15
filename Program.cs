@@ -25,6 +25,7 @@ BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
 QueueService.Configure(connectionString);
 TableService.Configure(connectionString);
 EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"], School.Instance.DebugEmail);
+AIService.Configure(builder.Configuration["Azure:AIFoundryEndpoint"], builder.Configuration["Azure:AIFoundryApiKey"], builder.Configuration["Azure:AIFoundryDeployment"]);
 
 await BlobService.LoadConfigAsync();
 await TableService.LoadLatestTicketIdAsync();

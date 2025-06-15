@@ -67,19 +67,7 @@ public static partial class EmailService
         var parentName = ticket.ParentName ?? "Parent/Carer";
         var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, true);
         var attachments = await UploadAttachmentsAsync(message.Attachments);
-        var messages = new List<Message>()
-        {
-          new()
-          {
-            AuthorName = parentName,
-            IsEmployee = false,
-            IsPrivate = false,
-            Timestamp = DateTime.UtcNow,
-            Content = body.MessageText,
-            OriginalEmail = body.SanitizedHtml,
-            Attachments = attachments
-          }
-        };
+        var messages = new List<Message>(2);
         if (ticket.IsClosed)
         {
           messages.Add(new()
@@ -91,6 +79,16 @@ public static partial class EmailService
             Content = "#reopen"
           });
         }
+        messages.Add(new()
+        {
+          AuthorName = parentName,
+          IsEmployee = false,
+          IsPrivate = false,
+          Timestamp = DateTime.UtcNow,
+          Content = body.MessageText,
+          OriginalEmail = body.SanitizedHtml,
+          Attachments = attachments
+        });
         await BlobService.AppendMessagesAsync(ticketNumber, messages);
         await TableService.SetLastParentMessageDateAsync(ticket);
         if (ticket.PartitionKey != "unassigned" && School.Instance.StaffByEmail.TryGetValue(ticket.PartitionKey, out var assignee))
