@@ -46,7 +46,15 @@ const elements = {
   assigneeEditIcon: document.getElementById('assignee-edit-icon'),
   iframe: document.getElementById('original-email-frame'),
   salutation: document.getElementById('salutation'),
-  valediction: document.getElementById('valediction')
+  valediction: document.getElementById('valediction'),
+  suggestStart: document.getElementById('suggest-start'),
+  suggestModal: document.getElementById('suggest-modal'),
+  guidanceInput: document.getElementById('guidance'),
+  generateSuggestBtn: document.getElementById('generate-suggest'),
+  generatedResponse: document.getElementById('generated-response'),
+  suggestResponseSection: document.getElementById('suggest-response-section'),
+  cancelSuggestBtn: document.getElementById('cancel-suggest'),
+  insertSuggestBtn: document.getElementById('insert-suggest'),
 };
 
 const state = {

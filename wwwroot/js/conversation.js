@@ -211,3 +211,46 @@ function addConversationEntry(content) {
   state.conversation.push(entry);
   renderConversation();
 }
+
+function openSuggestModal() {
+  elements.suggestModal.style.display = 'block';
+  elements.generatedResponse.textContent = '';
+  elements.suggestResponseSection.style.display = 'none';
+  elements.insertSuggestBtn.style.display = 'none';
+  elements.guidanceInput.focus();
+}
+
+function closeSuggestModal() {
+  elements.suggestModal.style.display = 'none';
+}
+
+async function generateSuggestion() {
+  const ticket = getCurrentTicket();
+  const guidance = elements.guidanceInput.value.trim();
+  if (!ticket || !guidance) return;
+  elements.generateSuggestBtn.disabled = true;
+  elements.generateSuggestBtn.textContent = 'Generating...';
+  
+  try {
+    const result = await apiSuggestResponse(ticket.id, ticket.assigneeEmail, guidance);
+    elements.generatedResponse.textContent = result;
+    elements.suggestResponseSection.style.display = 'block';
+    elements.insertSuggestBtn.style.display = 'inline-flex';
+  } catch (error) {
+    showToast('AI generation failed.', 'error');
+  } finally {
+    elements.generateSuggestBtn.disabled = false;
+    elements.generateSuggestBtn.textContent = 'Generate';
+  }
+}
+
+function insertSuggestion() {
+  const suggestion = elements.generatedResponse.textContent;
+  if (suggestion) {
+    elements.newMessageInput.value = suggestion;
+    autoExpandTextarea(elements.newMessageInput);
+    closeSuggestModal();
+    updateCloseTicketButtonText();
+    elements.newMessageInput.focus();
+  }
+}

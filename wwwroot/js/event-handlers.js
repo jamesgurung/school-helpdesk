@@ -6,6 +6,7 @@ function setupEventListeners() {
   setupParentSearch();
   setupAssigneeFeatures();
   setupTicketEditFeatures();
+  setupSuggestModal();
   setupDocumentClickHandlers();
   setupIFrameStyles();
 }
@@ -205,6 +206,17 @@ function setupTicketEditFeatures() {
   } 
 }
 
+function setupSuggestModal() {
+  elements.suggestStart.addEventListener('click', openSuggestModal);
+  elements.generateSuggestBtn.addEventListener('click', generateSuggestion);
+  elements.cancelSuggestBtn.addEventListener('click', closeSuggestModal);
+  elements.insertSuggestBtn.addEventListener('click', insertSuggestion);
+  
+  elements.suggestModal.querySelectorAll('.close-modal').forEach(btn => 
+    btn.addEventListener('click', closeSuggestModal)
+  );
+}
+
 function setupDocumentClickHandlers() {
   document.getElementById('close-image-modal').addEventListener('click', closeImageModal);
   document.getElementById('close-original-email-modal').addEventListener('click', closeOriginalEmailModal);
@@ -234,6 +246,9 @@ function setupDocumentClickHandlers() {
     if (e.target.id === 'original-email-modal') {
       closeOriginalEmailModal();
     }
+    if (e.target.id === 'suggest-modal') {
+      closeSuggestModal();
+    }
   });
   document.addEventListener('keydown', e => { 
     if (e.key === 'Escape') { 
@@ -245,6 +260,9 @@ function setupDocumentClickHandlers() {
       }
       if (document.getElementById('original-email-modal').style.display === 'block') {
         closeOriginalEmailModal(); 
+      }
+      if (elements.suggestModal.style.display === 'block') {
+        closeSuggestModal(); 
       }
     } 
   });
@@ -267,4 +285,5 @@ function updateCloseTicketButtonText() {
   const hasMsg = elements.newMessageInput.value.trim();
   if (t.isClosed) elements.closeTicketBtn.textContent = hasMsg ? 'Send & Reopen' : 'Reopen Ticket';
   else elements.closeTicketBtn.textContent = hasMsg ? 'Send & Close' : 'Close Ticket';
+  elements.suggestStart.style.display = hasMsg ? 'none' : 'flex';
 }

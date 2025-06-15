@@ -101,3 +101,13 @@ async function apiCreateTicket(ticketData) {
   );
   return await response.json();
 }
+
+async function apiSuggestResponse(ticketId, assigneeEmail, guidance) {
+  const response = await apiRequest(
+    'POST',
+    `/api/tickets/${ticketId}/suggest`,
+    { assigneeEmail, guidance },
+    'generate suggestion'
+  );
+  return await response.json();
+}

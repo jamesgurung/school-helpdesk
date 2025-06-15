@@ -43,6 +43,7 @@ function openTicketDetails(ticketId) {
   elements.closeTicketBtn.style.opacity = '0.5';
   elements.uploadFilesBtn.style.opacity = '0.5';
   elements.uploadFilesBtn.style.pointerEvents = 'none';
+  elements.guidanceInput.value = '';
 
   fetch(`/api/tickets/${ticketId}`).then(response => response.json())
     .then(conversation => {

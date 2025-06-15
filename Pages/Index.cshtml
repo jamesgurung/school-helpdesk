@@ -77,7 +77,13 @@
       <h3 class="section-heading">Conversation</h3>
       <div class="conversation" id="conversation"></div>
       <div class="new-message">
-        <div id="salutation">Dear <span>Parent/Carer</span></div>
+        <div class="side-by-side">
+          <div id="salutation">Dear <span>Parent/Carer</span></div>
+          <button id="suggest-start">
+            <span class="material-symbols-rounded">auto_awesome</span>
+            <span class="hide-on-mobile">Generate AI response</span>
+          </button>
+        </div>
         <textarea id="new-message" placeholder="Type your message here..."></textarea>
         <div id="valediction">Best wishes<br /><span></span></div>
         <div class="message-attachment-controls">
@@ -269,11 +275,39 @@
 <div class="modal" id="original-email-modal">
   <div class="modal-content">
     <div class="modal-header">
-      <h2>Email Received</h2>
+      <h2>Email received</h2>
       <span class="close-modal material-symbols-rounded" id="close-original-email-modal">close</span>
     </div>
     <div class="modal-body">
       <iframe id="original-email-frame" sandbox="allow-same-origin" srcdoc=""></iframe>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="suggest-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Generate AI response</h2>
+      <span class="close-modal material-symbols-rounded">close</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="guidance">How would you like to respond?</label>
+        <textarea id="guidance" rows="3" placeholder="Summarise key points..." required></textarea>
+      </div>
+      <div class="suggest-generate-section">
+        <button class="btn-primary" id="generate-suggest">
+          <span>Generate</span>
+        </button>
+      </div>
+      <div class="suggest-response-section" id="suggest-response-section" style="display: none">
+        <label for="generated-response">Generated Response</label>
+        <div id="generated-response" class="generated-response"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-suggest">Cancel</button>
+      <button class="btn-primary" id="insert-suggest" style="display: none;">Insert Response</button>
     </div>
   </div>
 </div>
