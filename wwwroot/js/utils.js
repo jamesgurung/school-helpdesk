@@ -1,7 +1,12 @@
 function matchesWordBeginning(text, query) {
-  const q = query && query.trim().toLowerCase();
-  if (!text || !q) return false;
-  return new RegExp(`\\b${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(text.toLowerCase());
+  if (!text || !query) return false;
+  const normalisedText = normalise(text);
+  const normalisedQuery = normalise(query);
+  return new RegExp(`\\b${normalisedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(normalisedText);
+}
+
+function normalise(text) {
+  return text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 }
 
 function populateNewTicketForm() {
