@@ -121,7 +121,11 @@ public static class Api
         Content = $"#assign {staff.Name}"
       });
 
-      await EmailService.SendTicketUpdateEmailAsync(id, ticket, staff, TicketUpdateAction.Assigned);
+      if (payload.NewAssigneeEmail != context.User.Identity.Name)
+      {
+        await EmailService.SendTicketUpdateEmailAsync(id, ticket, staff, TicketUpdateAction.Assigned);
+      }
+
       if (payload.AssigneeEmail != "unassigned" && payload.AssigneeEmail != context.User.Identity.Name && School.Instance.StaffByEmail.TryGetValue(payload.AssigneeEmail, out var oldAssignee))
       {
         await EmailService.SendTicketUpdateEmailAsync(id, ticket, oldAssignee, TicketUpdateAction.Unassigned);

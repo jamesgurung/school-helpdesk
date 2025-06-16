@@ -110,6 +110,10 @@ public static partial class EmailService
       var student = students.Count == 1 ? students[0] : null;
       var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
       var subject = string.IsNullOrWhiteSpace(message.Subject) ? "Enquiry" : message.Subject.Trim();
+      if (subject.StartsWith("RE: ", StringComparison.OrdinalIgnoreCase) || subject.StartsWith("FW: ", StringComparison.OrdinalIgnoreCase))
+      {
+        subject = subject[3..].Trim();
+      }
       if (subject.Length > 40) subject = subject[..37] + "...";
 
       var ticket = new TicketEntity

@@ -235,6 +235,7 @@ function updateMessageControlsState(ticket) {
   elements.sendMessageBtn.disabled = !canSend;
   elements.newMessageInput.disabled = !canSend;
   elements.internalNoteCheckbox.disabled = !canSend;
+  elements.suggestStart.disabled = !canSend;
   elements.uploadFilesBtn.style.pointerEvents = canSend ? 'auto' : 'none';
   
   const canClose = ticket.isClosed || canSend;
@@ -245,11 +246,13 @@ function updateMessageControlsState(ticket) {
     elements.sendMessageBtn.style.opacity = '0.5';
     elements.newMessageInput.style.opacity = '0.5';
     elements.uploadFilesBtn.style.opacity = '0.5';
+    elements.suggestStart.style.opacity = '0.5';
   } else {
     elements.newMessageInput.placeholder = 'Type your message here...';
     elements.sendMessageBtn.style.opacity = '1';
     elements.newMessageInput.style.opacity = '1';
     elements.uploadFilesBtn.style.opacity = '1';
+    elements.suggestStart.style.opacity = '1';
   }
   
   if (!canClose) {

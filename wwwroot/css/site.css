@@ -1408,6 +1408,11 @@ button {
   font-size: 1rem;
 }
 
+#suggest-start:disabled, #suggest-start:hover:disabled {
+  background-color: var(--primary-bg-light);
+  cursor: not-allowed;
+}
+
 .suggest-generate-section {
   margin: 16px 0;
   display: flex;

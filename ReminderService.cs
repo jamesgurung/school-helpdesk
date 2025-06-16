@@ -45,7 +45,7 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
   {
     var allTickets = await TableService.GetAllTicketsAsync();
     var now = DateTime.UtcNow;
-    var openTickets = allTickets.Where(t => !t.IsClosed && t.WaitingSince is not null && now - t.WaitingSince > TimeSpan.FromHours(16)).ToList();
+    var openTickets = allTickets.Where(t => !t.IsClosed && (t.WaitingSince is null || now - t.WaitingSince > TimeSpan.FromHours(16))).ToList();
 
     foreach (var ticket in openTickets)
     {
