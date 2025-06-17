@@ -1,8 +1,7 @@
 function matchesWordBeginning(text, query) {
   if (!text || !query) return false;
   const normalisedText = normalise(text);
-  const normalisedQuery = normalise(query);
-  return new RegExp(`\\b${normalisedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(normalisedText);
+  return new RegExp(`\\b${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(normalisedText);
 }
 
 function normalise(text) {

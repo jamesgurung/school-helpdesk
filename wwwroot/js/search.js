@@ -56,18 +56,17 @@ function toggleSearchDisplayMode(e, config) {
 }
 
 function parentMatchesQuery(parent, query) {
-  const queryLC = query.toLowerCase().trim();
-  if (!queryLC) return false;
+  if (!query) return false;
   
-  if (matchesWordBeginning(parent.name, queryLC) || matchesWordBeginning(parent.email, queryLC)) {
+  if (matchesWordBeginning(parent.name, query) || matchesWordBeginning(parent.email, query)) {
     return true;
   }
   
   return parent.children && parent.children.some(child => {
     const fullName = `${child.firstName} ${child.lastName}`;
-    return matchesWordBeginning(fullName, queryLC) ||
-      matchesWordBeginning(child.firstName, queryLC) ||
-      matchesWordBeginning(child.lastName, queryLC);
+    return matchesWordBeginning(fullName, query) ||
+      matchesWordBeginning(child.firstName, query) ||
+      matchesWordBeginning(child.lastName, query);
   });
 }
 
@@ -93,13 +92,13 @@ function selectNewTicketAssignee(assignee) {
 }
 
 function filterParents(query) {
-  const queryLC = query.toLowerCase().trim();
-  if (!queryLC) return [];
+  query = normalise(query);
+  if (!query) return [];
 
-  const allMatchedParents = parents.filter(parent => parentMatchesQuery(parent, queryLC));
+  const allMatchedParents = parents.filter(parent => parentMatchesQuery(parent, query));
 
   const exactMatchIndex = allMatchedParents.findIndex(parent =>
-    parent.name.toLowerCase() === queryLC
+    parent.name.toLowerCase() === query
   );
 
   if (exactMatchIndex > -1) {

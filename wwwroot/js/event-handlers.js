@@ -107,9 +107,9 @@ function setupAssigneeFeatures() {
 }
 
 const filterStaff = query => {
-  const queryLC = query.toLowerCase().trim();
-  if (!queryLC) return [];
-  return staff.filter(s => matchesWordBeginning(s.name, queryLC) || matchesWordBeginning(s.email, queryLC));
+  query = normalise(query);
+  if (!query) return [];
+  return staff.filter(s => matchesWordBeginning(s.name, query) || matchesWordBeginning(s.email, query));
 };
 
 function setupSearchInputListeners(input, filter, display) {
