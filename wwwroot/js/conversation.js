@@ -263,11 +263,11 @@ function insertSuggestion() {
 function containsSalutationOrValediction(text, name) {
   if (typeof text !== 'string' || typeof name !== 'string') return false;
   const trimmed = text.trim();
-  const greetingRegex = /^(?:Dear|Hi|Hello|Hey|Greetings|To whom it may concern|Good morning|Good afternoon|Good evening)\b[\s,]/i;
+  const greetingRegex = /^(?:Dear|Hi|Hello|Hey|Greetings|To whom it may concern|Good morning|Good afternoon|Good evening)\b/i;
   if (greetingRegex.test(trimmed)) return true;
-  const valedictionRegex = /^\s*(?:Best regards|Kind regards|Warm regards|Warm wishes|Best wishes|Warmest regards|Warmest wishes|Sincerely|Yours sincerely|Yours faithfully|Yours truly|All the best|Regards|Cheers|Thank you|Thanks)\b/im;
+  const valedictionRegex = /^\s*(?:Best regards|Kind regards|Warm regards|Warm wishes|Best wishes|Warmest regards|Warmest wishes|Sincerely|Yours sincerely|Yours faithfully|Yours truly|All the best|Regards|Cheers|Thank you|Thanks)\b[\s,]*$/im;
   if (valedictionRegex.test(text)) return true;
   const esc = name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-  const nameEndRegex = new RegExp(`\\b${esc}[\\.,!]?\\s*$`, 'i');
+  const nameEndRegex = new RegExp(`\\b${esc}[\\.,]?\\s*$`, 'i');
   return nameEndRegex.test(text);
 }
