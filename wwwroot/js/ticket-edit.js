@@ -72,6 +72,7 @@ async function updateTicketParent() {
   try {
     const isChanged = ticket.parentName !== parentName;
     ticket.parentName = parentName;
+    ticket.parentPhone = selectedParent.phone;
 
     const newChildren = selectedParent.children;
     const currentStudent = newChildren.find(child =>

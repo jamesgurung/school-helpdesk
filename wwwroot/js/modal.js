@@ -89,6 +89,7 @@ async function createNewTicket() {
     assigneeEmail: assignee.email,
     parentName: state.activeParent.name,
     parentEmail: state.activeParent.email,
+    parentPhone: state.activeParent.phone,
     parentRelationship: selectedChild?.parentRelationship || '',
     message: message
   };

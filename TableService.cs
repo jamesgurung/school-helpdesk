@@ -117,6 +117,7 @@ public static class TableService
     ArgumentNullException.ThrowIfNull(parent);
     ticket.ParentName = parent.Name;
     ticket.ParentEmail = parent.Email;
+    ticket.ParentPhone = parent.Phone;
     ticket.ParentRelationship = relationship;
     await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
   }
@@ -169,8 +170,9 @@ public class TicketEntity : ITableEntity
   public string StudentLastName { get; set; }
   public string TutorGroup { get; set; }
   public string AssigneeName { get; set; }
-  public string ParentEmail { get; set; }
   public string ParentName { get; set; }
+  public string ParentEmail { get; set; }
+  public string ParentPhone { get; set; }
   public string ParentRelationship { get; set; }
 }
 

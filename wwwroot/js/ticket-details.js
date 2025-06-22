@@ -121,12 +121,10 @@ function renderParentInfo(ticket) {
   const hasParent = status.hasParent;
   
   let parentRelationship = '';
-  let parentPhone = '';
   if (hasParent) {
     parentRelationship = ticket.parentRelationship;
-    const parent = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName);
-    parentPhone = parent?.phone || '';
     if (!parentRelationship) {
+      const parent = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName);
       const children = parent?.children || [];
       const currentChild = children.find(child =>
         child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName
@@ -143,7 +141,7 @@ function renderParentInfo(ticket) {
     name: hasParent ? ticket.parentName : 'Not Set',
     detail: parentRelationship,
     email: ticket.parentEmail,
-    phone: parentPhone,
+    phone: ticket.parentPhone,
     editable: canEditField(ticket, 'parent') && ticketParents.length > 1,
     editHandler: toggleParentEdit,
     isWarning: !hasParent
