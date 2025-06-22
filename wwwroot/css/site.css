@@ -249,7 +249,7 @@ h1 {
     align-self: flex-end;
   }
 
-  .message-date, .hide-on-mobile {
+  .message-date, .info-contact, .hide-on-mobile {
     display: none !important;
   }
 }
@@ -724,6 +724,31 @@ h1 {
 
 .info-detail {
   color: var(--text-light);
+}
+
+.info-contact {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  text-align: right;
+  right: 10px;
+  position: absolute;
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.info-contact .material-symbols-rounded {
+  font-size: 1rem;
+  color: var(--text-light);
+}
+
+.email-address, .email-address:active, .email-address:visited, .email-address:hover {
+  text-decoration: none;
+  color: var(--text-light);
+}
+
+.phone-number {
+  margin-right: 0.6rem;
 }
 
 .hidden-selects {

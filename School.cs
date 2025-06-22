@@ -35,6 +35,7 @@ public class CsvStudent
   public string ParentFirstName { get; set; }
   public string ParentLastName { get; set; }
   public string ParentEmailAddress { get; set; }
+  public string ParentPhoneNumber { get; set; }
 }
 
 public class CsvStaff
@@ -47,8 +48,9 @@ public class CsvStaff
 
 public class Parent
 {
-  public string Email { get; set; }
   public string Name { get; set; }
+  public string Email { get; set; }
+  public string Phone { get; set; }
   public List<Student> Children { get; set; }
 }
 

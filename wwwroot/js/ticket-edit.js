@@ -87,6 +87,7 @@ async function updateTicketParent() {
     populateStudentSelect(ticket, newChildren);
     renderStudentInfo(ticket, newChildren);
     renderParentInfo(ticket);
+    renderAssigneeInfo(ticket);
     updateMessageControlsState(ticket);
     elements.salutation.querySelector('span').textContent = getSalutation(parentName);
     if (!isChanged) return;

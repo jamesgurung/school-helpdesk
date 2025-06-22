@@ -128,7 +128,8 @@ public static class BlobService
         s.FirstName,
         s.LastName,
         s.TutorGroup,
-        s.ParentEmailAddress,
+        ParentEmailAddress = s.ParentEmailAddress.ToLowerInvariant(),
+        ParentPhoneNumber = FormatPhoneNumber(s.ParentPhoneNumber),
         s.Relationship,
         ParentName = $"{s.ParentTitle} {(string.IsNullOrEmpty(s.ParentFirstName) ? string.Empty : $"{s.ParentFirstName[0]} ")}{s.ParentLastName}".Trim()
       }).GroupBy(s => $"{s.ParentEmailAddress}:{s.ParentName}", StringComparer.OrdinalIgnoreCase);
@@ -139,8 +140,9 @@ public static class BlobService
         var name = string.IsNullOrWhiteSpace(first.ParentName) ? "Parent/Carer" : first.ParentName;
         return new Parent
         {
-          Email = first.ParentEmailAddress,
           Name = name,
+          Email = first.ParentEmailAddress,
+          Phone = first.ParentPhoneNumber,
           Children = g.Select(s => new Student { FirstName = s.FirstName, LastName = s.LastName, TutorGroup = s.TutorGroup, ParentRelationship = s.Relationship }).ToList()
         };
       });
@@ -167,5 +169,17 @@ public static class BlobService
     var bytes = Encoding.UTF8.GetBytes(input);
     var hashBytes = SHA256.HashData(bytes);
     return Convert.ToHexString(hashBytes).ToLowerInvariant();
+  }
+
+  private static string FormatPhoneNumber(string phoneNumber)
+  {
+    if (string.IsNullOrWhiteSpace(phoneNumber)) return null;
+    var digits = new string(phoneNumber.Where(c => !char.IsWhiteSpace(c) && c != '-').ToArray());
+    if (digits.StartsWith("+44"))
+    {
+      digits = digits[3..];
+      if (digits.Length > 0 && digits[0] != '0') digits = "0" + digits;
+    }
+    return digits.Length != 11 ? digits : $"{digits[..5]} {digits[5..8]} {digits[8..11]}";
   }
 }

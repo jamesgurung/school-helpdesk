@@ -9,18 +9,19 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
 ### Features
 
 * A simple, professional ticketing interface
-* Email-based ticket submission, filtered by an allowlist of verified parent addresses
+* Email-based ticket submission from verified parents
 * Tagging of parent and student information
-* Ticket assignment to specific staff members
-* Automated update notifications and follow-up reminders
+* Ticket assignment to specific staff
+* AI assistance when responding to tickets
+* Automated notifications and follow-up reminders
 * Customisable email templates
 * Role-based access control for managers and staff
-* Support for all screen sizes, including mobile
+* Support for all screen sizes including mobile
 * Single sign-on (SSO) using Microsoft 365
 
 ### Setup
 
-1. Create a [Postmark](https://account.postmarkapp.com) account.
+1. Create a [Postmark](https://account.postmarkapp.com) Pro account.
     * Add a sender signature for your school's email domain and verify it using DNS
     * Add a server called `Helpdesk`
 
@@ -33,10 +34,10 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
 
     * Upload a blank file `keys.xml`. Generate a SAS URL for this file with read/write permissions and a distant expiry. This will be used to store the application's data protection keys so that auth cookies persist across app restarts.
 
-    * Upload a file `students.csv` with the following headers and populate it with all students in your school. Where a student has more than one parent, repeat the student details across multiple rows. To correctly represent accented characters in student names, save the file as 'CSV UTF-8'.
+    * Upload a file `students.csv` with the following headers and populate it with all students in your school. Where a student has more than one parent, repeat the student details across multiple rows. To correctly represent accented characters in student names, save the file in 'CSV UTF-8' format.
 
         ```csv
-        FirstName,LastName,TutorGroup,Relationship,ParentTitle,ParentFirstName,ParentLastName,ParentEmailAddress
+        FirstName,LastName,TutorGroup,Relationship,ParentTitle,ParentFirstName,ParentLastName,ParentEmailAddress,ParentPhoneNumber
         ```
 
     * Upload a file `staff.csv` with the following headers and populate it with all staff in your school who should have access to the helpdesk.

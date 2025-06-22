@@ -121,10 +121,13 @@ function renderParentInfo(ticket) {
   const hasParent = status.hasParent;
   
   let parentRelationship = '';
+  let parentPhone = '';
   if (hasParent) {
     parentRelationship = ticket.parentRelationship;
+    const parent = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName);
+    parentPhone = parent?.phone || '';
     if (!parentRelationship) {
-      const children = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName)?.children || [];
+      const children = parent?.children || [];
       const currentChild = children.find(child =>
         child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName
       );
@@ -139,6 +142,8 @@ function renderParentInfo(ticket) {
     icon: hasParent ? 'supervisor_account' : 'warning',
     name: hasParent ? ticket.parentName : 'Not Set',
     detail: parentRelationship,
+    email: ticket.parentEmail,
+    phone: parentPhone,
     editable: canEditField(ticket, 'parent') && ticketParents.length > 1,
     editHandler: toggleParentEdit,
     isWarning: !hasParent
@@ -188,6 +193,21 @@ function renderInfoSection(type, config) {
   
   infoClone.querySelector('.info-detail').textContent = config.detail || '';
 
+  if (config.email) {
+    const emailElement = infoClone.querySelector('.email-address');
+    emailElement.textContent = config.email;
+    emailElement.href = `mailto:${config.email}?subject=${encodeURIComponent(getCurrentTicket().title)}`;
+    if (config.phone) {
+      infoClone.querySelector('.phone-number').textContent = config.phone;
+    } else {
+      const phoneElement = infoClone.querySelector('.phone-number');
+      phoneElement.style.display = 'none';
+      phoneElement.previousElementSibling.style.display = 'none';
+    }
+  } else {
+    infoClone.querySelector('.info-contact').style.display = 'none';
+  }
+
   container.appendChild(infoClone);
 }
 
@@ -225,7 +245,14 @@ async function closeTicket() {
   const ticket = getCurrentTicket();
   if (!ticket) return;
   if (!ticket.isClosed && !canSendMessages(ticket)) return;
-  if (elements.newMessageInput.value.trim().length > 0) await sendMessage();
+  if (elements.newMessageInput.value.trim().length > 0) {
+    await sendMessage();
+  } else {
+    if (!ticket.isClosed && !state.conversation.slice(1).some(msg => msg.isEmployee && !msg.isPrivate)) {
+      showToast('Please send a message or leave an internal note before closing.', 'error');
+      return;
+    }
+  }
   toggleTicketStatus();
 }
 
