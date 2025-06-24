@@ -46,7 +46,7 @@ function setupTicketDetails() {
       } 
     });
   }
-    elements.sendMessageBtn.addEventListener('click', sendMessage);
+  elements.sendMessageBtn.addEventListener('click', sendMessage);
   elements.closeTicketBtn.addEventListener('click', closeTicket);
   elements.newMessageInput.addEventListener('input', e => {
     autoExpandTextarea(e.target);

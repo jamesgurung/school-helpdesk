@@ -133,6 +133,7 @@ async function sendMessage() {
   const isPrivate = elements.internalNoteCheckbox.checked;
 
   elements.sendMessageBtn.disabled = true;
+  elements.closeTicketBtn.disabled = true;
   elements.sendMessageBtn.textContent = 'Sending...';
   try {
     const msg = await apiSendMessage(ticket.id, ticket.assigneeEmail, content, isPrivate, files);
@@ -150,6 +151,7 @@ async function sendMessage() {
     updateCloseTicketButtonText();
   } finally {
     elements.sendMessageBtn.disabled = false;
+    elements.closeTicketBtn.disabled = false;
     elements.sendMessageBtn.textContent = 'Send Message';
   }
 }
