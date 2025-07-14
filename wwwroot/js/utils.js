@@ -46,6 +46,7 @@ function showToast(message, type = 'info', duration = 3000) {
   document.body.appendChild(toast);
   setTimeout(() => toast.classList.add('show'), 10);
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => document.body.removeChild(toast), 300); }, duration);
+  return false;
 }
 
 function hasUnsentText() {

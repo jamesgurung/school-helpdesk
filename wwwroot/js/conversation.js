@@ -120,7 +120,7 @@ function renderMessageAttachments(container, attachments) {
 async function sendMessage() {
   const ticket = getCurrentTicket();
   const content = elements.newMessageInput.value.trim();
-  if (!ticket || !content) return;
+  if (!ticket || !content) return false;
   if (!canSendMessages(ticket)) return showToast('Please complete all ticket details before sending messages.', 'error');
   if (!ticket.assigneeName) return showToast('Please assign this ticket to a staff member before sending a message.', 'error');
 
@@ -149,6 +149,7 @@ async function sendMessage() {
     renderConversation();
     elements.ticketDetails.scrollTop = elements.ticketDetails.scrollHeight;
     updateCloseTicketButtonText();
+    return true;
   } finally {
     elements.sendMessageBtn.disabled = false;
     elements.closeTicketBtn.disabled = false;
