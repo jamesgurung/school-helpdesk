@@ -247,7 +247,7 @@ async function closeTicket() {
     const sentSuccessfully = await sendMessage();
     if (!sentSuccessfully) return;
   } else {
-    if (!ticket.isClosed && !state.conversation.slice(1).some(msg => msg.isEmployee && !msg.isPrivate)) {
+    if (!ticket.isClosed && !state.conversation.slice(1).some(msg => msg.isEmployee && !msg.content.startsWith('#'))) {
       showToast('Please send a message or leave an internal note before closing.', 'error');
       return;
     }
