@@ -1,26 +1,24 @@
-﻿using Azure;
-using Azure.AI.Inference;
-using Microsoft.Extensions.AI;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
+using Azure;
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
 
 namespace SchoolHelpdesk;
 
 public static partial class AIService
 {
-  private static IChatClient _client;
-  private static ChatOptions _options;
+  private static ChatClient _client;
 
-  public static void Configure(string endpoint, string apiKey, string deployment)
+  public static void Configure(string endpoint, string deployment, string apiKey)
   {
-    var azureClient = new ChatCompletionsClient(new Uri(endpoint), new AzureKeyCredential(apiKey), new AzureAIInferenceClientOptions());
-    _client = azureClient.AsIChatClient(deployment);
-    _options = new ChatOptions { Temperature = 0.2f };
+    var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+    _client = azureClient.GetChatClient(deployment);
   }
 
-  public static async Task<string> GenerateReplyAsync(string studentName, List<Message> messages, string guidance)
+  public static async Task<string> GenerateReplyAsync(string studentName, List<Message> messages, string guidance, string ticketId)
   {
-    var systemMessage = new ChatMessage(Microsoft.Extensions.AI.ChatRole.System,
+    var systemMessage = ChatMessage.CreateSystemMessage(
       "You are an experienced teacher in a UK secondary school. You have received a parent enquiry and need to write a response.\n\n" +
       "You will be shown the conversation history in chronological order, starting with the oldest message. You will then be given guidance on how to respond.\n\n" +
       "Write a helpful response to the parent, in a warm, kind, and professional tone. Use British English spelling and terminology.\n\n" +
@@ -31,11 +29,12 @@ public static partial class AIService
       (m, i) => $"## {(m.IsEmployee ? (i == 0 ? "Receptionist on behalf of the parent" : "Teacher") : "Parent")}:\n\n{m.Content}")
     );
 
-    var userMessage = new ChatMessage(Microsoft.Extensions.AI.ChatRole.User,
+    var userMessage = ChatMessage.CreateUserMessage(
       $"# Student name:\n\n{studentName}\n\n# Conversation history:\n\n{history}\n\n# Guidance on how to respond:\n\n{guidance}");
 
-    var response = await _client.GetResponseAsync([systemMessage, userMessage], _options);
-    return NormaliseText(response.Text);
+    var options = new ChatCompletionOptions { Temperature = 0.2f, EndUserId = $"helpdesk-{ticketId}" };
+    var response = await _client.CompleteChatAsync([systemMessage, userMessage], options);
+    return NormaliseText(response.Value.Content[0].Text);
   }
 
   private static string NormaliseText(string text)

@@ -330,7 +330,7 @@ public static class Api
       if (messages is null || messages.Count == 0)
         return Results.BadRequest("Ticket must have at least one message.");
 
-      var suggestedReply = await AIService.GenerateReplyAsync(studentName, messages, payload.Guidance);
+      var suggestedReply = await AIService.GenerateReplyAsync(studentName, messages, payload.Guidance, entity.RowKey);
       return Results.Ok(suggestedReply);
     });
 

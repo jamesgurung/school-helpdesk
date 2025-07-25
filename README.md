@@ -48,7 +48,7 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
     
     * Upload `template.html` and `template.txt` templates to use for all outgoing emails. There are sample files in the [examples](examples) folder. Use the token `{{BODY}}` as a placeholder for the email body.
 
-4. Create an [Azure AI Foundry](https://ai.azure.com/) project and deploy a model that you would like to use for generating suggested ticket responses.
+4. Create an [Azure AI Foundry](https://ai.azure.com/) project and deploy an OpenAI model that you would like to use for generating suggested ticket responses.
 
 5. Create an Azure app registration.
     * Name - `School Helpdesk`
@@ -69,8 +69,8 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
 7. Configure the following environment variables for the web app:
 
     * `Azure__AIFoundryApiKey` - the API key for your Azure AI Foundry project
-    * `Azure__AIFoundryDeployment` - the name of the deployed model that you would like to use
-    * `Azure__AIFoundryEndpoint` - the endpoint URL for your Azure AI Foundry deployment, up to and including the deployment name; for OpenAI models, this looks like `https://<project>.cognitiveservices.azure.com/openai/deployments/<model>`
+    * `Azure__AIFoundryDeployment` - the name of the deployed OpenAI model that you would like to use
+    * `Azure__AIFoundryEndpoint` - the endpoint URL for your Azure AI Foundry deployment, e.g. `https://<project>.cognitiveservices.azure.com/`
     * `Azure__ClientId` - the client ID of your Azure app registration
     * `Azure__DataProtectionBlobUri` - the SAS URL for the keys file you created earlier
     * `Azure__StorageAccountKey` - the key for your Azure Storage account

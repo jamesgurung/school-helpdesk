@@ -244,8 +244,6 @@ async function generateSuggestion() {
     elements.generatedResponse.textContent = result;
     elements.suggestResponseSection.style.display = 'block';
     elements.insertSuggestBtn.style.display = 'inline-flex';
-  } catch (error) {
-    showToast('AI generation failed.', 'error');
   } finally {
     elements.generateSuggestBtn.disabled = false;
     elements.generateSuggestBtn.textContent = 'Generate Preview';
