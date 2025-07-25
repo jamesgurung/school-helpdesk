@@ -222,6 +222,8 @@ public static partial class EmailService
   public static async Task SendParentReplyAsync(int id, TicketEntity ticket, Message message, List<PostmarkMessageAttachment> attachments)
   {
     ArgumentNullException.ThrowIfNull(ticket);
+    ArgumentNullException.ThrowIfNull(message);
+    ArgumentNullException.ThrowIfNull(attachments);
     var subject = $"[Ticket #{id}] {ticket.Title}";
     var body = $"<b>Your enquiry received a response from {message.AuthorName}:</b>\n\n{TextFormatting.CleanText(message.Content)}";
     await SendAsync(ticket.ParentEmail, subject, body, EmailTag.Parent, null, attachments);
@@ -307,7 +309,7 @@ public static partial class EmailService
   private static partial Regex TicketNumberRegex();
 }
 
-public class EmailTag
+public static class EmailTag
 {
   public const string Unknown = "Unknown";
   public const string Parent = "Parent";

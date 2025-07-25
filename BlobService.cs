@@ -95,24 +95,32 @@ public static class BlobService
   {
     var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture) { Encoding = Encoding.UTF8 };
 
-    List<CsvStudent> students;
+    var students = new List<CsvStudent>();
     var studentsBlob = configClient.GetBlobClient("students.csv");
     using (var stream = await studentsBlob.OpenReadAsync())
     using (var reader = new StreamReader(stream))
     using (var csv = new CsvReader(reader, csvConfig))
     {
-      students = csv.GetRecords<CsvStudent>()
-        .Where(s => !string.IsNullOrWhiteSpace(s.ParentEmailAddress))
-        .OrderBy(s => s.ParentLastName).ThenBy(s => s.ParentFirstName).ThenBy(s => s.TutorGroup).ThenBy(s => s.LastName).ThenBy(s => s.FirstName).ToList();
+      await foreach (var student in csv.GetRecordsAsync<CsvStudent>())
+      {
+        if (string.IsNullOrWhiteSpace(student.ParentEmailAddress)) continue;
+        students.Add(student);
+      }
+      students = students.OrderBy(s => s.ParentLastName).ThenBy(s => s.ParentFirstName).ThenBy(s => s.TutorGroup).ThenBy(s => s.LastName).ThenBy(s => s.FirstName).ToList();
     }
 
-    List<CsvStaff> staff;
+    var staff = new List<CsvStaff>();
     var staffBlob = configClient.GetBlobClient("staff.csv");
     using (var stream = await staffBlob.OpenReadAsync())
     using (var reader = new StreamReader(stream))
     using (var csv = new CsvReader(reader, csvConfig))
     {
-      staff = csv.GetRecords<CsvStaff>().Where(s => !string.IsNullOrWhiteSpace(s.Email)).OrderBy(s => s.LastName).ThenBy(s => s.FirstName).ThenBy(s => s.Email).ToList();
+      await foreach (var person in csv.GetRecordsAsync<CsvStaff>())
+      {
+        if (string.IsNullOrWhiteSpace(person.Email)) continue;
+        staff.Add(person);
+      }
+      staff = staff.OrderBy(s => s.LastName).ThenBy(s => s.FirstName).ThenBy(s => s.Email).ToList();
     }
 
     School.Instance.StaffByEmail = staff.ToDictionary(s => s.Email, s => new Staff
@@ -175,7 +183,7 @@ public static class BlobService
   {
     if (string.IsNullOrWhiteSpace(phoneNumber)) return null;
     var digits = new string(phoneNumber.Where(c => !char.IsWhiteSpace(c) && c != '-').ToArray());
-    if (digits.StartsWith("+44"))
+    if (digits.StartsWith("+44", StringComparison.Ordinal))
     {
       digits = digits[3..];
       if (digits.Length > 0 && digits[0] != '0') digits = "0" + digits;

@@ -18,7 +18,7 @@ public static partial class TextFormatting
 
   public static string CleanText(string text)
   {
-    return string.IsNullOrWhiteSpace(text) ? string.Empty : WebUtility.HtmlEncode(text).Replace("\r", "").Trim();
+    return string.IsNullOrWhiteSpace(text) ? string.Empty : WebUtility.HtmlEncode(text).Replace("\r", "", StringComparison.Ordinal).Trim();
   }
 
   public static EmailBody ParseEmailBody(string textBody, string htmlBody, string strippedTextReply, bool extractReply)
@@ -46,7 +46,7 @@ public static partial class TextFormatting
   public static string ExtractReply(string messageBody)
   {
     if (string.IsNullOrEmpty(messageBody)) return string.Empty;
-    var normalized = messageBody.Replace("\r", string.Empty);
+    var normalized = messageBody.Replace("\r", string.Empty, StringComparison.Ordinal);
     var span = normalized.AsSpan();
     var delimiterRegex = ReplyDelimiterRegex();
     var helpdeskEmail = $"{School.Instance.Name} <{School.Instance.HelpdeskEmail}>";
@@ -60,7 +60,7 @@ public static partial class TextFormatting
       var trimmed = line.Trim();
       if (trimmed.Length > 0)
       {
-        var lineText = trimmed.ToString().Replace("*", string.Empty);
+        var lineText = trimmed.ToString().Replace("*", string.Empty, StringComparison.Ordinal);
         if (delimiterRegex.IsMatch(lineText)) break;
         if (lineText.Contains(helpdeskEmail, StringComparison.OrdinalIgnoreCase)) break;
       }
@@ -73,7 +73,7 @@ public static partial class TextFormatting
   public static string RemoveEmptyLines(string text)
   {
     if (string.IsNullOrWhiteSpace(text)) return string.Empty;
-    var lines = text.Replace("\r", string.Empty).Split('\n');
+    var lines = text.Replace("\r", string.Empty, StringComparison.Ordinal).Split('\n');
     var builder = new StringBuilder();
     var blankCount = 0;
     foreach (var lineText in lines)

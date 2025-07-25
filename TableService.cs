@@ -1,5 +1,6 @@
 ﻿using Azure;
 using Azure.Data.Tables;
+using System.Globalization;
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
@@ -147,7 +148,7 @@ public static class TableService
 
   public static string ToRowKey(this int id)
   {
-    return id.ToString("D6");
+    return id.ToString("D6", CultureInfo.InvariantCulture);
   }
 }
 

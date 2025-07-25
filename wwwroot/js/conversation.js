@@ -248,7 +248,7 @@ async function generateSuggestion() {
     showToast('AI generation failed.', 'error');
   } finally {
     elements.generateSuggestBtn.disabled = false;
-    elements.generateSuggestBtn.textContent = 'Generate';
+    elements.generateSuggestBtn.textContent = 'Generate Preview';
   }
 }
 

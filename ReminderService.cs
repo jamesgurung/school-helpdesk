@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Globalization;
+using System.Runtime.InteropServices;
 
 namespace SchoolHelpdesk;
 
@@ -6,9 +7,9 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
 {
   private readonly TimeZoneInfo ukTimeZone = TimeZoneInfo.FindSystemTimeZoneById(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "GMT Standard Time" : "Europe/London");
 
-  protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+  protected override async Task ExecuteAsync(CancellationToken stoppingToken)
   {
-    while (!cancellationToken.IsCancellationRequested)
+    while (!stoppingToken.IsCancellationRequested)
     {
       var utcNow = DateTime.UtcNow;
       var ukNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, ukTimeZone);
@@ -19,7 +20,7 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
       var utcNext = TimeZoneInfo.ConvertTimeToUtc(ukNext, ukTimeZone);
       var delay = utcNext - utcNow;
       if (delay < TimeSpan.Zero) delay = TimeSpan.Zero;
-      await Task.Delay(delay, cancellationToken);
+      await Task.Delay(delay, stoppingToken);
       try
       {
         await SendRemindersAsync();
@@ -49,7 +50,7 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
 
     foreach (var ticket in openTickets)
     {
-      var id = int.Parse(ticket.RowKey);
+      var id = int.Parse(ticket.RowKey, CultureInfo.InvariantCulture);
       if (!School.Instance.StaffByEmail.TryGetValue(ticket.PartitionKey, out var staff)) continue;
       await EmailService.SendTicketUpdateEmailAsync(id, ticket, staff, TicketUpdateAction.Reminder);
     }
