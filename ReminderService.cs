@@ -21,6 +21,14 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
       var delay = utcNext - utcNow;
       if (delay < TimeSpan.Zero) delay = TimeSpan.Zero;
       await Task.Delay(delay, stoppingToken);
+
+      var today = DateOnly.FromDateTime(DateTime.UtcNow);
+      if (School.Instance.Holidays.Any(h => h.Start <= today && h.End >= today))
+      {
+        logger.LogInformation("Today is a holiday, skipping reminders");
+        continue;
+      }
+
       try
       {
         await SendRemindersAsync();

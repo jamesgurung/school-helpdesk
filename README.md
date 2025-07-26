@@ -33,6 +33,11 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
 3. Within the `config` blob container:
 
     * Upload a blank file `keys.xml`. Generate a SAS URL for this file with read/write permissions and a distant expiry. This will be used to store the application's data protection keys so that auth cookies persist across app restarts.
+    
+    * Upload a file `holidays.csv` with the following headers and populate it with your school's holiday dates in `yyyy-MM-dd` format. The start and end dates are inclusive. Reminder emails will not be sent to staff during holidays.
+        ```csv
+        Start,End
+        ```
 
     * Upload a file `students.csv` with the following headers and populate it with all students in your school. Where a student has more than one parent, repeat the student details across multiple rows. To correctly represent accented characters in student names, save the file in 'CSV UTF-8' format.
 

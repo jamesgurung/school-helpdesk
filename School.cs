@@ -23,6 +23,8 @@ public class School
 
   public string HtmlEmailTemplate { get; set; }
   public string TextEmailTemplate { get; set; }
+
+  public List<Holiday> Holidays { get; set; }
 }
 
 public class CsvStudent
@@ -68,4 +70,10 @@ public class Staff
   public string Name { get; set; }
   [JsonIgnore]
   public string FirstName { get; set; }
+}
+
+public class Holiday
+{
+  public DateOnly Start { get; set; }
+  public DateOnly End { get; set; }
 }

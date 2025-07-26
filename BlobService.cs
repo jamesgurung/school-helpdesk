@@ -170,6 +170,18 @@ public static class BlobService
 
     var textTemplate = await configClient.GetBlobClient("template.txt").DownloadContentAsync();
     School.Instance.TextEmailTemplate = textTemplate.Value.Content.ToString().ReplaceLineEndings("\n");
+
+    School.Instance.Holidays = [];
+    var holidaysBlob = configClient.GetBlobClient("holidays.csv");
+    using (var stream = await holidaysBlob.OpenReadAsync())
+    using (var reader = new StreamReader(stream))
+    using (var csv = new CsvReader(reader, csvConfig))
+    {
+      await foreach (var holiday in csv.GetRecordsAsync<Holiday>())
+      {
+        School.Instance.Holidays.Add(holiday);
+      }
+    }
   }
 
   private static string ComputeHash(string input)
