@@ -2,39 +2,49 @@
 using System.Text.RegularExpressions;
 using Azure;
 using Azure.AI.OpenAI;
-using OpenAI.Chat;
+using OpenAI.Responses;
 
 namespace SchoolHelpdesk;
 
+#pragma warning disable OPENAI001
+
 public static partial class AIService
 {
-  private static ChatClient _client;
+  private static OpenAIResponseClient _client;
 
   public static void Configure(string endpoint, string deployment, string apiKey)
   {
     var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
-    _client = azureClient.GetChatClient(deployment);
+    _client = azureClient.GetOpenAIResponseClient(deployment);
   }
 
   public static async Task<string> GenerateReplyAsync(string studentName, List<Message> messages, string guidance, string ticketId)
   {
-    var systemMessage = ChatMessage.CreateSystemMessage(
-      "You are an experienced teacher in a UK secondary school. You have received a parent enquiry and need to write a response.\n\n" +
-      "You will be shown the conversation history in chronological order, starting with the oldest message. You will then be given guidance on how to respond.\n\n" +
-      "Write a helpful response to the parent, in a warm, kind, and professional tone. Use British English spelling and terminology.\n\n" +
-      "Respond with the email content ONLY. Write short plaintext paragraphs with no headings, bullet points, or formatting.\n\n" +
-      "DO NOT include a greeting or sign-off. Only include the main body of the response.");
+    var instructions = """
+      You are an experienced teacher in a UK secondary school. You have received a parent enquiry and need to write a response.
+      You will be shown the conversation history in chronological order, starting with the oldest message. You will then be given guidance on how to respond.
+      Write a helpful response to the parent, in a warm, kind, and professional tone. Use British English spelling and terminology.
+      Respond with the email content ONLY. Write short plaintext paragraphs with no headings, bullet points, or formatting.
+      DO NOT include a greeting or sign-off. Only include the main body of the response.
+      """;
 
     var history = string.Join("\n\n", messages.Where(m => !m.IsPrivate).Select(
       (m, i) => $"## {(m.IsEmployee ? (i == 0 ? "Receptionist on behalf of the parent" : "Teacher") : "Parent")}:\n\n{m.Content}")
     );
 
-    var userMessage = ChatMessage.CreateUserMessage(
+    var userMessage = ResponseItem.CreateUserMessageItem(
       $"# Student name:\n\n{studentName}\n\n# Conversation history:\n\n{history}\n\n# Guidance on how to respond:\n\n{guidance}");
 
-    var options = new ChatCompletionOptions { Temperature = 0.2f, EndUserId = $"helpdesk-{ticketId}" };
-    var response = await _client.CompleteChatAsync([systemMessage, userMessage], options);
-    return NormaliseText(response.Value.Content[0].Text);
+    var options = new ResponseCreationOptions
+    {
+      Instructions = instructions,
+      ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
+      StoredOutputEnabled = false,
+      EndUserId = $"helpdesk-{ticketId}"
+    };
+
+    var response = await _client.CreateResponseAsync([userMessage], options);
+    return NormaliseText(response.Value.OutputItems.Select(o => o as MessageResponseItem).First(o => o is not null).Content.First().Text);
   }
 
   private static string NormaliseText(string text)

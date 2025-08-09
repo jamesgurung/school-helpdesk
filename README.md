@@ -53,7 +53,7 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
     
     * Upload `template.html` and `template.txt` templates to use for all outgoing emails. There are sample files in the [examples](examples) folder. Use the token `{{BODY}}` as a placeholder for the email body.
 
-4. Create an [Azure AI Foundry](https://ai.azure.com/) project and deploy an OpenAI model that you would like to use for generating suggested ticket responses.
+4. Create an [Azure AI Foundry](https://ai.azure.com/) project and deploy an OpenAI reasoning model (e.g. `gpt-5`) that you would like to use for generating suggested ticket responses.
 
 5. Create an Azure app registration.
     * Name - `School Helpdesk`
