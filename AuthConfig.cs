@@ -17,6 +17,10 @@ public static class AuthConfig
       .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
       .AddCookie(o =>
       {
+        o.Cookie.Path = "/";
+        o.Cookie.HttpOnly = true;
+        o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        o.Cookie.SameSite = SameSiteMode.Lax;
         o.LoginPath = "/auth/login";
         o.LogoutPath = "/auth/logout";
         o.ExpireTimeSpan = TimeSpan.FromDays(60);
@@ -37,10 +41,9 @@ public static class AuthConfig
               return;
             }
             var email = context.Principal.Identity.Name;
-            var identity = new ClaimsIdentity(context.Principal.Identity.AuthenticationType);
-            if (RefreshIdentity(identity, email))
+            if (TryCreatePrincipal(email, out var principal))
             {
-              context.ReplacePrincipal(new ClaimsPrincipal(identity));
+              context.ReplacePrincipal(principal);
               context.ShouldRenew = true;
             }
             else
@@ -48,23 +51,31 @@ public static class AuthConfig
               context.RejectPrincipal();
               await context.HttpContext.SignOutAsync();
             }
-            ;
           }
         };
       })
-      .AddOpenIdConnect("Microsoft", "Microsoft", o =>
+      .AddOpenIdConnect("Microsoft", o =>
       {
         o.Authority = $"https://login.microsoftonline.com/{builder.Configuration["Azure:TenantId"]}/v2.0/";
         o.ClientId = builder.Configuration["Azure:ClientId"];
-        o.ResponseType = OpenIdConnectResponseType.IdToken;
+        o.ClientSecret = builder.Configuration["Azure:ClientSecret"];
+        o.ResponseType = OpenIdConnectResponseType.Code;
+        o.MapInboundClaims = false;
+        o.Scope.Clear();
+        o.Scope.Add("openid");
         o.Scope.Add("profile");
         o.Events = new()
         {
           OnTicketReceived = context =>
           {
-            var email = context.Principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Upn)?.Value.ToLowerInvariant();
-            if (!RefreshIdentity((ClaimsIdentity)context.Principal.Identity, email))
+            var email = context.Principal.FindFirstValue("upn")?.ToLowerInvariant();
+            if (TryCreatePrincipal(email, out var principal))
             {
+              context.Principal = principal;
+            }
+            else
+            {
+              context.Fail("Unauthorised");
               context.Response.Redirect("/auth/denied");
               context.HandleResponse();
             }
@@ -76,23 +87,18 @@ public static class AuthConfig
     builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
   }
 
-  private static bool RefreshIdentity(ClaimsIdentity identity, string email)
+  private static bool TryCreatePrincipal(string email, out ClaimsPrincipal principal)
   {
-    if (email is null || !School.Instance.StaffByEmail.TryGetValue(email, out var staff)) return false;
-
-    for (var i = identity.Claims.Count() - 1; i >= 0; i--)
+    if (email is null || !School.Instance.StaffByEmail.TryGetValue(email, out var staff))
     {
-      identity.RemoveClaim(identity.Claims.ElementAt(i));
+      principal = null;
+      return false;
     }
-
+    var identity = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
     identity.AddClaim(new Claim(ClaimTypes.Name, staff.Email));
-
-    if (School.Instance.Admins.Contains(email, StringComparer.OrdinalIgnoreCase))
-      identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Administrator));
-
-    if (School.Instance.Managers.Contains(email, StringComparer.OrdinalIgnoreCase))
-      identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Manager));
-
+    if (School.Instance.Admins.Contains(email, StringComparer.OrdinalIgnoreCase)) identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Administrator));
+    if (School.Instance.Managers.Contains(email, StringComparer.OrdinalIgnoreCase)) identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Manager));
+    principal = new ClaimsPrincipal(identity);
     return true;
   }
 
@@ -101,11 +107,10 @@ public static class AuthConfig
   public static void MapAuthPaths(this WebApplication app)
   {
     app.MapGet("/auth/login/challenge", [AllowAnonymous] ([FromQuery] string path) =>
-      Results.Challenge(
-        new AuthenticationProperties { RedirectUri = path is null ? "/" : WebUtility.UrlDecode(path), AllowRefresh = true, IsPersistent = true },
-        authenticationSchemes
-      )
-    );
+    {
+      var authProperties = new AuthenticationProperties { RedirectUri = path is null ? "/" : WebUtility.UrlDecode(path), AllowRefresh = true, IsPersistent = true };
+      return Results.Challenge(authProperties, authenticationSchemes);
+    });
 
     app.MapGet("/auth/logout", (HttpContext context) =>
     {

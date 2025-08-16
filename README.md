@@ -62,6 +62,7 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
     * Supported account types - Accounts in this organizational directory only
     * API permissions - `Microsoft Graph - User.Read`
     * Token configuration - add an optional claim of type ID: `upn`
+    * Certificates & secrets - create a new client secret
 
 6. Create an Azure App Service web app.
     * Publish mode - Container
@@ -77,6 +78,7 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
     * `Azure__AIFoundryDeployment` - the name of the deployed OpenAI model that you would like to use
     * `Azure__AIFoundryEndpoint` - the endpoint URL for your Azure AI Foundry deployment, e.g. `https://<project>.cognitiveservices.azure.com/`
     * `Azure__ClientId` - the client ID of your Azure app registration
+    * `Azure__ClientSecret` - the client secret of your Azure app registration
     * `Azure__DataProtectionBlobUri` - the SAS URL for the keys file you created earlier
     * `Azure__StorageAccountKey` - the key for your Azure Storage account
     * `Azure__StorageAccountName` - the name of your Azure Storage account
