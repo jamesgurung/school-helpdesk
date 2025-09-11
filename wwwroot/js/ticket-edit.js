@@ -82,7 +82,10 @@ async function updateTicketParent() {
     if (currentStudent) {
       ticket.parentRelationship = currentStudent.parentRelationship;
     } else {
-      ticket.parentRelationship = 'Parent/Carer';
+      ticket.studentFirstName = null;
+      ticket.studentLastName = null;
+      ticket.tutorGroup = null;
+      ticket.parentRelationship = null;
     }
     renderTicketInList(ticket);
     populateStudentSelect(ticket, newChildren);
@@ -153,7 +156,8 @@ async function toggleTicketStatus() {
 
 function toggleSelectEdit(selectEl, infoSection, getOptions, updateFn) {
   const options = getOptions();
-  if (options.length <= 1) return;
+  const hasSelection = !!(selectEl && selectEl.value && selectEl.value.trim() !== '');
+  if (options.length <= 1 && hasSelection) return;
   const infoContainer = infoSection.querySelector('.info-container');
   if (selectEl.parentElement === infoSection) {
     updateFn();

@@ -104,11 +104,10 @@ public static class TableService
   public static async Task ChangeTicketStudentAsync(TicketEntity ticket, Student student)
   {
     ArgumentNullException.ThrowIfNull(ticket);
-    ArgumentNullException.ThrowIfNull(student);
-    ticket.StudentFirstName = student.FirstName;
-    ticket.StudentLastName = student.LastName;
-    ticket.TutorGroup = student.TutorGroup;
-    ticket.ParentRelationship = student.ParentRelationship;
+    ticket.StudentFirstName = student?.FirstName;
+    ticket.StudentLastName = student?.LastName;
+    ticket.TutorGroup = student?.TutorGroup;
+    ticket.ParentRelationship = student?.ParentRelationship;
     await ticketsClient.UpdateEntityAsync(ticket, ETag.All, TableUpdateMode.Replace);
   }
 

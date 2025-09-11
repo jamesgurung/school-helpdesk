@@ -110,7 +110,7 @@ function renderStudentInfo(ticket, children) {
     icon: hasStudent ? 'school' : 'warning',
     name: hasStudent ? getFullName(ticket.studentFirstName, ticket.studentLastName) : 'Not Set',
     detail: hasStudent ? ticket.tutorGroup : '',
-    editable: canEditField(ticket, 'student') && children.length > 1,
+    editable: canEditField(ticket, 'student') && (children.length > 1 || (children.length === 1 && !hasStudent)),
     editHandler: toggleStudentEdit,
     isWarning: !hasStudent
   });

@@ -179,7 +179,9 @@ public static class Api
           string.Equals(c.LastName, entity.StudentLastName, StringComparison.OrdinalIgnoreCase));
 
         if (currentStudent is null)
-          return Results.BadRequest("Current student is not associated with the new parent.");
+        {
+          await TableService.ChangeTicketStudentAsync(entity, null);
+        }
       }
 
       await TableService.ChangeTicketParentAsync(entity, newParent, currentStudent?.ParentRelationship);
