@@ -148,6 +148,7 @@ async function toggleTicketStatus() {
       updateMessageControlsState(ticket);
     }
     renderTickets(state.activeTab);
+    updateOpenTicketsBadge();
     await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, ticket.isClosed);
   } catch (error) {
     console.error('Failed to update ticket status:', error);

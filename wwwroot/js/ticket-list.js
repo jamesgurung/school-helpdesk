@@ -81,3 +81,13 @@ function resetDetailsView() {
     item.classList.remove('selected');
   });
 }
+
+function updateOpenTicketsBadge() {
+  const numTickets = tickets.filter(ticket => !ticket.isClosed).length;
+  if (numTickets > 0) {
+    elements.openBadge.textContent = numTickets;
+    elements.openBadge.style.display = 'flex';
+  } else {
+    elements.openBadge.style.display = 'none';
+  }
+}

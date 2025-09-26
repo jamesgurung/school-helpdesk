@@ -55,6 +55,7 @@ const elements = {
   suggestResponseSection: document.getElementById('suggest-response-section'),
   cancelSuggestBtn: document.getElementById('cancel-suggest'),
   insertSuggestBtn: document.getElementById('insert-suggest'),
+  openBadge: document.getElementById('open-badge')
 };
 
 const state = {
@@ -155,6 +156,7 @@ async function init() {
       }
     }
     renderTickets(state.activeTab);
+    updateOpenTicketsBadge();
     setupEventListeners();
     populateNewTicketForm();
     state.timeUpdateInterval = setInterval(updateAllElapsedTimes, 1000);

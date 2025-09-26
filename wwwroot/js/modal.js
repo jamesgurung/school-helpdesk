@@ -103,6 +103,7 @@ async function createNewTicket() {
 
   delete newTicket.message;
   tickets.unshift(newTicket);
+  updateOpenTicketsBadge();
 
   state.conversation = [{
     timestamp: now,
