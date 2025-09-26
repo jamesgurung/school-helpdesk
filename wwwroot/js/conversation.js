@@ -129,6 +129,11 @@ async function sendMessage() {
     return showToast('You must not include a salutation or sign-off. These are added automatically.', 'error');
   }
 
+  if (startsWithLowercaseLetter(content)) {
+    elements.newMessageInput.focus();
+    return showToast('You must start your message with a capital letter.', 'error');
+  }
+
   const files = Array.from(elements.messageAttachments.files);
   const isPrivate = elements.internalNoteCheckbox.checked;
 
@@ -266,9 +271,13 @@ function containsSalutationOrValediction(text, name) {
   const trimmed = text.trim();
   const greetingRegex = /^(?:Dear|Hi|Hello|Hey|Greetings|To whom it may concern|Good morning|Good afternoon|Good evening)\b/i;
   if (greetingRegex.test(trimmed)) return true;
-  const valedictionRegex = /^\s*(?:Best regards|Kind regards|Warm regards|Warm wishes|Best wishes|Warmest regards|Warmest wishes|Sincerely|Yours sincerely|Yours faithfully|Yours truly|All the best|Regards|Cheers|Thank you|Thanks)\b[\s,]*$/im;
+  const valedictionRegex = /^\s*(?:Best regards|Kind regards|Warm regards|Warm wishes|Best wishes|Warmest regards|Warmest wishes|Sincerely|Yours sincerely|Yours faithfully|Yours truly|All the best|Regards|Cheers|Thank you|Thanks|Many thanks)\b[\s,.]*$/im;
   if (valedictionRegex.test(text)) return true;
   const esc = name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
   const nameEndRegex = new RegExp(`\\b${esc}[\\.,]?\\s*$`, 'i');
   return nameEndRegex.test(text);
+}
+
+function startsWithLowercaseLetter(text) {
+  return /^\p{Ll}/u.test(str);
 }

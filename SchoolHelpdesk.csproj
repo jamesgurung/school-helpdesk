@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.3.0-beta.2" />
-    <PackageReference Include="Azure.Core" Version="1.48.0" />
+    <PackageReference Include="Azure.Core" Version="1.49.0" />
     <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
     <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" Version="1.5.1" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0-beta.1" />

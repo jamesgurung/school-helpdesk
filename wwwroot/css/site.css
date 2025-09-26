@@ -305,7 +305,6 @@ h1 {
   cursor: pointer;
   display: grid;
   grid-template-columns: 1fr;
-  grid-gap: 4px;
 }
 
 .ticket-item:not(.ticket-item-empty):hover {
@@ -358,7 +357,7 @@ h1 {
 .ticket-info-grid {
   display: grid;
   grid-template-columns: 50% 50%;
-  gap: 8px;
+  gap: 2px;
 }
 
 .ticket-info-item {
@@ -366,15 +365,6 @@ h1 {
   flex-direction: column;
   border-radius: 4px;
   overflow: hidden;
-}
-
-.ticket-info-label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-light);
-  margin-bottom: 0.15rem;
-  font-weight: 500;
 }
 
 .ticket-info-value {
@@ -1448,7 +1438,7 @@ button {
   margin-top: 16px;
 }
 
-.suggest-response-section label {
+.suggest-response-section div.label {
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
