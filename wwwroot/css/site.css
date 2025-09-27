@@ -617,6 +617,13 @@ h1 {
   color: var(--secondary);
 }
 
+.cc-icon {
+  font-size: 16px;
+  color: var(--text-light);
+  opacity: 0.7;
+  cursor: default;
+}
+
 .message-content {
   color: var(--text);
   line-height: 1.4;
@@ -1071,6 +1078,12 @@ button {
 
 .modal-body {
   padding: 20px;
+}
+
+#original-email-metadata {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  margin-bottom: 18px;
 }
 
 #original-email-frame {

@@ -5,7 +5,7 @@ function renderConversation() {
   const template = document.getElementById('message-template').content;
 
   state.conversation.forEach((msg, i) => {
-    const { isEmployee, isPrivate, authorName, timestamp, content, attachments, originalEmail } = msg;
+    const { isEmployee, isPrivate, authorName, timestamp, content, attachments, originalEmail, emailSubject, emailTo, emailCc } = msg;
     
     if (content === '#close' || content === '#reopen' || content.startsWith('#assign ')) {
       const eventEl = document.createElement('div');
@@ -58,8 +58,15 @@ function renderConversation() {
       emailIcon.className = 'material-symbols-rounded original-email-icon';
       emailIcon.textContent = 'email';
       emailIcon.title = 'View original email';
-      emailIcon.onclick = () => showOriginalEmailModal(originalEmail);
+      emailIcon.onclick = () => showOriginalEmailModal(originalEmail, emailTo, emailCc, emailSubject);
       dateContainer.insertAdjacentElement('afterbegin', emailIcon);
+      if (emailTo || emailCc) {
+        const ccIcon = document.createElement('span');
+        ccIcon.className = 'material-symbols-rounded cc-icon';
+        ccIcon.textContent = 'closed_caption';
+        ccIcon.title = [emailTo && `To: ${emailTo}`, emailCc && `Cc: ${emailCc}`].filter(Boolean).join(', ');
+        dateContainer.insertAdjacentElement('afterbegin', ccIcon);
+      }
     }
     clone.querySelector('.message-content').textContent = content;
     if (isOnBehalf) {
@@ -83,10 +90,20 @@ function showImageModal(src, name) {
 }
 const closeImageModal = () => document.getElementById('image-modal').style.display = 'none';
 
-function showOriginalEmailModal(html) {
-  const modal = document.getElementById('original-email-modal');
-  modal.style.display = 'block';
-  elements.iframe.srcdoc = html;
+function showOriginalEmailModal(html, to, cc, subject) {
+  elements.originalEmailIframe.srcdoc = html;
+  if (to || cc || subject) {
+    elements.originalEmailMetadata.style.display = 'block';
+    elements.originalEmailTo.style.display = to ? 'block' : 'none';
+    elements.originalEmailTo.querySelector('span').textContent = to || '';
+    elements.originalEmailCc.style.display = cc ? 'block' : 'none';
+    elements.originalEmailCc.querySelector('span').textContent = cc || '';
+    elements.originalEmailSubject.style.display = subject ? 'block' : 'none';
+    elements.originalEmailSubject.querySelector('span').textContent = subject || '';
+  } else {
+    elements.originalEmailMetadata.style.display = 'none';
+  }
+  elements.originalEmailModal.style.display = 'block';
 }
 const closeOriginalEmailModal = () => document.getElementById('original-email-modal').style.display = 'none';
 

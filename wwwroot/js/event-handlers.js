@@ -269,13 +269,13 @@ function setupDocumentClickHandlers() {
 }
 
 function setupIFrameStyles() {
-  elements.iframe.onload = () => {
+  elements.originalEmailIframe.onload = () => {
     const computedStyles = getComputedStyle(document.documentElement);
     const textColour = computedStyles.getPropertyValue('--text').trim();
     const backgroundColour = computedStyles.getPropertyValue('--bg').trim();
-    const style = elements.iframe.contentDocument.createElement('style');
+    const style = elements.originalEmailIframe.contentDocument.createElement('style');
     style.textContent = `* { margin: 0; } html { padding: 10px; color: ${textColour}; background-color: ${backgroundColour}; }`;
-    elements.iframe.contentDocument.head.appendChild(style);
+    elements.originalEmailIframe.contentDocument.head.appendChild(style);
   };
 }
 
