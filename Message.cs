@@ -13,12 +13,18 @@ public class Message
   public List<Attachment> Attachments { get; set; }
   [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
   public string OriginalEmail { get; set; }
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public string EmailSubject { get; set; }
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public string EmailTo { get; set; }
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public string EmailCc { get; set; }
 }
 
 public class Attachment
 {
   private static readonly HashSet<string> validFileExtensions =
-    new([".pdf", ".docx", ".doc", ".odt", ".xlsx", ".xls", ".pptx", ".ppt", ".csv", ".txt", ".png", ".jpg", ".jpeg", ".webp", ".heic"], StringComparer.OrdinalIgnoreCase);
+    new([".pdf", ".docx", ".doc", ".odt", ".rtf", ".xlsx", ".xls", ".ods", ".pptx", ".ppt", ".csv", ".txt", ".xml", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".heic", ".tif", ".tiff", ".svg", ".mp4", ".mov", ".avi", ".m4v", ".wmv", ".webm", ".mp3", ".wav", ".m4a", ".flac", ".zip", ".rar", ".7z", ".ics", ".xps"], StringComparer.OrdinalIgnoreCase);
 
   private static readonly char[] invalidFileNameChars = Path.GetInvalidFileNameChars();
 

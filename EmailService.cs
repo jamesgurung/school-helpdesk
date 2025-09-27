@@ -88,7 +88,9 @@ public static partial class EmailService
           Timestamp = now,
           Content = body.MessageText,
           OriginalEmail = body.SanitizedHtml,
-          Attachments = attachments
+          Attachments = attachments,
+          EmailTo = message.ToFull.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To.Trim(),
+          EmailCc = string.IsNullOrWhiteSpace(message.Cc) ? null : message.Cc.Trim()
         });
         await BlobService.AppendMessagesAsync(ticketNumber, messages);
         await TableService.UpdateForNewParentMessageAsync(ticket, now);
@@ -149,7 +151,10 @@ public static partial class EmailService
           Timestamp = DateTime.UtcNow,
           Content = body.MessageText,
           OriginalEmail = body.SanitizedHtml,
-          Attachments = attachments
+          Attachments = attachments,
+          EmailSubject = string.IsNullOrWhiteSpace(message.Subject) ? null : message.Subject.Trim(),
+          EmailTo = message.ToFull.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To.Trim(),
+          EmailCc = string.IsNullOrWhiteSpace(message.Cc) ? null : message.Cc.Trim()
         }
       };
 
