@@ -19,6 +19,8 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
 * Support for all screen sizes including mobile
 * Single sign-on (SSO) using Microsoft 365
 
+By default, only open tickets and the most recent closed tickets are shown. To display all tickets, append `?all=1` to the URL.
+
 ### Setup
 
 1. Create a [Postmark](https://account.postmarkapp.com) Pro account.

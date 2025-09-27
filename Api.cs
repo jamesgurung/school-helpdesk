@@ -285,22 +285,23 @@ public static class Api
         content = $"Dear {GetSalutation(ticket.ParentName)}\n\n{content}\n\nBest wishes\n\n{GetSalutation(user)}";
       }
 
+      var now = DateTime.UtcNow;
       var tasks = new List<Task>(3);
       var message = new Message
       {
         AuthorName = user,
         IsEmployee = true,
-        Timestamp = DateTime.UtcNow,
+        Timestamp = now,
         Content = content,
         IsPrivate = isPrivate,
         Attachments = attachments.Count > 0 ? attachments : null
       };
       tasks.Add(BlobService.AppendMessagesAsync(id, message));
+      tasks.Add(TableService.SetLastUpdatedAsync(ticket, now, !isPrivate));
 
       if (!isPrivate)
       {
         tasks.Add(EmailService.SendParentReplyAsync(id, ticket, message, postmarkAttachments));
-        tasks.Add(TableService.ClearLastParentMessageDateAsync(assigneeEmail, id));
       }
 
       await Task.WhenAll(tasks);

@@ -3,7 +3,10 @@
 @inject IWebHostEnvironment Environment
 @{
   var isManager = User.IsInRole(AuthConstants.Manager);
-  var tickets = isManager ? await TableService.GetAllTicketsAsync() : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name);
+	var all = Request.Query.ContainsKey("all") && Request.Query["all"] == "1";
+  var tickets = isManager
+    ? await TableService.GetAllTicketsAsync(all ? null : DateTime.Today.AddDays(-14))
+    : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name, all ? null : DateTime.Today.AddDays(-90));
 }
 
 <header>
@@ -121,28 +124,28 @@
     <div class="ticket-info-grid">
       <div class="ticket-info-item">
         <div class="ticket-info-value student-value">
-          <span class="material-symbols-rounded">school</span>
+					<span class="material-symbols-rounded" title="Student">school</span>
           <span></span>
         </div>
       </div>
 
       <div class="ticket-info-item">
         <div class="ticket-info-value">
-          <span class="material-symbols-rounded">calendar_month</span>
+          <span class="material-symbols-rounded" title="Date created">calendar_month</span>
           <span class="created-date"></span>
         </div>
       </div>
 
       <div class="ticket-info-item">
         <div class="ticket-info-value assignee-value">
-          <span class="material-symbols-rounded">account_circle</span>
+          <span class="material-symbols-rounded" title="Assignee">account_circle</span>
           <span></span>
         </div>
       </div>
 
       <div class="ticket-info-item">
         <div class="ticket-info-value">
-          <span class="material-symbols-rounded wait-time-icon">timer</span>
+          <span class="material-symbols-rounded wait-time-icon" title="Status">timer</span>
           <span class="wait-time"></span>
         </div>
       </div>

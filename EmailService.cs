@@ -68,6 +68,7 @@ public static partial class EmailService
         var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, true);
         var attachments = await UploadAttachmentsAsync(message.Attachments);
         var messages = new List<Message>(2);
+        var now = DateTime.UtcNow;
         if (ticket.IsClosed)
         {
           messages.Add(new()
@@ -75,7 +76,7 @@ public static partial class EmailService
             AuthorName = parentName,
             IsEmployee = false,
             IsPrivate = true,
-            Timestamp = DateTime.UtcNow,
+            Timestamp = now,
             Content = "#reopen"
           });
         }
@@ -84,13 +85,13 @@ public static partial class EmailService
           AuthorName = parentName,
           IsEmployee = false,
           IsPrivate = false,
-          Timestamp = DateTime.UtcNow,
+          Timestamp = now,
           Content = body.MessageText,
           OriginalEmail = body.SanitizedHtml,
           Attachments = attachments
         });
         await BlobService.AppendMessagesAsync(ticketNumber, messages);
-        await TableService.SetLastParentMessageDateAsync(ticket);
+        await TableService.UpdateForNewParentMessageAsync(ticket, now);
         if (ticket.PartitionKey != "unassigned" && School.Instance.StaffByEmail.TryGetValue(ticket.PartitionKey, out var assignee))
         {
           await SendTicketUpdateEmailAsync(ticketNumber, ticket, assignee, TicketUpdateAction.Updated);
@@ -115,6 +116,7 @@ public static partial class EmailService
         subject = subject[3..].Trim();
       }
       if (subject.Length > 40) subject = subject[..37] + "...";
+      var now = DateTime.UtcNow;
 
       var ticket = new TicketEntity
       {
@@ -125,8 +127,9 @@ public static partial class EmailService
         ParentEmail = parentEmail,
         ParentPhone = parentName is null ? null : parents[0].Phone,
         ParentRelationship = parentName is null ? null : student?.ParentRelationship,
-        Created = DateTime.UtcNow,
-        WaitingSince = DateTime.UtcNow,
+        Created = now,
+        LastUpdated = now,
+        WaitingSince = now,
         StudentFirstName = student?.FirstName,
         StudentLastName = student?.LastName,
         TutorGroup = student?.TutorGroup,
