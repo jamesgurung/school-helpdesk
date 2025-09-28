@@ -296,5 +296,5 @@ function containsSalutationOrValediction(text, name) {
 }
 
 function startsWithLowercaseLetter(text) {
-  return /^\p{Ll}/u.test(str);
+  return /^\p{Ll}/u.test(text);
 }
