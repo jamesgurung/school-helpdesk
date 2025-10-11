@@ -162,14 +162,43 @@ public static partial class EmailService
 
       try
       {
-        var title = await AIService.GenerateTitleAsync(subject, body.MessageText, id.ToRowKey());
+        var idString = id.ToRowKey();
+        if (ticket.ParentName is null)
+        {
+          var parent = await AIService.InferParentAsync(body.MessageText, parents, idString);
+          if (parent is not null)
+          {
+            students = parent.Children;
+            var studentWasUnknown = student is null;
+            if (students.Count == 1)
+            {
+              student = students[0];
+            }
+            await TableService.ChangeTicketParentAsync(ticket, parent, student?.ParentRelationship);
+            if (studentWasUnknown && student is not null)
+            {
+              await TableService.ChangeTicketStudentAsync(ticket, student);
+            }
+          }
+        }
+
+        if (ticket.ParentName is not null && student is null)
+        {
+          student = await AIService.InferStudentAsync(body.MessageText, students, idString);
+          if (student is not null)
+          {
+            await TableService.ChangeTicketStudentAsync(ticket, student);
+          }
+        }
+
+        var title = await AIService.GenerateTitleAsync(subject, body.MessageText, idString);
         if (!string.IsNullOrWhiteSpace(title) && title != ticket.Title)
         {
           await TableService.RenameTicketAsync("unassigned", id, title);
           ticket.Title = title;
         }
       }
-      catch { } // Ignore failures in AI title generation
+      catch { } // Ignore AI failures
 
       if (School.Instance.NotifyFirstManager && School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var manager))
       {
