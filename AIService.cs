@@ -125,7 +125,7 @@ public static partial class AIService
     return parentName is null ? null : parents.FirstOrDefault(p => p.Name.Equals(parentName, StringComparison.OrdinalIgnoreCase));
   }
 
-  public static async Task<Student> InferStudentAsync(string body, List<Student> students, string ticketId)
+  public static async Task<Student> InferStudentAsync(string subject, string body, List<Student> students, string ticketId)
   {
     var studentNames = students.Select(o => $"{o.FirstName} {o.LastName} {o.TutorGroup}".Replace("\"", string.Empty, StringComparison.OrdinalIgnoreCase).Trim()).ToList();
 
@@ -133,13 +133,13 @@ public static partial class AIService
       You are an experienced receptionist in a UK secondary school. You will be shown a parent enquiry received by email.
       The parent has multiple children at the school.
       Identify the child from the list of names provided.
-      Match based on the child's name, year group, tutor group, gender, or any other details provided.
+      Match based on the child's name, initials, year group, tutor group, gender, or any other details provided.
       Make reasonable inferences even if the name is not explicitly stated.
       Respond in a JSON object with the child's name if it can be inferred, or null if it is impossible to tell.
       For example, if the options were "John Smith 7ABC" and "Lauren Smith 8DEF" and the email referred to "my son", you would respond with { "studentName": "John Smith 7ABC" }.
       """;
 
-    var userMessage = ResponseItem.CreateUserMessageItem($"# Email received:\n\n{body}\n\n# Student names:\n\n" + string.Join("\n", studentNames));
+    var userMessage = ResponseItem.CreateUserMessageItem($"# Email received:\n\nSubject: {subject}\n\n{body}\n\n# Student names:\n\n" + string.Join("\n", studentNames));
 
     var schema = BinaryData.FromString("""
     {

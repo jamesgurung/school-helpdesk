@@ -191,7 +191,7 @@ public static partial class EmailService
 
         if (ticket.ParentName is not null && student is null)
         {
-          student = await AIService.InferStudentAsync(body.MessageText, students, idString);
+          student = await AIService.InferStudentAsync(subject, body.MessageText, students, idString);
           if (student is not null)
           {
             await TableService.ChangeTicketStudentAsync(ticket, student);
