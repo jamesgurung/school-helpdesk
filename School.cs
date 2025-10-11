@@ -25,6 +25,7 @@ public class School
   public string TextEmailTemplate { get; set; }
 
   public List<Holiday> Holidays { get; set; }
+  public HashSet<string> BlockedEmails { get; set; }
 }
 
 public class CsvStudent

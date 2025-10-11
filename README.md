@@ -53,6 +53,8 @@ By default, only open tickets and the most recent closed tickets are shown. To d
         Email,Title,FirstName,LastName
         ```
     
+    * Upload a file `blocklist.txt` containing one email address per line that should be blocked from contacting the helpdesk. Emails from these addresses will be ignored with no bounce message sent. This is useful for blocking spam or banned users.
+    
     * Upload `template.html` and `template.txt` templates to use for all outgoing emails. There are sample files in the [examples](examples) folder. Use the token `{{BODY}}` as a placeholder for the email body.
 
 4. Create an [Azure AI Foundry](https://ai.azure.com/) project and deploy an OpenAI reasoning model (e.g. `gpt-5`) that you would like to use for generating suggested ticket responses.

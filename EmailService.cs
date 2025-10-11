@@ -32,6 +32,8 @@ public static partial class EmailService
   {
     if (authKey != _authKey || message is null) return;
 
+    if (School.Instance.BlockedEmails.Contains(message.From)) return;
+
     var spamHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "x-spam-status", StringComparison.OrdinalIgnoreCase))?.Value;
     if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
 
@@ -52,6 +54,11 @@ public static partial class EmailService
       if (!(spfHeader?.StartsWith("pass", StringComparison.OrdinalIgnoreCase) ?? false)) return;
       var isStaff = School.Instance.StaffByEmail.ContainsKey(message.From);
       await SendRejectionEmailAsync(message.From, message.Subject, messageId, isStaff ? RejectionReason.StaffSender : RejectionReason.UnknownSender);
+      if (!isStaff && School.Instance.NotifyFirstManager)
+      {
+        var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
+        await SendUnknownSenderNotificationAsync(message.From, message.Subject, body.MessageText);
+      }
       return;
     }
 
@@ -321,11 +328,12 @@ public static partial class EmailService
   private static async Task SendRejectionEmailAsync(string to, string subject, string messageId, RejectionReason reason)
   {
     var replySubject = subject.StartsWith("Re: ", StringComparison.OrdinalIgnoreCase) ? subject : ("Re: " + subject);
-    var body = "Sorry, your email could not be delivered. " + reason switch
+    var body = "<b>Sorry, your email could not be delivered.</b>\n\n" + reason switch
     {
       RejectionReason.UnknownSender =>
-        "This mailbox is only for use by parents and carers of current students, and we do not have your email address as a primary contact in our records.\n\n" +
-        "If you have an enquiry, please contact reception.",
+        $"This mailbox is only for use by parents and carers of current students, and we do not have {to} set as a contact's primary email address in our records.\n\n" +
+        "If you have a child attending the school, please re-send your message from the primary email address you have registered with us.\n\n" +
+        "For all other enquiries, please contact reception.",
       RejectionReason.StaffSender =>
         "Email replies from staff are not supported.\n\n" +
         $"Please sign in to the <a href=\"https://{School.Instance.AppWebsite}\">helpdesk portal</a> to respond to a ticket.",
@@ -336,6 +344,16 @@ public static partial class EmailService
         throw new NotImplementedException()
     };
     await SendAsync(to, replySubject, body, EmailTag.Unknown, messageId);
+  }
+
+  private static async Task SendUnknownSenderNotificationAsync(string from, string subject, string content)
+  {
+    if (!School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var staff)) return;
+    var body = $"<b>This message was rejected from our helpdesk because the sender email address was not recognised.</b>\n\n" +
+      $"<b>From:</b>\n{from}\n\n" +
+      $"<b>Subject:</b>\n{subject}\n\n" +
+      $"<b>Message:</b>\n{content}";
+    await SendAsync(staff.Email, "Unrecognised sender", body, EmailTag.Staff);
   }
 
   private static async Task<List<Attachment>> UploadAttachmentsAsync(List<PostmarkDotNet.Attachment> inboundAttachments)

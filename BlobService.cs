@@ -1,4 +1,5 @@
-﻿using Azure.Storage;
+﻿using Azure;
+using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using CsvHelper;
@@ -181,6 +182,18 @@ public static class BlobService
       {
         School.Instance.Holidays.Add(holiday);
       }
+    }
+
+    var blocklistBlob = configClient.GetBlobClient("blocklist.txt");
+    try
+    {
+      var content = await blocklistBlob.DownloadContentAsync();
+      var lines = content.Value.Content.ToString().ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+      School.Instance.BlockedEmails = new HashSet<string>(lines, StringComparer.OrdinalIgnoreCase);
+    }
+    catch (RequestFailedException ex) when (ex.Status == 404)
+    {
+      School.Instance.BlockedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
   }
 
