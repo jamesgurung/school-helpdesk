@@ -45,7 +45,7 @@ function renderTickets(status) {
       waitTimeText.textContent = "Resolved";
     } else if (ticket.waitingSince === null) {
       waitTimeIcon.textContent = "mark_email_read";
-      waitTimeText.textContent = "Awaiting parent";
+      waitTimeText.textContent = "Reply sent";
     } else {
       waitTimeIcon.textContent = "timer";
       waitTimeText.innerHTML = `Open for <span class="elapsed-time">${calculateTimeElapsed(ticket.waitingSince)}</span>`;

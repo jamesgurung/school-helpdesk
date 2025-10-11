@@ -47,6 +47,33 @@ public static partial class AIService
     return NormaliseText(response.Value.OutputItems.Select(o => o as MessageResponseItem).First(o => o is not null).Content.First().Text);
   }
 
+  public static async Task<string> GenerateTitleAsync(string subject, string body, string ticketId)
+  {
+    var instructions = """
+      You are an experienced receptionist in a UK secondary school. You will be shown a parent enquiry received by email.
+      Write a concise title for the enquiry that summarises the main issue or request. Use no more than 3 words.
+      Write in sentence case, without a full stop at the end. Do not include any reference to the student name or any staff names or roles.
+      Avoid words like "complaint", "issue", "request", or "urgent". The title must be neutral and factual, suitable for display in a helpdesk ticketing system.
+      Only include the title text in your response. Do not include any formatting or additional commentary.
+      Examples of good titles: "Late bus", "Science homework", "Unwell today", "New contact details", "Sport Studies trip", "Lost property", "Password reset", "ADHD support".
+      """;
+
+    var userMessage = ResponseItem.CreateUserMessageItem($"# Email subject:\n\n{subject}\n\n# Email body:\n\n{body}");
+
+    var options = new ResponseCreationOptions
+    {
+      Instructions = instructions,
+      ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
+      StoredOutputEnabled = false,
+      EndUserId = $"helpdesk-{ticketId}"
+    };
+
+    var response = await _client.CreateResponseAsync([userMessage], options);
+    var title = NormaliseText(response.Value.OutputItems.Select(o => o as MessageResponseItem).First(o => o is not null).Content.First().Text);
+    if (title.Length > 40) title = title[..37].Trim() + "...";
+    return title;
+  }
+
   private static string NormaliseText(string text)
   {
     if (string.IsNullOrWhiteSpace(text)) return string.Empty;

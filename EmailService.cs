@@ -117,14 +117,13 @@ public static partial class EmailService
       {
         subject = subject[3..].Trim();
       }
-      if (subject.Length > 40) subject = subject[..37] + "...";
       var now = DateTime.UtcNow;
 
       var ticket = new TicketEntity
       {
         PartitionKey = "unassigned",
         AssigneeName = null,
-        Title = subject,
+        Title = subject.Length <= 40 ? subject : (subject[..37].Trim() + "..."),
         ParentName = parentName,
         ParentEmail = parentEmail,
         ParentPhone = parentName is null ? null : parents[0].Phone,
@@ -160,6 +159,17 @@ public static partial class EmailService
 
       await BlobService.CreateConversationAsync(id, messages);
       await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title, null, null);
+
+      try
+      {
+        var title = await AIService.GenerateTitleAsync(subject, body.MessageText, id.ToRowKey());
+        if (!string.IsNullOrWhiteSpace(title) && title != ticket.Title)
+        {
+          await TableService.RenameTicketAsync("unassigned", id, title);
+          ticket.Title = title;
+        }
+      }
+      catch { } // Ignore failures in AI title generation
 
       if (School.Instance.NotifyFirstManager && School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var manager))
       {
