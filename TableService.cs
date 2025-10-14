@@ -100,13 +100,15 @@ public static class TableService
     await ticketsClient.UpdateEntityAsync(ticket.Value, ticket.Value.ETag, TableUpdateMode.Replace);
   }
 
-  public static async Task CloseTicketAsync(string assigneeEmail, int id, bool isClosed)
+  public static async Task<bool> CloseTicketAsync(string assigneeEmail, int id, bool isClosed)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
     var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, id.ToRowKey());
+    if (ticket.Value.IsClosed == isClosed) return false;
     ticket.Value.IsClosed = isClosed;
     ticket.Value.LastUpdated = DateTime.UtcNow;
     await ticketsClient.UpdateEntityAsync(ticket.Value, ticket.Value.ETag, TableUpdateMode.Replace);
+    return true;
   }
 
   public static async Task ChangeTicketStudentAsync(TicketEntity ticket, Student student)

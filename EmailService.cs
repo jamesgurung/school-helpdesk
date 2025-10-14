@@ -268,8 +268,8 @@ public static partial class EmailService
     var body = $"Hi {staff.FirstName}\n\n{intro}\n\n" +
       $"<b>Ticket #{id}</b>\n" +
       $"<b>{ticket.Title}</b>\n" +
-      $"<b>From {ticket.ParentName ?? ticket.ParentEmail}{(studentName is null ? string.Empty : $" (re. {studentName})")}</b>\n\n" +
-      $"{outro}\n\nBest wishes\n\n{School.Instance.Name}";
+      (studentName is null ? string.Empty : $"<b>{studentName}</b>\n") +
+      $"\n{outro}\n\nBest wishes\n\n{School.Instance.Name}";
     await SendAsync(staff.Email, subject, body, EmailTag.Staff);
   }
 

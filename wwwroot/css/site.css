@@ -636,6 +636,12 @@ h1 {
   margin-top: 10px;
 }
 
+.message-content h3 {
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
 .ticket-event {
   margin: 12px;
 }
@@ -647,7 +653,7 @@ h1 {
 .message-content p.reply-note {
   font-size: 0.85rem;
   color: var(--text-light);
-  margin-top: 14px;
+  margin-top: 20px;
 }
 
 .info-section {

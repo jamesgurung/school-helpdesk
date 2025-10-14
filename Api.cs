@@ -194,7 +194,7 @@ public static class Api
       if (!context.User.IsInRole(AuthConstants.Manager) && !await TableService.TicketExistsAsync(context.User.Identity.Name, id))
         return Results.Forbid();
 
-      await TableService.CloseTicketAsync(payload.AssigneeEmail, id, payload.IsClosed);
+      if (!await TableService.CloseTicketAsync(payload.AssigneeEmail, id, payload.IsClosed)) return Results.NoContent();
 
       var currentUser = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
       await BlobService.AppendMessagesAsync(id, new Message

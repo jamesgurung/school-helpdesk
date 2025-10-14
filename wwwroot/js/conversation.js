@@ -68,10 +68,21 @@ function renderConversation() {
         dateContainer.insertAdjacentElement('afterbegin', ccIcon);
       }
     }
-    clone.querySelector('.message-content').textContent = content;
+    
+    const contentEl = clone.querySelector('.message-content');
+    
+    if (i === 0 && emailSubject) {
+      const subjectEl = document.createElement('h3');
+      subjectEl.textContent = 'Subject: ' + emailSubject;
+      contentEl.appendChild(subjectEl);
+    }
+    
+    const messageText = document.createTextNode(content);
+    contentEl.appendChild(messageText);
+    
     if (isOnBehalf) {
       const replyInstructions = '<p class="reply-note">Replies will be sent directly to the parent/carer.</p>';
-      clone.querySelector('.message-content').insertAdjacentHTML('beforeend', replyInstructions);
+      contentEl.insertAdjacentHTML('beforeend', replyInstructions);
     }
 
     if (attachments?.length) renderMessageAttachments(el, attachments);
