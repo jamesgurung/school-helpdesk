@@ -3,7 +3,7 @@
 @inject IWebHostEnvironment Environment
 @{
   var isManager = User.IsInRole(AuthConstants.Manager);
-	var all = Request.Query.ContainsKey("all") && Request.Query["all"] == "1";
+	var all = Request.QueryString.HasValue && Request.QueryString.ToString().StartsWith("?archive", StringComparison.OrdinalIgnoreCase);
   var tickets = isManager
     ? await TableService.GetAllTicketsAsync(all ? null : DateTime.Today.AddDays(-14))
     : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name, all ? null : DateTime.Today.AddDays(-90));

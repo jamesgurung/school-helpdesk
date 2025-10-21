@@ -179,11 +179,14 @@ window.addEventListener('hashchange', fromHash);
 
 async function fromHash() {
   const { hash } = window.location;
-  if (hash.startsWith('#tickets/')) {
+  if (hash.length >= 10 && hash.startsWith('#tickets/') && /^\d+$/.test(hash.slice(9))) {
     const ticketId = hash.slice(9).padStart(6, '0');
     const ticket = tickets.find(t => t.id === ticketId);
     if (ticket) {
       openTicketDetails(ticketId, true);
+      return;
+    } else if (isManager && !window.location.search.startsWith('?archive')) {
+      window.location = '/?archive/#tickets/' + hash.slice(9);
       return;
     }
   }

@@ -14,4 +14,9 @@
 
 <script nonce="@HttpContext.Items["csp-nonce"]">
   indexedDB.deleteDatabase('helpdesk');
+  const { hash } = window.location;
+  if (hash.startsWith('#tickets/')) {
+    const ticketId = parseInt(hash.slice(9));
+    if (!isNaN(ticketId)) document.querySelector('.login-btn').href += '&ticket=' + ticketId;
+  }
 </script>

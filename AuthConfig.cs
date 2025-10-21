@@ -106,9 +106,10 @@ public static class AuthConfig
 
   public static void MapAuthPaths(this WebApplication app)
   {
-    app.MapGet("/auth/login/challenge", [AllowAnonymous] ([FromQuery] string path) =>
+    app.MapGet("/auth/login/challenge", [AllowAnonymous] ([FromQuery] string path, [FromQuery] int? ticket) =>
     {
-      var authProperties = new AuthenticationProperties { RedirectUri = path is null ? "/" : WebUtility.UrlDecode(path), AllowRefresh = true, IsPersistent = true };
+      var redirectUri = (path is null ? "/" : WebUtility.UrlDecode(path)) + (ticket is null ? string.Empty : $"#tickets/{ticket}");
+      var authProperties = new AuthenticationProperties { RedirectUri = redirectUri, AllowRefresh = true, IsPersistent = true };
       return Results.Challenge(authProperties, authenticationSchemes);
     });
 
