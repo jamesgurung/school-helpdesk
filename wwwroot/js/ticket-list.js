@@ -49,6 +49,7 @@ function renderTickets(status) {
     } else {
       waitTimeIcon.textContent = "timer";
       waitTimeText.innerHTML = `Open for <span class="elapsed-time">${calculateTimeElapsed(ticket.waitingSince)}</span>`;
+      waitTimeText.classList.toggle('overdue', workingDaysSince(ticket.waitingSince) >= 2);
     }
     elements.ticketsContainer.appendChild(ticketClone);
 
@@ -80,6 +81,8 @@ function resetDetailsView() {
   document.querySelectorAll('.ticket-item').forEach(item => {
     item.classList.remove('selected');
   });
+
+  history.replaceState(null, '', '/' + window.location.search);
 }
 
 function updateOpenTicketsBadge() {
@@ -91,3 +94,4 @@ function updateOpenTicketsBadge() {
     elements.openBadge.style.display = 'none';
   }
 }
+

@@ -323,6 +323,7 @@
   const tickets = @Html.Raw(Json.Serialize(tickets));
   const isManager = @isManager.ToString().ToLowerInvariant();
   const currentUser = '@School.Instance.StaffByEmail[HttpContext.User.Identity.Name].Name';
+  const holidays = @Html.Raw(Json.Serialize(School.Instance.Holidays));
 </script>
 
 @if (Environment.IsDevelopment())

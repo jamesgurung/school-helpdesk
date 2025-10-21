@@ -1504,3 +1504,7 @@ button {
   cursor: default;
   opacity: 0.6;
 }
+
+.overdue {
+  color: #f70000;
+}

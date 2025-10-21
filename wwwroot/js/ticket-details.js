@@ -1,13 +1,17 @@
 // Ticket Details Management
-function openTicketDetails(ticketId) {
-  const ticket = tickets.find(t => t.id === ticketId);
-  if (!ticket) return;
+function openTicketDetails(ticketId, fromHash = false) {
+const ticket = tickets.find(t => t.id === ticketId);
+if (!ticket) return;
 
-  state.currentTicketId = ticketId;
+state.currentTicketId = ticketId;
 
-  document.querySelectorAll('.ticket-item').forEach(item => item.classList.remove('selected'));
-  const selectedTicket = document.querySelector(`.ticket-item[data-id="${ticketId}"]`);
-  if (selectedTicket) selectedTicket.classList.add('selected');
+if (!fromHash) {
+  history.replaceState(null, '', `#tickets/${+ticketId}`);
+}
+
+document.querySelectorAll('.ticket-item').forEach(item => item.classList.remove('selected'));
+const selectedTicket = document.querySelector(`.ticket-item[data-id="${ticketId}"]`);
+if (selectedTicket) selectedTicket.classList.add('selected');
 
   elements.ticketTitleInput.innerText = ticket.title;
   elements.ticketTitleInput.contentEditable = isManager;

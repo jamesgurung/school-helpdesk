@@ -11,9 +11,6 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
   o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
   o.KnownIPNetworks.Clear();
-#pragma warning disable ASPDEPR005
-  o.KnownNetworks.Clear();
-#pragma warning restore ASPDEPR005
   o.KnownProxies.Clear();
 });
 

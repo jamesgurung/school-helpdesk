@@ -160,12 +160,14 @@ async function init() {
         await fetchUsers();
       }
     }
+    initHolidays();
     renderTickets(state.activeTab);
     updateOpenTicketsBadge();
     setupEventListeners();
     populateNewTicketForm();
     state.timeUpdateInterval = setInterval(updateAllElapsedTimes, 1000);
     elements.valediction.querySelector('span').textContent = getSalutation(currentUser);
+    fromHash();
   } catch (error) {
     console.error('Failed to initialize the app:', error);
     await fetchUsers();
@@ -173,3 +175,17 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+window.addEventListener('hashchange', fromHash);
+
+async function fromHash() {
+  const { hash } = window.location;
+  if (hash.startsWith('#tickets/')) {
+    const ticketId = hash.slice(9).padStart(6, '0');
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (ticket) {
+      openTicketDetails(ticketId, true);
+      return;
+    }
+  }
+  history.replaceState(null, '', '/' + window.location.search);
+}

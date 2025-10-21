@@ -1,5 +1,6 @@
 // Date and Time Utilities
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const oneDay = 86400000;
 
 function formatDateTime(dateString) {
   const date = new Date(dateString);
@@ -50,7 +51,40 @@ function updateAllElapsedTimes() {
     const ticketId = element.closest('.ticket-item')?.dataset?.id;
     if (ticketId) {
       const ticket = tickets.find(t => t.id === ticketId);
-      if (ticket) element.textContent = calculateTimeElapsed(ticket.waitingSince);
+      if (ticket) {
+        element.textContent = calculateTimeElapsed(ticket.waitingSince);
+        element.parentElement.classList.toggle('overdue', workingDaysSince(ticket.waitingSince) >= 2);
+      }
     }
   });
+}
+
+function initHolidays() {
+  for (let i = 0; i < holidays.length; i++) {
+    if (Array.isArray(holidays[i])) continue;
+    const [sy, sm, sd] = holidays[i].start.split("-").map(Number);
+    const [ey, em, ed] = holidays[i].end.split("-").map(Number);
+    const s = new Date(sy, sm - 1, sd);
+    const e = new Date(new Date(ey, em - 1, ed).getTime() + oneDay);
+    holidays[i] = [s, e];
+  }
+}
+
+function workingDaysSince(startString) {
+  const start = new Date(startString);
+  const now = new Date();
+  if (now <= start) return 0;
+
+  const firstDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const isWeekend = d => { const wd = d.getDay(); return wd === 0 || wd === 6; };
+  const isHoliday = d => holidays.some(([s, e]) => d >= s && d < e);
+
+  let total = 0;
+  for (let day = firstDay; day < now; day = new Date(day.getTime() + oneDay)) {
+    if (isWeekend(day) || isHoliday(day)) continue;
+    const dayStart = start > day ? start : day;
+    const dayEnd = new Date(Math.min(now, day.getTime() + oneDay));
+    if (dayEnd > dayStart) total += (dayEnd - dayStart) / oneDay;
+  }
+  return Math.floor(total);
 }
