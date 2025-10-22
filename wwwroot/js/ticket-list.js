@@ -64,6 +64,7 @@ function renderTickets(status) {
 function resetDetailsView() {
   state.currentTicketId = null;
   state.conversation = [];
+  document.title = 'Parent Helpdesk';
   elements.detailsEmpty.style.display = 'flex';
   elements.detailsContent.style.display = 'none';
   elements.ticketDetails.classList.remove('open');

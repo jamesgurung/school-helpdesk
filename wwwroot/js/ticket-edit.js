@@ -17,14 +17,18 @@ async function updateTicketTitle() {
 
   const newTitle = elements.ticketTitleInput.innerText.trim().substring(0, 40);
   if (newTitle === ticket.title) return;
+  const originalTitle = ticket.title;
 
   try {
     ticket.title = newTitle;
+    document.title = `#${+ticket.id} ${newTitle} - Parent Helpdesk`
     renderTicketInList(ticket);
     await apiUpdateTicketTitle(ticket.id, ticket.assigneeEmail, newTitle);
   } catch (error) {
     console.error('Failed to update title:', error);
-    elements.ticketTitleInput.innerText = ticket.title;
+    ticket.title = originalTitle;
+    elements.ticketTitleInput.innerText = originalTitle;
+    document.title = `#${+ticket.id} ${originalTitle} - Parent Helpdesk`;
   }
 }
 
