@@ -6,11 +6,11 @@ function renderConversation() {
 
   state.conversation.forEach((msg, i) => {
     const { isEmployee, isPrivate, authorName, timestamp, content, attachments, originalEmail, emailSubject, emailTo, emailCc } = msg;
-    
+
     if (content === '#close' || content === '#reopen' || content.startsWith('#assign ')) {
       const eventEl = document.createElement('div');
       eventEl.className = 'message-header ticket-event';
-      
+
       let eventText, icon;
       if (content === '#close') {
         eventText = `${authorName} <span>closed this ticket</span>`;
@@ -23,7 +23,7 @@ function renderConversation() {
         eventText = `<span>Assigned to</span> ${assigneeName}`;
         icon = 'assignment_ind';
       }
-      
+
       eventEl.innerHTML = `<div class="message-author"><div class="message-icon material-symbols-rounded">${icon}</div><div class="author-name">${eventText}</div></div><div class="message-date">${formatDateTime(timestamp)}</div>`;
       elements.conversationContainer.appendChild(eventEl);
       return;
@@ -51,7 +51,7 @@ function renderConversation() {
       : authorName;
 
     clone.querySelector('.message-date').textContent = formatDateTime(timestamp);
-    
+
     if (originalEmail) {
       const dateContainer = clone.querySelector('.message-date');
       const emailIcon = document.createElement('span');
@@ -68,18 +68,18 @@ function renderConversation() {
         dateContainer.insertAdjacentElement('afterbegin', ccIcon);
       }
     }
-    
+
     const contentEl = clone.querySelector('.message-content');
-    
+
     if (i === 0 && emailSubject) {
       const subjectEl = document.createElement('h3');
       subjectEl.textContent = 'Subject: ' + emailSubject;
       contentEl.appendChild(subjectEl);
     }
-    
+
     const messageText = document.createTextNode(content);
     contentEl.appendChild(messageText);
-    
+
     if (isOnBehalf) {
       const replyInstructions = '<p class="reply-note">Replies will be sent directly to the parent/carer.</p>';
       contentEl.insertAdjacentHTML('beforeend', replyInstructions);
@@ -161,6 +161,8 @@ async function sendMessage() {
     elements.newMessageInput.focus();
     return showToast('You must start your message with a capital letter.', 'error');
   }
+
+  if (await checkTicketUpdates(ticket.id)) return;
 
   const files = Array.from(elements.messageAttachments.files);
   const isPrivate = elements.internalNoteCheckbox.checked;
@@ -271,7 +273,7 @@ async function generateSuggestion() {
   if (!ticket || !guidance) return;
   elements.generateSuggestBtn.disabled = true;
   elements.generateSuggestBtn.textContent = 'Generating...';
-  
+
   try {
     const result = await apiSuggestResponse(ticket.id, ticket.assigneeEmail, guidance);
     elements.generatedResponse.textContent = result;

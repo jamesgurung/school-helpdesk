@@ -337,6 +337,14 @@ public static class Api
       return Results.Ok(suggestedReply);
     });
 
+    group.MapGet("/tickets/{id:int}/lastupdated", async (int id, HttpContext context) =>
+    {
+      var user = context.User.IsInRole(AuthConstants.Manager) ? null : context.User.Identity.Name;
+      var lastUpdated = await TableService.GetTicketCacheItemAsync(id, user);
+      if (lastUpdated is null) return Results.NotFound();
+      return Results.Ok(lastUpdated.Value);
+    });
+
     app.MapPut("/api/users", [AllowAnonymous] async (HttpContext context, [FromHeader(Name = "X-Api-Key")] string auth) =>
     {
       if (string.IsNullOrEmpty(School.Instance.SyncApiKey)) return Results.Conflict("An sync API key is not configured.");

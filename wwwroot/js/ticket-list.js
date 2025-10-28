@@ -16,19 +16,19 @@ function renderTickets(status) {
     ticketElement.dataset.id = ticket.id;
     ticketClone.querySelector('.ticket-id').textContent = '#' + parseInt(ticket.id);
     ticketClone.querySelector('.ticket-title').textContent = ticket.title;
-    
+
     const studentElement = ticketClone.querySelector('.student-value span:not(.material-symbols-rounded)');
     const assigneeElement = ticketClone.querySelector('.assignee-value span:not(.material-symbols-rounded)');
-    
+
     const status = getTicketValidationStatus(ticket);
-    
+
     if (status.hasStudent) {
       studentElement.textContent = getFullName(ticket.studentFirstName, ticket.studentLastName);
     } else {
       studentElement.textContent = 'Not Set';
       studentElement.style.color = 'var(--warning)';
     }
-    
+
     if (status.hasAssignee) {
       assigneeElement.textContent = ticket.assigneeName;
     } else {
@@ -62,6 +62,7 @@ function renderTickets(status) {
 }
 
 function resetDetailsView() {
+  stopPollingTicketUpdates();
   state.currentTicketId = null;
   state.conversation = [];
   document.title = 'Parent Helpdesk';

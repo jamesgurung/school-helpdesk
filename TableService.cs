@@ -55,6 +55,10 @@ public static class TableService
   public static async Task<bool> TicketExistsAsync(string assigneeEmail, int id)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
+    if (LastUpdatedCache.TryGetValue(id, out var cacheItem) && cacheItem.AssigneeEmail == assigneeEmail)
+    {
+      return true;
+    }
     var ticket = await ticketsClient.GetEntityIfExistsAsync<TicketEntity>(assigneeEmail, id.ToRowKey(), select: ["RowKey"]);
     return ticket.HasValue;
   }
@@ -71,6 +75,7 @@ public static class TableService
     ticket.RowKey = id.ToRowKey();
     var response = await ticketsClient.AddEntityAsync(ticket);
     ticket.ETag = response.Headers.ETag.Value;
+    SetLastUpdatedCache(id, ticket.PartitionKey, ticket.LastUpdated);
     return id;
   }
 
@@ -88,6 +93,7 @@ public static class TableService
     var response = await ticketsClient.AddEntityAsync(ticket.Value);
     ticket.Value.ETag = response.Headers.ETag.Value;
     await ticketsClient.DeleteEntityAsync(assigneeEmail, rowKey);
+    SetLastUpdatedCache(id, newAssigneeEmail, ticket.Value.LastUpdated);
     return ticket.Value;
   }
 
@@ -108,6 +114,7 @@ public static class TableService
     ticket.Value.IsClosed = isClosed;
     ticket.Value.LastUpdated = DateTime.UtcNow;
     await ticketsClient.UpdateEntityAsync(ticket.Value, ticket.Value.ETag, TableUpdateMode.Replace);
+    SetLastUpdatedCache(id, assigneeEmail, ticket.Value.LastUpdated);
     return true;
   }
 
@@ -141,6 +148,7 @@ public static class TableService
     if (cancelWaiting) ticket.WaitingSince = null;
     var response = await ticketsClient.UpdateEntityAsync(ticket, ticket.ETag, TableUpdateMode.Replace);
     ticket.ETag = response.Headers.ETag.Value;
+    SetLastUpdatedCache(int.Parse(ticket.RowKey, CultureInfo.InvariantCulture), ticket.PartitionKey, lastUpdated);
   }
 
   public static async Task UpdateForNewParentMessageAsync(TicketEntity ticket, DateTime lastUpdated)
@@ -151,6 +159,7 @@ public static class TableService
     ticket.IsClosed = false;
     var response = await ticketsClient.UpdateEntityAsync(ticket, ticket.ETag, TableUpdateMode.Replace);
     ticket.ETag = response.Headers.ETag.Value;
+    SetLastUpdatedCache(int.Parse(ticket.RowKey, CultureInfo.InvariantCulture), ticket.PartitionKey, lastUpdated);
   }
 
   public static async Task LoadLatestTicketIdAsync()
@@ -162,6 +171,31 @@ public static class TableService
   public static string ToRowKey(this int id)
   {
     return id.ToString("D6", CultureInfo.InvariantCulture);
+  }
+
+  private static readonly Dictionary<int, TicketCacheItem> LastUpdatedCache = [];
+
+  public static async Task<DateTime?> GetTicketCacheItemAsync(int ticketId, string user)
+  {
+    if (!LastUpdatedCache.TryGetValue(ticketId, out var cacheItem))
+    {
+      var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.RowKey == ticketId.ToRowKey(), select: ["LastUpdated"]).ToListAsync();
+      if (tickets.Count == 1)
+      {
+        cacheItem = new(tickets[0].PartitionKey, tickets[0].LastUpdated);
+        LastUpdatedCache[ticketId] = cacheItem;
+      }
+      else
+      {
+        return null;
+      }
+    }
+    return user is null || user == cacheItem.AssigneeEmail ? cacheItem.LastUpdated : null;
+  }
+
+  public static void SetLastUpdatedCache(int ticketId, string assignee, DateTime lastUpdated)
+  {
+    LastUpdatedCache[ticketId] = new(assignee, lastUpdated);
   }
 }
 
@@ -196,6 +230,8 @@ public class NewTicketEntity : TicketEntity
   [IgnoreDataMember]
   public string Message { get; set; }
 }
+
+public record TicketCacheItem(string AssigneeEmail, DateTime LastUpdated);
 
 public static class QueryExtensions
 {

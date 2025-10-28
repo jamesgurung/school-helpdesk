@@ -1,5 +1,5 @@
 // Ticket Details Management
-function openTicketDetails(ticketId, fromHash = false) {
+async function openTicketDetails(ticketId, fromHash = false) {
   const ticket = tickets.find(t => t.id === ticketId);
   if (!ticket) return;
 
@@ -50,11 +50,12 @@ function openTicketDetails(ticketId, fromHash = false) {
   elements.uploadFilesBtn.style.pointerEvents = 'none';
   elements.guidanceInput.value = '';
 
-  fetch(`/api/tickets/${ticketId}`).then(response => response.json())
+  await fetch(`/api/tickets/${ticketId}`).then(response => response.json())
     .then(conversation => {
-      state.conversation = conversation;      
+      state.conversation = conversation;
       renderConversation();
       updateMessageControlsState(ticket);
+      startPollingTicketUpdates(ticketId);
     })
     .catch(error => {
       console.error('Error fetching conversation:', error);
@@ -62,16 +63,56 @@ function openTicketDetails(ticketId, fromHash = false) {
     });
 }
 
+function startPollingTicketUpdates(ticketId) {
+  if (state.pollingInterval) {
+    clearInterval(state.pollingInterval);
+  }
+  state.pollingInterval = setInterval(async () => {
+    if (!document.hasFocus()) return;
+    await checkTicketUpdates(ticketId);
+  }, 10000);
+}
+
+function stopPollingTicketUpdates() {
+  if (state.pollingInterval) {
+    clearInterval(state.pollingInterval);
+    state.pollingInterval = null;
+  }
+}
+
+async function checkTicketUpdates(ticketId) {
+  const serverLastUpdated = await apiGetLastUpdated(ticketId);
+  const currentTicket = getCurrentTicket();
+  if (!currentTicket || currentTicket.id !== ticketId) return;
+  if (!serverLastUpdated) {
+    stopPollingTicketUpdates();
+    resetDetailsView();
+    showToast('This ticket is no longer accessible.', 'error');
+    return true;
+  }
+  if (currentTicket.lastUpdated !== serverLastUpdated) {
+    showToast('This ticket has new changes.', 'success');
+    currentTicket.lastUpdated = serverLastUpdated;
+    const isFocused = document.activeElement === elements.newMessageInput;
+    const scrollPosition = elements.ticketDetails.scrollTop;
+    await openTicketDetails(ticketId, false, true);
+    elements.ticketDetails.scrollTop = scrollPosition;
+    if (isFocused) elements.newMessageInput.focus();
+    return true;
+  }
+  return false;
+}
+
 function populateStudentSelect(ticket, children) {
   elements.studentSelect.innerHTML = '';
-  
+
   const placeholderOption = document.createElement('option');
   placeholderOption.value = '';
   placeholderOption.textContent = 'Select a student';
   placeholderOption.disabled = true;
   placeholderOption.selected = true;
   elements.studentSelect.appendChild(placeholderOption);
-  
+
   children.forEach(child => {
     const option = document.createElement('option');
     option.value = `${child.firstName}|${child.lastName}`;
@@ -86,14 +127,14 @@ function populateStudentSelect(ticket, children) {
 
 function populateParentSelect(ticket, ticketParents) {
   elements.parentSelect.innerHTML = '';
-  
+
   const placeholderOption = document.createElement('option');
   placeholderOption.value = '';
   placeholderOption.textContent = 'Select a parent/carer';
   placeholderOption.disabled = true;
   placeholderOption.selected = true;
   elements.parentSelect.appendChild(placeholderOption);
-  
+
   ticketParents.forEach(parent => {
     const option = document.createElement('option');
     option.value = `${parent.name}|${parent.email}`;
@@ -109,7 +150,7 @@ function populateParentSelect(ticket, ticketParents) {
 function renderStudentInfo(ticket, children) {
   const status = getTicketValidationStatus(ticket);
   const hasStudent = status.hasStudent;
-  
+
   renderInfoSection('student', {
     heading: 'Student',
     icon: hasStudent ? 'school' : 'warning',
@@ -124,7 +165,7 @@ function renderStudentInfo(ticket, children) {
 function renderParentInfo(ticket) {
   const status = getTicketValidationStatus(ticket);
   const hasParent = status.hasParent;
-  
+
   let parentRelationship = '';
   if (hasParent) {
     parentRelationship = ticket.parentRelationship;
@@ -156,7 +197,7 @@ function renderParentInfo(ticket) {
 function renderAssigneeInfo(ticket) {
   const status = getTicketValidationStatus(ticket);
   const hasAssignee = status.hasAssignee;
-  
+
   renderInfoSection('assignee', {
     heading: 'Assigned To',
     icon: hasAssignee ? 'account_circle' : 'warning',
@@ -175,7 +216,7 @@ function renderInfoSection(type, config) {
 
   infoClone.querySelector('.heading-text').textContent = config.heading;
 
- if (config.editable) {
+  if (config.editable) {
     infoClone.querySelector('.edit-icon').textContent = 'edit';
     infoClone.querySelector('.edit-icon').addEventListener('click', config.editHandler);
   } else {
@@ -186,14 +227,14 @@ function renderInfoSection(type, config) {
   infoContainer.classList.add(`${type}-info`);
 
   infoClone.querySelector('.info-icon').textContent = config.icon;
-  
+
   const nameElement = infoClone.querySelector('.info-name');
   nameElement.textContent = config.name;
   if (config.isWarning) {
     nameElement.style.color = 'var(--warning)';
     infoClone.querySelector('.info-icon').style.color = 'var(--warning)';
   }
-  
+
   infoClone.querySelector('.info-detail').textContent = config.detail || '';
 
   if (config.email) {
@@ -219,12 +260,12 @@ function renderTicketInList(ticket) {
   if (!ticketElement) return;
 
   ticketElement.querySelector('.ticket-title').textContent = ticket.title;
-  
+
   const studentElement = ticketElement.querySelector('.student-value span:not(.material-symbols-rounded)');
   const assigneeElement = ticketElement.querySelector('.assignee-value span:not(.material-symbols-rounded)');
-  
+
   const status = getTicketValidationStatus(ticket);
-  
+
   if (status.hasStudent) {
     studentElement.textContent = getFullName(ticket.studentFirstName, ticket.studentLastName);
     studentElement.style.color = '';
@@ -233,7 +274,7 @@ function renderTicketInList(ticket) {
     studentElement.textContent = 'Not Set';
     studentElement.style.color = 'var(--warning)';
   }
-  
+
   if (status.hasAssignee) {
     assigneeElement.textContent = ticket.assigneeName;
     assigneeElement.style.color = '';
@@ -262,16 +303,16 @@ async function closeTicket() {
 
 function updateMessageControlsState(ticket) {
   const canSend = canSendMessages(ticket);
-  
+
   elements.sendMessageBtn.disabled = !canSend;
   elements.newMessageInput.disabled = !canSend;
   elements.internalNoteCheckbox.disabled = !canSend;
   elements.suggestStart.disabled = !canSend;
   elements.uploadFilesBtn.style.pointerEvents = canSend ? 'auto' : 'none';
-  
+
   const canClose = ticket.isClosed || canSend;
   elements.closeTicketBtn.disabled = !canClose;
-  
+
   if (!canSend) {
     elements.newMessageInput.placeholder = 'Complete ticket details first.';
     elements.sendMessageBtn.style.opacity = '0.5';
@@ -285,9 +326,10 @@ function updateMessageControlsState(ticket) {
     elements.uploadFilesBtn.style.opacity = '1';
     elements.suggestStart.style.opacity = '1';
   }
-  
+
   if (!canClose) {
-    elements.closeTicketBtn.style.opacity = '0.5';  } else {
+    elements.closeTicketBtn.style.opacity = '0.5';
+  } else {
     elements.closeTicketBtn.style.opacity = '1';
   }
 }

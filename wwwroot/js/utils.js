@@ -39,7 +39,7 @@ function updateParentRelationshipDisplay(relationship) {
   elements.parentRelationshipDisplay.textContent = relationship ? ` (${relationship})` : '';
 }
 
-function showToast(message, type = 'info', duration = 3000) {
+function showToast(message, type = 'info', duration = 5000) {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   toast.textContent = message;

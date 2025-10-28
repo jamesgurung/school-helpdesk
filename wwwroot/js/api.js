@@ -111,3 +111,9 @@ async function apiSuggestResponse(ticketId, assigneeEmail, guidance) {
   );
   return await response.json();
 }
+
+async function apiGetLastUpdated(ticketId) {
+  const response = await fetch(`/api/tickets/${ticketId}/lastupdated`);
+  if (!response.ok) return null;
+  return await response.json();
+}

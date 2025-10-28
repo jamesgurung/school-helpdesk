@@ -67,6 +67,7 @@ const state = {
   currentTicketId: null,
   activeTab: 'open',
   timeUpdateInterval: null,
+  pollingInterval: null,
   conversation: [],
   activeParent: null,
   activeAssignee: null,
