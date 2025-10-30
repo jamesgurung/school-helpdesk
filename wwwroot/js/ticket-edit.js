@@ -131,7 +131,7 @@ async function updateTicketAssignee() {
     renderAssigneeInfo(ticket);
     state.activeEditAssignee = null;
     updateMessageControlsState(ticket);
-    await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
+    ticket.lastUpdated = await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
   } catch (error) {
     console.error('Failed to update assignee:', error);
   }
@@ -153,7 +153,8 @@ async function toggleTicketStatus() {
     }
     renderTickets(state.activeTab);
     updateOpenTicketsBadge();
-    await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, ticket.isClosed);
+    const updated = await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, ticket.isClosed);
+    if (updated) ticket.lastUpdated = updated;
   } catch (error) {
     console.error('Failed to update ticket status:', error);
   }

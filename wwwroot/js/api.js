@@ -21,12 +21,13 @@ async function apiRequest(httpMethod, endpoint, data, actionText) {
 }
 
 async function apiUpdateTicketAssignee(ticketId, assigneeEmail, newAssigneeEmail) {
-  await apiRequest(
+  const response = await apiRequest(
     'PUT',
     `/api/tickets/${ticketId}/assignee`,
     { assigneeEmail, newAssigneeEmail },
     'update assignee'
   );
+  return await response.json();
 }
 
 async function apiUpdateTicketStudent(ticketId, assigneeEmail, studentFirst, studentLast, studentTutorGroup) {
@@ -48,12 +49,14 @@ async function apiUpdateTicketParent(ticketId, assigneeEmail, newParentName) {
 }
 
 async function apiUpdateTicketStatus(ticketId, assigneeEmail, isClosed) {
-  await apiRequest(
+  const response = await apiRequest(
     'PUT',
     `/api/tickets/${ticketId}/status`,
     { assigneeEmail, isClosed },
     'update ticket status'
   );
+  if (response.status === 204) return null;
+  return await response.json();
 }
 
 async function apiUpdateTicketTitle(ticketId, assigneeEmail, newTitle) {

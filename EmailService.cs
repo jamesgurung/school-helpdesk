@@ -258,7 +258,7 @@ public static partial class EmailService
       TicketUpdateAction.Updated => (
         "Response Received",
         "You have received a new reply to this enquiry:",
-        $"When you have a moment, please sign in to the <a href=\"https://{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond."
+        $"When you have a moment, please sign in to the <a href=\"https://{School.Instance.AppWebsite}/#tickets/{id}\">helpdesk portal</a> to review and respond."
       ),
       _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
     };
@@ -283,7 +283,7 @@ public static partial class EmailService
     await SendAsync(ticket.ParentEmail, subject, body, EmailTag.Parent, null, attachments);
   }
 
-  private static async Task SendAsync(string to, string subject, string body, string tag, string threadId = null, List<PostmarkMessageAttachment> attachments = null)
+  private static async Task SendAsync(string to, string subject, string body, string tag, string threadId = null, List<PostmarkMessageAttachment> attachments = null, string replyTo = null)
   {
     var client = new PostmarkClient(_serverToken);
     var message = new PostmarkMessage
@@ -293,6 +293,7 @@ public static partial class EmailService
       HtmlBody = ComposeHtmlEmail(body),
       TextBody = ComposeTextEmail(body),
       From = $"\"{School.Instance.Name}\" <{School.Instance.HelpdeskEmail}>",
+      ReplyTo = replyTo,
       Tag = tag,
       MessageStream = "outbound",
       Attachments = attachments,
@@ -353,7 +354,7 @@ public static partial class EmailService
       $"<b>From:</b>\n{from}\n\n" +
       $"<b>Subject:</b>\n{subject}\n\n" +
       $"<b>Message:</b>\n{content}";
-    await SendAsync(staff.Email, "Unrecognised sender", body, EmailTag.Staff);
+    await SendAsync(staff.Email, subject, body, EmailTag.Staff, replyTo: from);
   }
 
   private static async Task<List<Attachment>> UploadAttachmentsAsync(List<PostmarkDotNet.Attachment> inboundAttachments)

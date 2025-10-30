@@ -132,7 +132,7 @@ public static class Api
         await EmailService.SendTicketUpdateEmailAsync(id, ticket, oldAssignee, TicketUpdateAction.Unassigned);
       }
 
-      return Results.NoContent();
+      return Results.Ok(ticket.LastUpdated);
     });
 
     group.MapPut("/tickets/{id:int}/student", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeStudentPayload payload, HttpContext context) =>
@@ -194,19 +194,20 @@ public static class Api
       if (!context.User.IsInRole(AuthConstants.Manager) && !await TableService.TicketExistsAsync(context.User.Identity.Name, id))
         return Results.Forbid();
 
-      if (!await TableService.CloseTicketAsync(payload.AssigneeEmail, id, payload.IsClosed)) return Results.NoContent();
+      var updated = await TableService.CloseTicketAsync(payload.AssigneeEmail, id, payload.IsClosed);
+      if (updated is null) return Results.NoContent();
 
       var currentUser = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
       await BlobService.AppendMessagesAsync(id, new Message
       {
         AuthorName = currentUser,
         IsEmployee = true,
-        Timestamp = DateTime.UtcNow,
+        Timestamp = updated.Value,
         IsPrivate = true,
         Content = payload.IsClosed ? "#close" : "#reopen"
       });
 
-      return Results.NoContent();
+      return Results.Ok(updated.Value);
     });
 
     group.MapPut("/tickets/{id:int}/title", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeTitlePayload payload, HttpContext context) =>
