@@ -28,7 +28,7 @@ EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Co
 AIService.Configure(builder.Configuration["Azure:AIFoundryEndpoint"], builder.Configuration["Azure:AIFoundryDeployment"], builder.Configuration["Azure:AIFoundryApiKey"]);
 
 await BlobService.LoadConfigAsync();
-await TableService.LoadLatestTicketIdAsync();
+await TableService.HydrateCacheAsync();
 
 builder.ConfigureAuth();
 builder.Services.AddResponseCompression();

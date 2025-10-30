@@ -162,12 +162,6 @@ public static class TableService
     SetLastUpdatedCache(int.Parse(ticket.RowKey, CultureInfo.InvariantCulture), ticket.PartitionKey, lastUpdated);
   }
 
-  public static async Task LoadLatestTicketIdAsync()
-  {
-    var tickets = await ticketsClient.QueryAsync<TicketEntity>(select: ["RowKey"]).ToListAsync();
-    latestTicketId = tickets.Count == 0 ? 0 : tickets.Max(t => int.TryParse(t.RowKey, out var id) ? id : 0);
-  }
-
   public static string ToRowKey(this int id)
   {
     return id.ToString("D6", CultureInfo.InvariantCulture);
@@ -179,7 +173,7 @@ public static class TableService
   {
     if (!LastUpdatedCache.TryGetValue(ticketId, out var cacheItem))
     {
-      var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.RowKey == ticketId.ToRowKey(), select: ["LastUpdated"]).ToListAsync();
+      var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.RowKey == ticketId.ToRowKey(), select: ["PartitionKey", "LastUpdated"]).ToListAsync();
       if (tickets.Count == 1)
       {
         cacheItem = new(tickets[0].PartitionKey, tickets[0].LastUpdated);
@@ -196,6 +190,20 @@ public static class TableService
   public static void SetLastUpdatedCache(int ticketId, string assignee, DateTime lastUpdated)
   {
     LastUpdatedCache[ticketId] = new(assignee, lastUpdated);
+  }
+
+  public static async Task HydrateCacheAsync()
+  {
+    LastUpdatedCache.Clear();
+    var tickets = await ticketsClient.QueryAsync<TicketEntity>(select: ["RowKey", "PartitionKey", "LastUpdated"]).ToListAsync();
+    var maxId = 0;
+    foreach (var ticket in tickets)
+    {
+      var id = int.Parse(ticket.RowKey, CultureInfo.InvariantCulture);
+      LastUpdatedCache[id] = new(ticket.PartitionKey, ticket.LastUpdated);
+      if (id > maxId) maxId = id;
+    }
+    latestTicketId = maxId;
   }
 }
 

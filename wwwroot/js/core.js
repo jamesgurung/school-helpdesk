@@ -71,7 +71,8 @@ const state = {
   conversation: [],
   activeParent: null,
   activeAssignee: null,
-  activeEditAssignee: null
+  activeEditAssignee: null,
+  updating: false
 };
 
 function getCurrentTicket() {

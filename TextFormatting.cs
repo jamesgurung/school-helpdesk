@@ -92,7 +92,7 @@ public static partial class TextFormatting
     return builder.ToString().Trim();
   }
 
-  [GeneratedRegex(@"^(?:On\s.+\swrote:|>+|--\s*$|__\s*$|Sent from my(?:\s+\w+){1,3}\s*$|From:\s.*|[-=_—]{2,}\s*Original Message\s*[-=_—]{2,}|[-=_—]{2,}\s*Forwarded by.*[-=_—]{2,}|Your enquiry received a response from .+:)$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+  [GeneratedRegex(@"^(?:On\s.+\swrote:|>+|--\s*$|__\s*$|Sent from(?:\s+[^\s]+){1,4}\s*$|From:\s.*|[-=_—]{2,}\s*Original Message\s*[-=_—]{2,}|[-=_—]{2,}\s*Forwarded by.*[-=_—]{2,}|Your enquiry received a response from .+:)$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
   private static partial Regex ReplyDelimiterRegex();
 }
 

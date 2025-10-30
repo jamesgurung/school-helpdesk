@@ -171,6 +171,7 @@ async function sendMessage() {
   elements.closeTicketBtn.disabled = true;
   elements.sendMessageBtn.textContent = 'Sending...';
   try {
+    state.updating = true;
     const msg = await apiSendMessage(ticket.id, ticket.assigneeEmail, content, isPrivate, files);
     ticket.lastUpdated = msg.timestamp;
     state.conversation.push(msg);
@@ -190,6 +191,7 @@ async function sendMessage() {
     elements.sendMessageBtn.disabled = false;
     elements.closeTicketBtn.disabled = false;
     elements.sendMessageBtn.textContent = 'Send Message';
+    state.updating = false;
   }
 }
 

@@ -83,7 +83,7 @@ function stopPollingTicketUpdates() {
 async function checkTicketUpdates(ticketId) {
   const serverLastUpdated = await apiGetLastUpdated(ticketId);
   const currentTicket = getCurrentTicket();
-  if (!currentTicket || currentTicket.id !== ticketId) return;
+  if (!currentTicket || currentTicket.id !== ticketId || state.updating) return;
   if (!serverLastUpdated) {
     stopPollingTicketUpdates();
     resetDetailsView();
