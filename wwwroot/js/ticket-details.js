@@ -53,6 +53,7 @@ async function openTicketDetails(ticketId, fromHash = false) {
   await fetch(`/api/tickets/${ticketId}`).then(response => response.json())
     .then(conversation => {
       state.conversation = conversation;
+      ticket.lastUpdated = conversation.at(-1).timestamp;
       renderConversation();
       updateMessageControlsState(ticket);
       startPollingTicketUpdates(ticketId);
@@ -90,7 +91,7 @@ async function checkTicketUpdates(ticketId) {
     showToast('This ticket is no longer accessible.', 'error');
     return true;
   }
-  if (currentTicket.lastUpdated !== serverLastUpdated) {
+  if (currentTicket.lastUpdated.slice(0, 19) !== serverLastUpdated.slice(0, 19)) {
     showToast('This ticket has new changes.', 'success');
     currentTicket.lastUpdated = serverLastUpdated;
     const isFocused = document.activeElement === elements.newMessageInput;

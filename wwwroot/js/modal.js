@@ -94,25 +94,12 @@ async function createNewTicket() {
     message: message
   };
   elements.createNewTicketBtn.disabled = true;
-  const newTicketId = await apiCreateTicket(newTicketData);
+  const newTicket = await apiCreateTicket(newTicketData);
 
-  const newTicket = {
-    ...newTicketData,
-    id: newTicketId
-  };
-
-  delete newTicket.message;
   tickets.unshift(newTicket);
   updateOpenTicketsBadge();
 
-  state.conversation = [{
-    timestamp: now,
-    authorName: state.activeParent.name,
-    isEmployee: false,
-    content: message
-  }];
-
   closeNewTicketModal();
   elements.tabs[0].click();
-  openTicketDetails(newTicketId);
+  openTicketDetails(newTicket.id);
 }

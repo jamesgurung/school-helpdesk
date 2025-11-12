@@ -81,7 +81,7 @@ public static class Api
         tasks.Add(EmailService.SendTicketUpdateEmailAsync(id, ticketEntity, assignee, TicketUpdateAction.Assigned));
       }
       await Task.WhenAll(tasks);
-      return Results.Created((string)null, ticketEntity.RowKey);
+      return Results.Created((string)null, ticketEntity);
     });
 
     group.MapGet("/tickets/{id:int}", async (int id, HttpContext context) =>
@@ -116,7 +116,7 @@ public static class Api
       {
         AuthorName = currentUser,
         IsEmployee = true,
-        Timestamp = DateTime.UtcNow,
+        Timestamp = ticket.LastUpdated,
         IsPrivate = true,
         Content = $"#assign {staff.Name}"
       });
