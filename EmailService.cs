@@ -154,7 +154,7 @@ public static partial class EmailService
           AuthorName = parentName ?? "Parent/Carer",
           IsEmployee = false,
           IsPrivate = false,
-          Timestamp = DateTime.UtcNow,
+          Timestamp = now,
           Content = body.MessageText,
           OriginalEmail = body.SanitizedHtml,
           Attachments = attachments,
