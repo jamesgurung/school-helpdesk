@@ -72,8 +72,8 @@ public static class Api
       var id = await TableService.CreateTicketAsync(ticketEntity);
       var tasks = new List<Task>
       {
-        BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = DateTime.UtcNow, Content = message },
-          new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = DateTime.UtcNow, Content = $"#assign {assignee.Name}" }),
+        BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = ticketEntity.LastUpdated, Content = message },
+          new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = ticketEntity.LastUpdated, Content = $"#assign {assignee.Name}" }),
         EmailService.SendTicketCreatedEmailAsync(parent.Email, id, ticket.Title, user, GetSalutation(parent.Name))
       };
       if (ticket.PartitionKey != context.User.Identity.Name)
