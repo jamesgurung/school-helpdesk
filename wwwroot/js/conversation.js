@@ -77,6 +77,13 @@ function renderConversation() {
       contentEl.appendChild(subjectEl);
     }
 
+    if (isPrivate) {
+      const internalLabel = document.createElement('h3');
+      internalLabel.className = 'internal-note-label';
+      internalLabel.textContent = 'Internal note:';
+      contentEl.appendChild(internalLabel);
+    }
+
     const messageText = document.createTextNode(content);
     contentEl.appendChild(messageText);
 
