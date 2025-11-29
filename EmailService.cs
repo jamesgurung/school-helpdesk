@@ -238,7 +238,7 @@ public static partial class EmailService
       TicketUpdateAction.Assigned => (
         "New Ticket",
         "You have received a new enquiry through our helpdesk:",
-        $"When you have a moment, please sign in to the <a href=\"https://{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond."
+        $"When you have a moment, please sign in to the <a href=\"https://{School.Instance.AppWebsite}/tickets/{id}\">helpdesk portal</a> to review and respond."
       ),
       TicketUpdateAction.Unassigned => (
         "Ticket Reassigned",
@@ -248,17 +248,17 @@ public static partial class EmailService
       TicketUpdateAction.Reminder => (
         "Ticket Reminder",
         "This is a gentle reminder about the open helpdesk enquiry below:",
-        $"When you have a moment, please sign in to the <a href=\"https://{School.Instance.AppWebsite}\">helpdesk portal</a> to review and respond."
+        $"When you have a moment, please sign in to the <a href=\"https://{School.Instance.AppWebsite}/tickets/{id}\">helpdesk portal</a> to review and respond."
       ),
       TicketUpdateAction.NotifyNew => (
         "Ticket Received",
         "A new helpdesk enquiry has been received by email:",
-        $"Please assign a member of staff on the <a href=\"https://{School.Instance.AppWebsite}\">helpdesk portal</a>."
+        $"Please assign a member of staff on the <a href=\"https://{School.Instance.AppWebsite}/tickets/{id}\">helpdesk portal</a>."
       ),
       TicketUpdateAction.Updated => (
         "Response Received",
         "You have received a new reply to this enquiry:",
-        $"When you have a moment, please sign in to the <a href=\"https://{School.Instance.AppWebsite}/#tickets/{id}\">helpdesk portal</a> to review and respond."
+        $"When you have a moment, please sign in to the <a href=\"https://{School.Instance.AppWebsite}/tickets/{id}\">helpdesk portal</a> to review and respond."
       ),
       _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
     };

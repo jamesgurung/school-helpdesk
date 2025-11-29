@@ -84,7 +84,7 @@ function resetDetailsView() {
     item.classList.remove('selected');
   });
 
-  history.replaceState(null, '', '/' + window.location.search);
+  history.replaceState(null, '', '/tickets/');
 }
 
 function updateOpenTicketsBadge() {

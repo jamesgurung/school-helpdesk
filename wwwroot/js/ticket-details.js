@@ -6,7 +6,7 @@ async function openTicketDetails(ticketId, fromHash = false) {
   state.currentTicketId = ticketId;
 
   if (!fromHash) {
-    history.replaceState(null, '', `#tickets/${+ticketId}`);
+    history.replaceState(null, '', `/tickets/${+ticketId}`);
   }
 
   document.querySelectorAll('.ticket-item').forEach(item => item.classList.remove('selected'));

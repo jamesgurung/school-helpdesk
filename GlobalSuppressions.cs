@@ -11,3 +11,4 @@
 [assembly: SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
 [assembly: SuppressMessage("Style", "IDE0058:Expression value is never used")]
 [assembly: SuppressMessage("Style", "IDE0305:Simplify collection initialization")]
+[assembly: SuppressMessage("Style", "IDE0350:Use implicitly typed lambda", Scope = "member", Target = "~M:SchoolHelpdesk.Api.MapApiPaths(Microsoft.AspNetCore.Builder.WebApplication)")]

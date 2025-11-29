@@ -91,7 +91,7 @@ function setupTicketCreation() {
 }
 
 function setupUserActions() { 
-  elements.logoutBtn.addEventListener('click', () => window.location.href = '/auth/logout'); 
+  elements.logoutBtn.addEventListener('click', () => window.location.href = '/logout'); 
 }
 
 function setupParentSearch() {

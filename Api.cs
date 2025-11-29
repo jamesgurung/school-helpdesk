@@ -9,6 +9,9 @@ public static class Api
 {
   public static void MapApiPaths(this WebApplication app)
   {
+    app.MapGet("/", () => Results.Redirect("/tickets/"));
+    app.MapGet("/tickets/{id:int}", (int id) => Results.Redirect($"/tickets/#{id}"));
+
     app.MapPost("/inbound", [AllowAnonymous] async ([FromBody] PostmarkInboundWebhookMessage message, [FromQuery] string auth) =>
     {
       await EmailService.ProcessInboundAsync(message, auth);

@@ -1,4 +1,4 @@
-﻿@page
+﻿@page "/login"
 @{
   var returnUrl = Request.Query["path"].FirstOrDefault();
 }
@@ -6,7 +6,7 @@
   <img src="/img/logo.png" class="logo" />
   <h1>Parent Helpdesk</h1>
   <p>Strengthening our partnership with parents and carers</p>
-  <a href="/auth/login/challenge@(string.IsNullOrEmpty(returnUrl) ? string.Empty : $"?path={returnUrl}")" class="login-btn">
+  <a href="/login/challenge@(string.IsNullOrEmpty(returnUrl) ? string.Empty : $"?path={returnUrl}")" class="login-btn">
     <span class="material-symbols-rounded">login</span>
     Sign in with Microsoft
   </a>
@@ -14,9 +14,4 @@
 
 <script nonce="@HttpContext.Items["csp-nonce"]">
   indexedDB.deleteDatabase('helpdesk');
-  const { hash } = window.location;
-  if (hash.startsWith('#tickets/')) {
-    const ticketId = parseInt(hash.slice(9));
-    if (!isNaN(ticketId)) document.querySelector('.login-btn').href += '&ticket=' + ticketId;
-  }
 </script>

@@ -181,16 +181,17 @@ window.addEventListener('hashchange', fromHash);
 
 async function fromHash() {
   const { hash } = window.location;
-  if (hash.length >= 10 && hash.startsWith('#tickets/') && /^\d+$/.test(hash.slice(9))) {
-    const ticketId = hash.slice(9).padStart(6, '0');
+  if (hash.length > 1 && /^\d+$/.test(hash.slice(1))) {
+    const ticketId = hash.slice(1).padStart(6, '0');
     const ticket = tickets.find(t => t.id === ticketId);
     if (ticket) {
       openTicketDetails(ticketId, true);
+      history.replaceState(null, '', '/tickets/' + hash.slice(1));
       return;
     } else if (isManager && !window.location.search.startsWith('?archive')) {
-      window.location = '/?archive/#tickets/' + hash.slice(9);
+      window.location = '/tickets/?archive/#' + hash.slice(1);
       return;
     }
   }
-  history.replaceState(null, '', '/' + window.location.search);
+  history.replaceState(null, '', '/tickets/');
 }

@@ -21,8 +21,8 @@ public static class AuthConfig
         o.Cookie.HttpOnly = true;
         o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         o.Cookie.SameSite = SameSiteMode.Lax;
-        o.LoginPath = "/auth/login";
-        o.LogoutPath = "/auth/logout";
+        o.LoginPath = "/login";
+        o.LogoutPath = "/logout";
         o.ExpireTimeSpan = TimeSpan.FromDays(60);
         o.SlidingExpiration = true;
         o.ReturnUrlParameter = "path";
@@ -76,7 +76,7 @@ public static class AuthConfig
             else
             {
               context.Fail("Unauthorised");
-              context.Response.Redirect("/auth/denied");
+              context.Response.Redirect("/denied");
               context.HandleResponse();
             }
             return Task.CompletedTask;
@@ -106,17 +106,17 @@ public static class AuthConfig
 
   public static void MapAuthPaths(this WebApplication app)
   {
-    app.MapGet("/auth/login/challenge", [AllowAnonymous] ([FromQuery] string path, [FromQuery] int? ticket) =>
+    app.MapGet("/login/challenge", [AllowAnonymous] ([FromQuery] string path) =>
     {
-      var redirectUri = (path is null ? "/" : WebUtility.UrlDecode(path)) + (ticket is null ? string.Empty : $"#tickets/{ticket}");
+      var redirectUri = path is null ? "/tickets/" : WebUtility.UrlDecode(path);
       var authProperties = new AuthenticationProperties { RedirectUri = redirectUri, AllowRefresh = true, IsPersistent = true };
       return Results.Challenge(authProperties, authenticationSchemes);
     });
 
-    app.MapGet("/auth/logout", (HttpContext context) =>
+    app.MapGet("/logout", (HttpContext context) =>
     {
       context.SignOutAsync();
-      return Results.Redirect("/auth/login");
+      return Results.Redirect("/login");
     });
   }
 }

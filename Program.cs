@@ -35,7 +35,10 @@ builder.Services.AddResponseCompression();
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-XSRF-TOKEN"; });
 builder.Services.Configure<RouteOptions>(options => { options.LowercaseUrls = true; });
 builder.Services.Configure<JsonOptions>(options => { options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase; });
-builder.Services.AddRazorPages(options => { options.Conventions.AllowAnonymousToFolder("/auth"); });
+builder.Services.AddRazorPages(options => {
+  options.Conventions.AllowAnonymousToPage("/login");
+  options.Conventions.AllowAnonymousToPage("/denied");
+});
 
 var isProduction = !builder.Environment.IsDevelopment();
 
