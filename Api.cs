@@ -320,7 +320,7 @@ public static class Api
       return Results.Ok(message);
     });
 
-    group.MapPost("/tickets/{id:int}/suggest", async (int id, [FromBody] AIPayload payload, HttpContext context) =>
+    group.MapPost("/tickets/{id:int}/suggest", async (int id, [FromBody] AIPayload payload, HttpContext context, CancellationToken ct) =>
     {
       if (string.IsNullOrWhiteSpace(payload?.Guidance))
         return Results.BadRequest("Response guidance is required.");
@@ -337,7 +337,7 @@ public static class Api
       if (messages is null || messages.Count == 0)
         return Results.BadRequest("Ticket must have at least one message.");
 
-      var suggestedReply = await AIService.GenerateReplyAsync(studentName, messages, payload.Guidance, entity.RowKey);
+      var suggestedReply = await AIService.GenerateReplyAsync(studentName, messages, payload.Guidance, entity.RowKey, ct);
       return Results.Ok(suggestedReply);
     });
 

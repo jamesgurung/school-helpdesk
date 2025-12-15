@@ -1,7 +1,7 @@
 {
   "name": "School Helpdesk",
   "short_name": "Helpdesk",
-  "start_url": "/",
+  "start_url": "/tickets/",
   "icons": [
     {
       "src": "/img/web-app-manifest-192x192.png",

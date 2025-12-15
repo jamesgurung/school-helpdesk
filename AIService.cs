@@ -11,15 +11,15 @@ namespace SchoolHelpdesk;
 
 public static partial class AIService
 {
-  private static OpenAIResponseClient _client;
+  private static ResponsesClient _client;
 
   public static void Configure(string endpoint, string deployment, string apiKey)
   {
     var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
-    _client = azureClient.GetOpenAIResponseClient(deployment);
+    _client = azureClient.GetResponsesClient(deployment);
   }
 
-  public static async Task<string> GenerateReplyAsync(string studentName, List<Message> messages, string guidance, string ticketId)
+  public static async Task<string> GenerateReplyAsync(string studentName, List<Message> messages, string guidance, string ticketId, CancellationToken ct)
   {
     var instructions = """
       You are an experienced teacher in a UK secondary school. You have received a parent enquiry and need to write a response.
@@ -38,15 +38,16 @@ public static partial class AIService
     var userMessage = ResponseItem.CreateUserMessageItem(
       $"# Student name:\n\n{studentName}\n\n# Conversation history:\n\n{history}\n\n# Guidance on how to respond:\n\n{guidance}");
 
-    var options = new ResponseCreationOptions
+    var options = new CreateResponseOptions
     {
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
       StoredOutputEnabled = false,
       EndUserId = $"helpdesk-{ticketId}"
     };
+    options.InputItems.Add(userMessage);
 
-    var response = await _client.CreateResponseAsync([userMessage], options);
+    var response = await _client.CreateResponseAsync(options, ct);
     return NormaliseText(response.Value.OutputItems.Select(o => o as MessageResponseItem).First(o => o is not null).Content.First().Text);
   }
 
@@ -63,15 +64,16 @@ public static partial class AIService
 
     var userMessage = ResponseItem.CreateUserMessageItem($"# Email subject:\n\n{subject}\n\n# Email body:\n\n{body}");
 
-    var options = new ResponseCreationOptions
+    var options = new CreateResponseOptions
     {
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
       StoredOutputEnabled = false,
       EndUserId = $"helpdesk-{ticketId}"
     };
+    options.InputItems.Add(userMessage);
 
-    var response = await _client.CreateResponseAsync([userMessage], options);
+    var response = await _client.CreateResponseAsync(options);
     var title = NormaliseText(response.Value.OutputItems.Select(o => o as MessageResponseItem).First(o => o is not null).Content.First().Text);
     if (title.Length > 40) title = title[..37].Trim() + "...";
     return title;
@@ -109,7 +111,7 @@ public static partial class AIService
     }
     """.Replace("[PARENT_NAMES]", string.Join("\", \"", parentNames), StringComparison.Ordinal));
 
-    var options = new ResponseCreationOptions
+    var options = new CreateResponseOptions
     {
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
@@ -117,8 +119,9 @@ public static partial class AIService
       EndUserId = $"helpdesk-{ticketId}",
       TextOptions = new ResponseTextOptions { TextFormat = ResponseTextFormat.CreateJsonSchemaFormat("inference", schema, jsonSchemaIsStrict: true) }
     };
+    options.InputItems.Add(userMessage);
 
-    var response = await _client.CreateResponseAsync([userMessage], options);
+    var response = await _client.CreateResponseAsync(options);
     var text = response.Value.OutputItems.Select(o => o as MessageResponseItem).FirstOrDefault(o => o is not null)?.Content.FirstOrDefault()?.Text;
     if (text is null) return null;
     var parentName = JsonDocument.Parse(text).RootElement.GetProperty("parentName").GetString();
@@ -157,7 +160,7 @@ public static partial class AIService
     }
     """.Replace("[STUDENT_NAMES]", string.Join("\", \"", studentNames), StringComparison.Ordinal));
 
-    var options = new ResponseCreationOptions
+    var options = new CreateResponseOptions
     {
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
@@ -165,8 +168,9 @@ public static partial class AIService
       EndUserId = $"helpdesk-{ticketId}",
       TextOptions = new ResponseTextOptions { TextFormat = ResponseTextFormat.CreateJsonSchemaFormat("inference", schema, jsonSchemaIsStrict: true) }
     };
+    options.InputItems.Add(userMessage);
 
-    var response = await _client.CreateResponseAsync([userMessage], options);
+    var response = await _client.CreateResponseAsync(options);
     var text = response.Value.OutputItems.Select(o => o as MessageResponseItem).FirstOrDefault(o => o is not null)?.Content.FirstOrDefault()?.Text;
     if (text is null) return null;
     var studentName = JsonDocument.Parse(text).RootElement.GetProperty("studentName").GetString();
@@ -213,9 +217,12 @@ public static partial class AIService
           break;
       }
     }
-    return MultiSpaceRegex().Replace(sb.ToString(), " ").Trim();
+    return EndOfLineSpaceRegex().Replace(MultiSpaceRegex().Replace(sb.ToString(), " "), string.Empty).Trim();
   }
 
   [GeneratedRegex(@" {2,}")]
   private static partial Regex MultiSpaceRegex();
+
+  [GeneratedRegex(@" +$", RegexOptions.Multiline)]
+  private static partial Regex EndOfLineSpaceRegex();
 }
