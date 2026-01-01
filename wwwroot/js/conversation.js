@@ -104,6 +104,7 @@ function showImageModal(src, name) {
   const modal = document.getElementById('image-modal');
   modal.style.display = 'block';
   document.getElementById('modal-image').src = src;
+  document.getElementById('modal-image').alt = name;
   document.getElementById('image-caption').textContent = name;
 }
 const closeImageModal = () => document.getElementById('image-modal').style.display = 'none';

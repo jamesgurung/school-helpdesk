@@ -4,15 +4,15 @@
   --primary-dark: #4240a8;
   --secondary: #2cb5ad;
   --secondary-light: #64d8d2;
-  --secondary-dark: #098f88;
+  --secondary-dark: #08807a;
   --text: #333;
-  --text-light: #888;
+  --text-light: #6c6c6c;
   --bg: #f8f9fa;
   --white: #ffffff;
   --border: #e0e0e0;
   --success: #4CAF50;
-  --warning: #ff9800;
-  --error: #e53935;
+  --error: #c9322f;
+  --warning: var(--error);
   --shadow: rgba(0, 0, 0, 0.1);
   --primary-bg-light: rgba(94, 92, 230, 0.05);
   --primary-bg-medium: rgba(94, 92, 230, 0.1);
@@ -31,7 +31,7 @@
   :root {
     --primary: #9d9cef;
     --primary-light: #b8b7f2;
-    --primary-dark: #7572e8;
+    --primary-dark: #9693ff;
     --secondary: #7de4dc;
     --secondary-light: #a0ede6;
     --secondary-dark: #4cc4ba;
@@ -52,7 +52,7 @@
     --secondary-bg-subtle: rgba(125, 228, 220, 0.06);
     --header-start: #1a1a2e;
     --header-end: #2d2d44;
-    --btn-primary-bg: var(--primary-dark);
+    --btn-primary-bg: #706dba;
     --btn-primary-bg-hover: #5d5ac5;
     --internal-note-bg: rgba(255, 178, 77, 0.15);
   }
@@ -86,7 +86,7 @@
 }
 
 .login-btn {
-  background-color: var(--primary);
+  background-color: var(--btn-primary-bg);
   color: white !important;
   text-decoration: none !important;
   border: none;
@@ -1244,10 +1244,8 @@ button {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-}
-
-.image-modal-content .close-modal:hover {
-  background-color: rgba(0, 0, 0, 0.9);
+  padding: 0;
+  border: none;
 }
 
 .modal-image {

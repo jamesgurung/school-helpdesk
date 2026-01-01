@@ -3,7 +3,7 @@
   var returnUrl = Request.Query["path"].FirstOrDefault();
 }
 <div class="landing">
-  <img src="/img/logo.png" class="logo" />
+  <img src="/img/logo.png" class="logo" alt="Parent Helpdesk Logo" />
   <h1>Parent Helpdesk</h1>
   <p>Strengthening our partnership with parents and carers</p>
   <a href="/login/challenge@(string.IsNullOrEmpty(returnUrl) ? string.Empty : $"?path={returnUrl}")" class="login-btn">

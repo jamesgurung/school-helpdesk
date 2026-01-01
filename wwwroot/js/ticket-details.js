@@ -48,6 +48,7 @@ async function openTicketDetails(ticketId, fromHash = false) {
   elements.closeTicketBtn.style.opacity = '0.5';
   elements.uploadFilesBtn.style.opacity = '0.5';
   elements.uploadFilesBtn.style.pointerEvents = 'none';
+  elements.messageAttachments.disabled = true;
   elements.guidanceInput.value = '';
 
   await fetch(`/api/tickets/${ticketId}`).then(response => response.json())
@@ -310,6 +311,7 @@ function updateMessageControlsState(ticket) {
   elements.internalNoteCheckbox.disabled = !canSend;
   elements.suggestStart.disabled = !canSend;
   elements.uploadFilesBtn.style.pointerEvents = canSend ? 'auto' : 'none';
+  elements.messageAttachments.disabled = !canSend;
 
   const canClose = ticket.isClosed || canSend;
   elements.closeTicketBtn.disabled = !canClose;
