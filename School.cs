@@ -26,6 +26,7 @@ public class School
 
   public List<Holiday> Holidays { get; set; }
   public HashSet<string> BlockedEmails { get; set; }
+  public HashSet<string> BlockedDomains { get; set; }
 }
 
 public class CsvStudent

@@ -189,11 +189,14 @@ public static class BlobService
     {
       var content = await blocklistBlob.DownloadContentAsync();
       var lines = content.Value.Content.ToString().ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-      School.Instance.BlockedEmails = new HashSet<string>(lines, StringComparer.OrdinalIgnoreCase);
+      School.Instance.BlockedEmails = new HashSet<string>(lines.Where(l => l.Contains('@', StringComparison.Ordinal)), StringComparer.OrdinalIgnoreCase);
+      School.Instance.BlockedDomains = new HashSet<string>(lines.Where(l => !l.Contains('@', StringComparison.Ordinal)), StringComparer.OrdinalIgnoreCase);
     }
     catch (RequestFailedException ex) when (ex.Status == 404)
     {
-      School.Instance.BlockedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      var emptyHashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      School.Instance.BlockedEmails = emptyHashSet;
+      School.Instance.BlockedDomains = emptyHashSet;
     }
   }
 

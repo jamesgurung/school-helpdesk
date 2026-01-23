@@ -33,6 +33,8 @@ public static partial class EmailService
     if (authKey != _authKey || message is null) return;
 
     if (School.Instance.BlockedEmails.Contains(message.From)) return;
+    var fromDomain = message.From.Split('@')[^1];
+    if (School.Instance.BlockedDomains.Contains(fromDomain)) return;
 
     var spamHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "x-spam-status", StringComparison.OrdinalIgnoreCase))?.Value;
     if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
