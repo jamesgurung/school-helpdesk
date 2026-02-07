@@ -98,7 +98,7 @@ public static partial class EmailService
           Content = body.MessageText,
           OriginalEmail = body.SanitizedHtml,
           Attachments = attachments,
-          EmailTo = message.ToFull.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To.Trim(),
+          EmailTo = message.ToFull?.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To?.Trim(),
           EmailCc = string.IsNullOrWhiteSpace(message.Cc) ? null : message.Cc.Trim()
         });
         await BlobService.AppendMessagesAsync(ticketNumber, messages);
@@ -161,13 +161,18 @@ public static partial class EmailService
           OriginalEmail = body.SanitizedHtml,
           Attachments = attachments,
           EmailSubject = string.IsNullOrWhiteSpace(message.Subject) ? null : message.Subject.Trim(),
-          EmailTo = message.ToFull.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To.Trim(),
+          EmailTo = message.ToFull?.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To?.Trim(),
           EmailCc = string.IsNullOrWhiteSpace(message.Cc) ? null : message.Cc.Trim()
         }
       };
 
       await BlobService.CreateConversationAsync(id, messages);
-      await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title, null, null);
+
+      try
+      {
+        await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title, null, null);
+      }
+      catch { } // Ignore notification email failures
 
       try
       {
@@ -211,7 +216,11 @@ public static partial class EmailService
 
       if (School.Instance.NotifyFirstManager && School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var manager))
       {
-        await SendTicketUpdateEmailAsync(id, ticket, manager, TicketUpdateAction.NotifyNew);
+        try
+        {
+          await SendTicketUpdateEmailAsync(id, ticket, manager, TicketUpdateAction.NotifyNew);
+        }
+        catch { } // Ignore notification email failures
       }
     }
   }
