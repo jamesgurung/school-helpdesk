@@ -3,6 +3,7 @@
 @inject IWebHostEnvironment Environment
 @{
   var isManager = User.IsInRole(AuthConstants.Manager);
+  var isDispatcher = User.IsInRole(AuthConstants.Dispatcher);
 	var all = Request.QueryString.HasValue && Request.QueryString.ToString().StartsWith("?archive", StringComparison.OrdinalIgnoreCase);
   var tickets = isManager
     ? await TableService.GetAllTicketsAsync(all ? null : DateTime.Today.AddDays(-14))
@@ -16,7 +17,7 @@
       <h1>Parent Helpdesk</h1>
     </a>
     <div class="user-actions">
-      @if (isManager)
+      @if (isDispatcher)
       {
         <button class="new-ticket-button" id="new-ticket-button">
           <span class="material-symbols-rounded">add</span>
@@ -318,12 +319,13 @@
 </div>
 
 <script nonce="@HttpContext.Items["csp-nonce"]">
-  const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
-  const usersHash = '@School.Instance.UsersJsonHash';
   const tickets = @Html.Raw(Json.Serialize(tickets));
-  const isManager = @isManager.ToString().ToLowerInvariant();
+  const { parents, staff } = @Html.Raw(isDispatcher ? School.Instance.UsersJson : "{\"parents\":[],\"staff\":[]}");
   const currentUser = '@School.Instance.StaffByEmail[HttpContext.User.Identity.Name].Name';
+  const currentUserEmail = '@HttpContext.User.Identity.Name';
+  const isManager = @isManager.ToString().ToLowerInvariant();
   const holidays = @Html.Raw(Json.Serialize(School.Instance.Holidays));
+  const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
 </script>
 
 @if (Environment.IsDevelopment())

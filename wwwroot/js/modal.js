@@ -96,10 +96,14 @@ async function createNewTicket() {
   elements.createNewTicketBtn.disabled = true;
   const newTicket = await apiCreateTicket(newTicketData);
 
-  tickets.unshift(newTicket);
-  updateOpenTicketsBadge();
-
   closeNewTicketModal();
   elements.tabs[0].click();
-  openTicketDetails(newTicket.id);
+  if (isManager || newTicket.assigneeEmail === currentUserEmail) {
+    tickets.unshift(newTicket);
+    updateOpenTicketsBadge();
+    renderTickets(state.activeTab);
+    openTicketDetails(newTicket.id);
+  } else {
+    showToast('Ticket created successfully', 'success');
+  }
 }

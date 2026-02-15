@@ -20,14 +20,12 @@ public static class Api
 
     var group = app.MapGroup("/api").ValidateAntiforgery().RequireAuthorization();
 
-    group.MapGet("/users", [Authorize(Roles = AuthConstants.Manager)] () => Results.Content(School.Instance.UsersJson, "application/json"));
-
     group.MapGet("/refresh", [Authorize(Roles = AuthConstants.Administrator)] async () =>
     {
       await BlobService.LoadConfigAsync();
     });
 
-    group.MapPost("/tickets", [Authorize(Roles = AuthConstants.Manager)] async (NewTicketEntity ticket, HttpContext context) =>
+    group.MapPost("/tickets", [Authorize(Roles = AuthConstants.Dispatcher)] async (NewTicketEntity ticket, HttpContext context) =>
     {
       if (ticket is null)
         return Results.BadRequest("Ticket data is required.");
@@ -345,8 +343,7 @@ public static class Api
     {
       var user = context.User.IsInRole(AuthConstants.Manager) ? null : context.User.Identity.Name;
       var lastUpdated = await TableService.GetTicketCacheItemAsync(id, user);
-      if (lastUpdated is null) return Results.NotFound();
-      return Results.Ok(lastUpdated.Value);
+      return lastUpdated is null ? Results.NotFound() : Results.Ok(lastUpdated.Value);
     });
 
     app.MapPut("/api/users", [AllowAnonymous] async (HttpContext context, [FromHeader(Name = "X-Api-Key")] string auth) =>

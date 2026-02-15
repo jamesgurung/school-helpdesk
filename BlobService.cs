@@ -5,7 +5,6 @@ using Azure.Storage.Sas;
 using CsvHelper;
 using CsvHelper.Configuration;
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -164,7 +163,6 @@ public static class BlobService
       Staff = School.Instance.StaffByEmail.Values
     };
     School.Instance.UsersJson = JsonSerializer.Serialize(users, JsonSerializerOptions.Web);
-    School.Instance.UsersJsonHash = ComputeHash(School.Instance.UsersJson);
 
     var htmlTemplate = await configClient.GetBlobClient("template.html").DownloadContentAsync();
     School.Instance.HtmlEmailTemplate = htmlTemplate.Value.Content.ToString().ReplaceLineEndings("\n");
@@ -198,13 +196,6 @@ public static class BlobService
       School.Instance.BlockedEmails = emptyHashSet;
       School.Instance.BlockedDomains = emptyHashSet;
     }
-  }
-
-  private static string ComputeHash(string input)
-  {
-    var bytes = Encoding.UTF8.GetBytes(input);
-    var hashBytes = SHA256.HashData(bytes);
-    return Convert.ToHexString(hashBytes).ToLowerInvariant();
   }
 
   private static string FormatPhoneNumber(string phoneNumber)

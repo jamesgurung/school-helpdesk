@@ -124,7 +124,7 @@ public static partial class AIService
     var response = await _client.CreateResponseAsync(options);
     var text = response.Value.OutputItems.Select(o => o as MessageResponseItem).FirstOrDefault(o => o is not null)?.Content.FirstOrDefault()?.Text;
     if (text is null) return null;
-    var parentName = JsonDocument.Parse(text).RootElement.GetProperty("parentName").GetString();
+    var parentName = JsonElement.Parse(text).GetProperty("parentName").GetString();
     return parentName is null ? null : parents.FirstOrDefault(p => p.Name.Equals(parentName, StringComparison.OrdinalIgnoreCase));
   }
 
@@ -173,7 +173,7 @@ public static partial class AIService
     var response = await _client.CreateResponseAsync(options);
     var text = response.Value.OutputItems.Select(o => o as MessageResponseItem).FirstOrDefault(o => o is not null)?.Content.FirstOrDefault()?.Text;
     if (text is null) return null;
-    var studentName = JsonDocument.Parse(text).RootElement.GetProperty("studentName").GetString();
+    var studentName = JsonElement.Parse(text).GetProperty("studentName").GetString();
     return studentName is null ? null : students.FirstOrDefault(s => $"{s.FirstName} {s.LastName} {s.TutorGroup}".Trim().Equals(studentName, StringComparison.OrdinalIgnoreCase));
   }
 

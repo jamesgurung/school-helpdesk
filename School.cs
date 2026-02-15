@@ -14,12 +14,12 @@ public class School
   public bool NotifyFirstManager { get; set; }
   public IList<string> Admins { get; set; }
   public IList<string> Managers { get; set; }
+  public IList<string> Dispatchers { get; set; }
 
   public ILookup<string, Parent> ParentsByEmail { get; set; }
   public Dictionary<string, Staff> StaffByEmail { get; set; }
 
   public string UsersJson { get; set; }
-  public string UsersJsonHash { get; set; }
 
   public string HtmlEmailTemplate { get; set; }
   public string TextEmailTemplate { get; set; }

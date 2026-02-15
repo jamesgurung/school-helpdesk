@@ -96,8 +96,15 @@ public static class AuthConfig
     }
     var identity = new ClaimsIdentity(CookieAuthenticationDefaults.AuthenticationScheme);
     identity.AddClaim(new Claim(ClaimTypes.Name, staff.Email));
-    if (School.Instance.Admins.Contains(email, StringComparer.OrdinalIgnoreCase)) identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Administrator));
-    if (School.Instance.Managers.Contains(email, StringComparer.OrdinalIgnoreCase)) identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Manager));
+
+    var isAdmin = School.Instance.Admins.Contains(email, StringComparer.OrdinalIgnoreCase);
+    var isManager = isAdmin || School.Instance.Managers.Contains(email, StringComparer.OrdinalIgnoreCase);
+    var isDispatcher = isManager || School.Instance.Dispatchers.Contains(email, StringComparer.OrdinalIgnoreCase);
+
+    if (isAdmin) identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Administrator));
+    if (isManager) identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Manager));
+    if (isDispatcher) identity.AddClaim(new Claim(ClaimTypes.Role, AuthConstants.Dispatcher));
+
     principal = new ClaimsPrincipal(identity);
     return true;
   }
@@ -125,4 +132,5 @@ public static class AuthConstants
 {
   public const string Administrator = nameof(Administrator);
   public const string Manager = nameof(Manager);
+  public const string Dispatcher = nameof(Dispatcher);
 }

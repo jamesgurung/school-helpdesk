@@ -79,89 +79,9 @@ function getCurrentTicket() {
   return tickets.find(ticket => ticket.id === state.currentTicketId);
 }
 
-let parents;
-let staff;
-
-function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('helpdesk', 1);
-
-    request.onerror = event => reject(event.target.error);
-
-    request.onupgradeneeded = event => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains('users')) {
-        db.createObjectStore('users');
-      }
-    };
-
-    request.onsuccess = event => resolve(event.target.result);
-  });
-}
-
-async function getUsersData() {
-  try {
-    const db = await openDatabase();
-    const transaction = db.transaction('users', 'readonly');
-    const store = transaction.objectStore('users');
-
-    const parentsRequest = store.get('parents');
-    const staffRequest = store.get('staff');
-    const hashRequest = store.get('hash');
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => {
-        resolve({
-          parents: parentsRequest.result,
-          staff: staffRequest.result,
-          usersHash: hashRequest.result
-        });
-      };
-      transaction.onerror = event => reject(event.target.error);
-    });
-  } catch (error) {
-    console.error('Failed to get users data:', error);
-    return { parents: null, staff: null, usersHash: null };
-  }
-}
-
-async function fetchUsers() {
-  const response = await fetch('/api/users');
-  const users = await response.json();
-
-  parents = users.parents;
-  staff = users.staff;
-
-  try {
-    const db = await openDatabase();
-    const transaction = db.transaction('users', 'readwrite');
-    const store = transaction.objectStore('users');
-
-    store.put(parents, 'parents');
-    store.put(staff, 'staff');
-    store.put(usersHash, 'hash');
-
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve(true);
-      transaction.onerror = event => reject(event.target.error);
-    });
-  } catch (error) {
-    console.error('Failed to store users data:', error);
-    return false;
-  }
-}
-
 async function init() {
   try {
-    if (isManager) {
-      const storedData = await getUsersData();
-      if (storedData?.usersHash === usersHash) {
-        parents = storedData.parents;
-        staff = storedData.staff;
-      } else {
-        await fetchUsers();
-      }
-    }
+    indexedDB.deleteDatabase('helpdesk');
     initHolidays();
     renderTickets(state.activeTab);
     updateOpenTicketsBadge();

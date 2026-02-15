@@ -25,7 +25,7 @@ function setupTabNavigation() {
 
 function setupTicketDetails() {
   elements.backBtn.addEventListener('click', () => confirmNavigationWithUnsentText('go back', resetDetailsView));
-    if (isManager) {
+  if (isManager) {
     elements.ticketTitleInput.addEventListener('blur', updateTicketTitle);
     elements.ticketTitleInput.addEventListener('input', e => {
       const text = e.target.innerText;
