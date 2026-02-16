@@ -1,18 +1,22 @@
 @page "/stats"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AuthConstants.Administrator)]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AuthConstants.Manager)]
 @{
   var tickets = await TableService.GetAllTicketsAsync();
+  var currentWeekStartUtc = DateTime.UtcNow.Date.AddDays(-(((int)DateTime.UtcNow.DayOfWeek + 6) % 7));
   var weeks = tickets
-    .Where(o => o.IsClosed)
+    .Where(o => o.IsClosed && o.LastUpdated < currentWeekStartUtc)
     .GroupBy(o => DateOnly.FromDateTime(o.LastUpdated.Date.AddDays(-(((int)o.LastUpdated.DayOfWeek + 6) % 7))))
     .OrderBy(g => g.Key)
     .Select(g => new
     {
-      Week = g.Key,
+      WeekStart = g.Key,
       TicketsClosed = g.Count(),
-      TimeToFirstResponse = g.Where(t => t.TimeToFirstResponse is not null).Median(t => t.TimeToFirstResponse.Value)
+      AverageTimeToFirstResponse = g.Any(t => t.TimeToFirstResponse is not null)
+        ? (int?)g.Where(t => t.TimeToFirstResponse is not null).Median(t => t.TimeToFirstResponse.Value)
+        : null
     })
     .ToList();
+  var latestWeek = weeks.LastOrDefault();
 
   var threeMonthsAgo = DateTime.UtcNow.AddMonths(-3);
   var parents = tickets
@@ -24,8 +28,8 @@
       StudentName = string.Join(", ", g.GroupBy(o => $"{o.StudentFirstName} {o.StudentLastName}").OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key).Select(gg => gg.Key)),
       Count = g.Count()
     })
-    .OrderByDescending(g => g.Count)
-    .Take(20)
+    .OrderByDescending(o => o.Count)
+    .Take(10)
     .ToList();
 
   var assignees = tickets
@@ -35,10 +39,12 @@
     {
       AssigneeName = g.Key,
       Count = g.Count(),
-      AverageResponseTime = g.Any(t => t.TimeToFirstResponse is not null) ? (int?)g.Where(t => t.TimeToFirstResponse is not null).Average(t => t.TimeToFirstResponse.Value) : null
+      AverageResponseTime = g.Any(t => t.AverageAssigneeResponseTime is not null)
+        ? (int?)g.Where(t => t.AverageAssigneeResponseTime is not null).Average(t => t.AverageAssigneeResponseTime.Value)
+        : null
     })
-    .OrderByDescending(g => g.Count)
-    .Take(20)
+    .Where(o => o.Count >= 3)
+    .OrderByDescending(o => o.Count)
     .ToList();
 }
 
@@ -58,21 +64,89 @@
 </header>
 
 <main class="stats-page">
-  <section class="stats-panel">
-    <h2>Weekly statistics</h2>
+
+  <section class="stats-panel stats-weekly-panel">
+    <div class="stats-panel-heading">
+      <h3>Weekly trends</h3>
+      <p>Bars show tickets closed each week for the last six months. The line shows average time to first response.</p>
+    </div>
+
+    <div class="stats-headline-grid">
+      <article class="stats-headline-card">
+        <p class="stats-headline-label">Most recent week</p>
+        <p class="stats-headline-value" id="latest-week-range">-</p>
+      </article>
+      <article class="stats-headline-card">
+        <p class="stats-headline-label">Tickets closed</p>
+        <p class="stats-headline-value" id="latest-week-count">-</p>
+      </article>
+      <article class="stats-headline-card">
+        <p class="stats-headline-label">Median in-hours first response</p>
+        <p class="stats-headline-value" id="latest-week-response">-</p>
+      </article>
+    </div>
+
+    <div class="stats-chart-shell">
+      <canvas id="weekly-stats-chart"></canvas>
+    </div>
   </section>
 
   <section class="stats-panel">
-    <h2>Parents</h2>
+    <div class="stats-panel-heading">
+      <h3>High-volume parents</h3>
+      <p>Top ten parents by ticket count from the last three months.</p>
+    </div>
+    <div class="stats-table-shell">
+      <table class="stats-table" id="parents-table">
+        <thead>
+          <tr>
+            <th>
+              <button type="button" class="stats-sort-btn" data-table="parents" data-key="parentName" data-type="text">Parent name</button>
+            </th>
+            <th>
+              <button type="button" class="stats-sort-btn" data-table="parents" data-key="studentName" data-type="text">Student name</button>
+            </th>
+            <th>
+              <button type="button" class="stats-sort-btn" data-table="parents" data-key="count" data-type="number" data-default-dir="desc">Count</button>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="parents-table-body"></tbody>
+      </table>
+    </div>
   </section>
 
   <section class="stats-panel">
-    <h2>Assignees</h2>
+    <div class="stats-panel-heading">
+      <h3>Top assignees</h3>
+      <p>Staff who have been assigned 3+ tickets in the last three months.</p>
+    </div>
+    <div class="stats-table-shell">
+      <table class="stats-table" id="assignees-table">
+        <thead>
+          <tr>
+            <th>
+              <button type="button" class="stats-sort-btn" data-table="assignees" data-key="assigneeName" data-type="text">Staff name</button>
+            </th>
+            <th>
+              <button type="button" class="stats-sort-btn" data-table="assignees" data-key="count" data-type="number" data-default-dir="desc">Tickets assigned</button>
+            </th>
+            <th>
+              <button type="button" class="stats-sort-btn" data-table="assignees" data-key="averageResponseTime" data-type="number" data-default-dir="asc">Average in-hours response time</button>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="assignees-table-body"></tbody>
+      </table>
+    </div>
   </section>
 </main>
 
 <script src="/lib/chart.js/dist/chart.umd.min.js"></script>
-<script src="/js/stats.js"></script>
-<script>
-    
+<script nonce="@HttpContext.Items["csp-nonce"]">
+  const weeks = @Html.Raw(Json.Serialize(weeks));
+  const latestWeek = @Html.Raw(Json.Serialize(latestWeek));
+  const parents = @Html.Raw(Json.Serialize(parents));
+  const assignees = @Html.Raw(Json.Serialize(assignees));
 </script>
+<script src="/js/stats.js"></script>

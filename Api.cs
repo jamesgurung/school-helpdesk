@@ -389,7 +389,7 @@ public static class Api
 
     var ticketOpened = messages[0].Timestamp;
     var firstResponse = messages.Skip(1).FirstOrDefault(m => m.IsEmployee && !m.IsPrivate);
-    var firstResponseTime = firstResponse is null ? null : (int?)(firstResponse.Timestamp - ticketOpened).TotalSeconds;
+    var firstResponseTime = firstResponse is null ? (int?)null : WorkingSecondsBetweenTimestamps(ticketOpened, firstResponse.Timestamp);
 
     if (string.IsNullOrWhiteSpace(assigneeName)) return (firstResponseTime, null);
     const string assignCommand = "#assign ";
@@ -406,7 +406,7 @@ public static class Api
         waitingSince = isAssigned ? message.Timestamp : null;
         continue;
       }
-      if (message.IsPrivate || !isAssigned) continue;
+      if (!isAssigned) continue;
       if (!message.IsEmployee)
       {
         waitingSince ??= message.Timestamp;
@@ -416,10 +416,40 @@ public static class Api
       {
         continue;
       }
-      responseTimes.Add((int)Math.Max(0, (message.Timestamp - waitingSince.Value).TotalSeconds));
+      responseTimes.Add(WorkingSecondsBetweenTimestamps(waitingSince.Value, message.Timestamp));
       waitingSince = null;
     }
 
-    return (firstResponseTime, responseTimes.Count == 0 ? null : (int)responseTimes.Average());
+    return (firstResponseTime, responseTimes.Count == 0 ? null : (int?)responseTimes.Average());
+  }
+
+  private static int WorkingSecondsBetweenTimestamps(DateTime start, DateTime end)
+  {
+    if (end <= start) return 0;
+
+    var workingDayStart = TimeSpan.FromHours(8) + TimeSpan.FromMinutes(30);
+    var workingDayEnd = TimeSpan.FromHours(16) + TimeSpan.FromMinutes(30);
+    var holidays = School.Instance.Holidays;
+    var seconds = 0;
+
+    for (var day = start.Date; day <= end.Date; day = day.AddDays(1))
+    {
+      if (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) continue;
+
+      var date = DateOnly.FromDateTime(day);
+      if (holidays?.Any(h => h.Start <= date && h.End >= date) ?? false) continue;
+
+      var workingStart = day + workingDayStart;
+      var workingEnd = day + workingDayEnd;
+      var intervalStart = start > workingStart ? start : workingStart;
+      var intervalEnd = end < workingEnd ? end : workingEnd;
+
+      if (intervalEnd > intervalStart)
+      {
+        seconds += (int)(intervalEnd - intervalStart).TotalSeconds;
+      }
+    }
+
+    return seconds;
   }
 }
