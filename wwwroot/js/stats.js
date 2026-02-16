@@ -61,11 +61,12 @@ function renderWeeklyChart() {
   const canvas = document.getElementById('weekly-stats-chart');
   if (!canvas || !Array.isArray(weeks) || weeks.length === 0) return;
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const monthsBack = window.innerWidth < 600 ? 3 : 6;
+  const cutoffDate = new Date();
+  cutoffDate.setMonth(cutoffDate.getMonth() - monthsBack);
   const chartWeeks = weeks.filter(row => {
     const week = parseDateOnly(row.weekStart);
-    return week && week >= sixMonthsAgo;
+    return week && week >= cutoffDate;
   });
   if (chartWeeks.length === 0) return;
 
@@ -93,7 +94,7 @@ function renderWeeklyChart() {
           order: 2
         },
         {
-          label: 'Median in-hours first response (minutes)',
+          label: 'Median time to first response (minutes)',
           type: 'line',
           data: responseMinutes,
           borderColor: lineColor,
@@ -131,7 +132,7 @@ function renderWeeklyChart() {
             label(context) {
               if (context.datasetIndex === 1) {
                 const seconds = chartWeeks[context.dataIndex]?.averageTimeToFirstResponse;
-                return ` Median in-hours first response: ${formatWorkingDuration(seconds)}`;
+                return ` Median time to first response: ${formatWorkingDuration(seconds)}`;
               }
               return ` Tickets closed: ${formatNumber(context.parsed.y)}`;
             }
@@ -170,7 +171,7 @@ function renderWeeklyChart() {
           beginAtZero: true,
           title: {
             display: true,
-            text: 'Response time'
+            text: 'Median time to first response'
           },
           ticks: {
             callback(value) {
@@ -206,8 +207,8 @@ const tableConfig = {
     rows: Array.isArray(assignees) ? assignees : [],
     cells: [
       row => row.assigneeName || '-',
-      row => `<span class="stats-pill">${formatNumber(row.count)}</span>`,
-      row => formatWorkingDuration(row.averageResponseTime)
+      row => formatWorkingDuration(row.averageResponseTime),
+      row => `<span class="stats-pill">${formatNumber(row.count)}</span>`
     ]
   }
 };
@@ -263,7 +264,7 @@ function updateSortButtonLabels() {
     if (!state) return;
 
     const isActive = state.key === key;
-    const marker = isActive ? (state.direction === 'asc' ? '\u23F6' : '\u23F7') : '';
+    const marker = isActive ? (state.direction === 'asc' ? '\u25B2' : '\u25BC') : '';
     button.classList.toggle('active', isActive);
 
     const baseText = button.dataset.baseText || button.textContent.trim();

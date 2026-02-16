@@ -65,15 +65,15 @@
 
 <main class="stats-page">
 
-  <section class="stats-panel stats-weekly-panel">
+  <section class="stats-panel">
     <div class="stats-panel-heading">
-      <h3>Weekly trends</h3>
-      <p>Bars show tickets closed each week for the last six months. The line shows average time to first response.</p>
+      <h3>Last week</h3>
+      <p>All measurements represent time elapsed within working hours 08:30&ndash;16:30.</p>
     </div>
 
     <div class="stats-headline-grid">
       <article class="stats-headline-card">
-        <p class="stats-headline-label">Most recent week</p>
+        <p class="stats-headline-label">Week beginning</p>
         <p class="stats-headline-value" id="latest-week-range">-</p>
       </article>
       <article class="stats-headline-card">
@@ -81,11 +81,17 @@
         <p class="stats-headline-value" id="latest-week-count">-</p>
       </article>
       <article class="stats-headline-card">
-        <p class="stats-headline-label">Median in-hours first response</p>
+        <p class="stats-headline-label">Time to first response (median)</p>
         <p class="stats-headline-value" id="latest-week-response">-</p>
       </article>
     </div>
+  </section>
 
+  <section class="stats-panel">
+    <div class="stats-panel-heading">
+      <h3>Trend over time</h3>
+      <p>Bars show tickets closed each week. The line shows median time to first response.</p>
+    </div>
     <div class="stats-chart-shell">
       <canvas id="weekly-stats-chart"></canvas>
     </div>
@@ -107,7 +113,7 @@
               <button type="button" class="stats-sort-btn" data-table="parents" data-key="studentName" data-type="text">Student name</button>
             </th>
             <th>
-              <button type="button" class="stats-sort-btn" data-table="parents" data-key="count" data-type="number" data-default-dir="desc">Count</button>
+              <button type="button" class="stats-sort-btn" data-table="parents" data-key="count" data-type="number" data-default-dir="desc">Tickets created</button>
             </th>
           </tr>
         </thead>
@@ -129,10 +135,10 @@
               <button type="button" class="stats-sort-btn" data-table="assignees" data-key="assigneeName" data-type="text">Staff name</button>
             </th>
             <th>
-              <button type="button" class="stats-sort-btn" data-table="assignees" data-key="count" data-type="number" data-default-dir="desc">Tickets assigned</button>
+              <button type="button" class="stats-sort-btn" data-table="assignees" data-key="averageResponseTime" data-type="number" data-default-dir="asc">Average response time</button>
             </th>
             <th>
-              <button type="button" class="stats-sort-btn" data-table="assignees" data-key="averageResponseTime" data-type="number" data-default-dir="asc">Average in-hours response time</button>
+              <button type="button" class="stats-sort-btn" data-table="assignees" data-key="count" data-type="number" data-default-dir="desc">Tickets assigned</button>
             </th>
           </tr>
         </thead>
@@ -141,6 +147,20 @@
     </div>
   </section>
 </main>
+
+<svg style="position: absolute; width: 0; height: 0">
+  <defs>
+    <filter id="auto-stroke">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1" result="dilated" />
+      <feFlood flood-color="white" result="white-fill" />
+      <feComposite in="white-fill" in2="dilated" operator="in" result="outline" />
+      <feMerge>
+        <feMergeNode in="outline" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+</svg>
 
 <script src="/lib/chart.js/dist/chart.umd.min.js"></script>
 <script nonce="@HttpContext.Items["csp-nonce"]">
