@@ -189,7 +189,7 @@ h1 {
   gap: 10px;
 }
 
-.logout-button, .new-ticket-button {
+.logout-button, .new-ticket-button, .stats-button {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -209,7 +209,8 @@ h1 {
 }
 
 .logout-button .material-symbols-rounded,
-.new-ticket-button .material-symbols-rounded {
+.new-ticket-button .material-symbols-rounded,
+.stats-button .material-symbols-rounded {
   font-size: 18px;
   display: flex;
   align-items: center;
@@ -217,12 +218,14 @@ h1 {
 
 @media (max-width: 600px) {
   .logout-button span:last-child,
-  .new-ticket-button span:last-child {
+  .new-ticket-button span:last-child,
+  .stats-button span:last-child {
     display: none;
   }
   
   .logout-button,
-  .new-ticket-button {
+  .new-ticket-button,
+  .stats-button {
     padding: 0.4rem;
   }
   
@@ -259,6 +262,27 @@ h1 {
   max-width: 1400px;
   margin: 0 auto;
   height: calc(100vh - 60px);
+}
+
+.stats-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stats-panel {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+}
+
+.stats-panel h2 {
+  font-size: 1.2rem;
+  font-weight: 500;
 }
 
 .tabs {

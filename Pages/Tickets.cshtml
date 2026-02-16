@@ -2,6 +2,7 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject IWebHostEnvironment Environment
 @{
+  var isAdmin = User.IsInRole(AuthConstants.Administrator);
   var isManager = User.IsInRole(AuthConstants.Manager);
   var isDispatcher = User.IsInRole(AuthConstants.Dispatcher);
 	var all = Request.QueryString.HasValue && Request.QueryString.ToString().StartsWith("?archive", StringComparison.OrdinalIgnoreCase);
@@ -22,6 +23,13 @@
         <button class="new-ticket-button" id="new-ticket-button">
           <span class="material-symbols-rounded">add</span>
           <span>New Ticket</span>
+        </button>
+      }
+      @if (isAdmin)
+      {
+        <button class="stats-button" id="stats-button">
+          <span class="material-symbols-rounded">monitoring</span>
+          <span>Stats</span>
         </button>
       }
       <button class="logout-button" id="logout-button">

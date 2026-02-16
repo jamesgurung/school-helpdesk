@@ -6,6 +6,7 @@
 [assembly: SuppressMessage("Design", "CA1056:URI-like properties should not be strings")]
 [assembly: SuppressMessage("Globalization", "CA1308:Normalize strings to uppercase")]
 [assembly: SuppressMessage("Maintainability", "CA1515:Consider making public types internal")]
+[assembly: SuppressMessage("Maintainability", "CA1517:Use 'ReadOnlySpan<T>' or 'ReadOnlyMemory<T>' instead of 'Span<T>' or 'Memory<T>'", Scope = "member", Target = "~M:SchoolHelpdesk.StatisticsExtensions.Swap``1(System.Span{``0},System.Int32,System.Int32)")]
 [assembly: SuppressMessage("Performance", "CA1848:Use the LoggerMessage delegates")]
 [assembly: SuppressMessage("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task")]
 [assembly: SuppressMessage("Usage", "CA2227:Collection properties should be read only")]

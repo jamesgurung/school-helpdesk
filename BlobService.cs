@@ -46,15 +46,16 @@ public static class BlobService
     await blobClient.UploadAsync(stream);
   }
 
-  public static async Task AppendMessagesAsync(int ticketId, params List<Message> messages)
+  public static async Task<List<Message>> AppendMessagesAsync(int ticketId, params List<Message> newMessages)
   {
     var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
     var existingContent = await blobClient.DownloadContentAsync();
-    var existingMessages = JsonSerializer.Deserialize<List<Message>>(existingContent.Value.Content.ToString(), JsonSerializerOptions.Web) ?? [];
-    existingMessages.AddRange(messages);
-    var json = JsonSerializer.Serialize(existingMessages, JsonSerializerOptions.Web);
+    var messages = JsonSerializer.Deserialize<List<Message>>(existingContent.Value.Content.ToString(), JsonSerializerOptions.Web) ?? [];
+    messages.AddRange(newMessages);
+    var json = JsonSerializer.Serialize(messages, JsonSerializerOptions.Web);
     using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
     await blobClient.UploadAsync(stream, true);
+    return messages;
   }
 
   public static string GetAttachmentSasUrl(string blobName)

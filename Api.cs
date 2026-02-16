@@ -288,7 +288,6 @@ public static class Api
       }
 
       var now = DateTime.UtcNow;
-      var tasks = new List<Task>(3);
       var message = new Message
       {
         AuthorName = user,
@@ -298,15 +297,14 @@ public static class Api
         IsPrivate = isPrivate,
         Attachments = attachments.Count > 0 ? attachments : null
       };
-      tasks.Add(BlobService.AppendMessagesAsync(id, message));
-      tasks.Add(TableService.SetLastUpdatedAsync(ticket, now, !isPrivate));
+      var messages = await BlobService.AppendMessagesAsync(id, message);
+      var (first, average) = CalculateStats(messages, ticket.AssigneeName);
+      await TableService.SetLastUpdatedAsync(ticket, now, !isPrivate, first, average);
 
       if (!isPrivate)
       {
-        tasks.Add(EmailService.SendParentReplyAsync(id, ticket, message, postmarkAttachments));
+        await EmailService.SendParentReplyAsync(id, ticket, message, postmarkAttachments);
       }
-
-      await Task.WhenAll(tasks);
 
       if (message.Attachments is not null)
       {
@@ -382,5 +380,46 @@ public static class Api
     if (string.IsNullOrEmpty(addressee)) return "Parent/Carer";
     var tokens = addressee.Split(' ', 3);
     return tokens.Length == 3 && tokens[1].Length == 1 ? $"{tokens[0]} {tokens[2]}" : (tokens.Length >= 2 ? addressee : "Parent/Carer");
+  }
+
+  private static (int? First, int? Average) CalculateStats(List<Message> messages, string assigneeName)
+  {
+    ArgumentNullException.ThrowIfNull(messages);
+    if (messages.Count < 2) return (null, null);
+
+    var ticketOpened = messages[0].Timestamp;
+    var firstResponse = messages.Skip(1).FirstOrDefault(m => m.IsEmployee && !m.IsPrivate);
+    var firstResponseTime = firstResponse is null ? null : (int?)(firstResponse.Timestamp - ticketOpened).TotalSeconds;
+
+    if (string.IsNullOrWhiteSpace(assigneeName)) return (firstResponseTime, null);
+    const string assignCommand = "#assign ";
+    var responseTimes = new List<int>();
+    var isAssigned = false;
+    DateTime? waitingSince = null;
+
+    foreach (var message in messages)
+    {
+      if (message.Content?.StartsWith(assignCommand, StringComparison.OrdinalIgnoreCase) ?? false)
+      {
+        var assignedName = message.Content[assignCommand.Length..];
+        isAssigned = string.Equals(assignedName, assigneeName, StringComparison.OrdinalIgnoreCase);
+        waitingSince = isAssigned ? message.Timestamp : null;
+        continue;
+      }
+      if (message.IsPrivate || !isAssigned) continue;
+      if (!message.IsEmployee)
+      {
+        waitingSince ??= message.Timestamp;
+        continue;
+      }
+      if (!string.Equals(message.AuthorName, assigneeName, StringComparison.OrdinalIgnoreCase) || waitingSince is null)
+      {
+        continue;
+      }
+      responseTimes.Add((int)Math.Max(0, (message.Timestamp - waitingSince.Value).TotalSeconds));
+      waitingSince = null;
+    }
+
+    return (firstResponseTime, responseTimes.Count == 0 ? null : (int)responseTimes.Average());
   }
 }

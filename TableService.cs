@@ -90,6 +90,7 @@ public static class TableService
     ticket.Value.PartitionKey = newAssigneeEmail;
     ticket.Value.AssigneeName = newAssigneeName;
     ticket.Value.LastUpdated = DateTime.UtcNow;
+    ticket.Value.AverageAssigneeResponseTime = null;
     var response = await ticketsClient.AddEntityAsync(ticket.Value);
     ticket.Value.ETag = response.Headers.ETag.Value;
     await ticketsClient.DeleteEntityAsync(assigneeEmail, rowKey);
@@ -141,10 +142,12 @@ public static class TableService
     ticket.ETag = response.Headers.ETag.Value;
   }
 
-  public static async Task SetLastUpdatedAsync(TicketEntity ticket, DateTime lastUpdated, bool cancelWaiting)
+  public static async Task SetLastUpdatedAsync(TicketEntity ticket, DateTime lastUpdated, bool cancelWaiting, int? firstTime, int? averageTime)
   {
     ArgumentNullException.ThrowIfNull(ticket);
     ticket.LastUpdated = lastUpdated;
+    ticket.TimeToFirstResponse = firstTime;
+    ticket.AverageAssigneeResponseTime = averageTime;
     if (cancelWaiting) ticket.WaitingSince = null;
     var response = await ticketsClient.UpdateEntityAsync(ticket, ticket.ETag, TableUpdateMode.Replace);
     ticket.ETag = response.Headers.ETag.Value;
@@ -231,6 +234,8 @@ public class TicketEntity : ITableEntity
   public string ParentEmail { get; set; }
   public string ParentPhone { get; set; }
   public string ParentRelationship { get; set; }
+  public int? TimeToFirstResponse { get; set; }
+  public int? AverageAssigneeResponseTime { get; set; }
 }
 
 public class NewTicketEntity : TicketEntity

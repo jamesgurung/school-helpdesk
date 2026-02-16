@@ -23,6 +23,7 @@ const elements = {
   sendMessageBtn: document.getElementById('send-message'),
   closeTicketBtn: document.getElementById('close-ticket'),
   logoutBtn: document.getElementById('logout-button'),
+  statsBtn: document.getElementById('stats-button'),
   newTicketButton: document.getElementById('new-ticket-button'),
   newTicketModal: document.getElementById('new-ticket-modal'),
   closeModalBtn: document.querySelector('.close-modal'),

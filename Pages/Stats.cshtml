@@ -1,0 +1,78 @@
+@page "/stats"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AuthConstants.Administrator)]
+@{
+  var tickets = await TableService.GetAllTicketsAsync();
+  var weeks = tickets
+    .Where(o => o.IsClosed)
+    .GroupBy(o => DateOnly.FromDateTime(o.LastUpdated.Date.AddDays(-(((int)o.LastUpdated.DayOfWeek + 6) % 7))))
+    .OrderBy(g => g.Key)
+    .Select(g => new
+    {
+      Week = g.Key,
+      TicketsClosed = g.Count(),
+      TimeToFirstResponse = g.Where(t => t.TimeToFirstResponse is not null).Median(t => t.TimeToFirstResponse.Value)
+    })
+    .ToList();
+
+  var threeMonthsAgo = DateTime.UtcNow.AddMonths(-3);
+  var parents = tickets
+    .Where(o => o.LastUpdated >= threeMonthsAgo)
+    .GroupBy(o => o.ParentEmail)
+    .Select(g => new
+    {
+      ParentName = string.Join(", ", g.GroupBy(o => o.ParentName).OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key).Select(gg => gg.Key)),
+      StudentName = string.Join(", ", g.GroupBy(o => $"{o.StudentFirstName} {o.StudentLastName}").OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key).Select(gg => gg.Key)),
+      Count = g.Count()
+    })
+    .OrderByDescending(g => g.Count)
+    .Take(20)
+    .ToList();
+
+  var assignees = tickets
+    .Where(o => o.LastUpdated >= threeMonthsAgo && o.AssigneeName is not null)
+    .GroupBy(o => o.AssigneeName)
+    .Select(g => new
+    {
+      AssigneeName = g.Key,
+      Count = g.Count(),
+      AverageResponseTime = g.Any(t => t.TimeToFirstResponse is not null) ? (int?)g.Where(t => t.TimeToFirstResponse is not null).Average(t => t.TimeToFirstResponse.Value) : null
+    })
+    .OrderByDescending(g => g.Count)
+    .Take(20)
+    .ToList();
+}
+
+<header>
+  <div class="header-container">
+    <a class="logo-section" href="/tickets/">
+      <img src="/img/logo.png" alt="Logo" class="header-logo">
+      <h1>Parent Helpdesk</h1>
+    </a>
+    <div class="user-actions">
+      <button class="logout-button" onclick="window.location.href = '/logout'">
+        <span class="material-symbols-rounded">logout</span>
+        <span>Logout</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="stats-page">
+  <section class="stats-panel">
+    <h2>Weekly statistics</h2>
+  </section>
+
+  <section class="stats-panel">
+    <h2>Parents</h2>
+  </section>
+
+  <section class="stats-panel">
+    <h2>Assignees</h2>
+  </section>
+</main>
+
+<script src="/lib/chart.js/dist/chart.umd.min.js"></script>
+<script src="/js/stats.js"></script>
+<script>
+    
+</script>
