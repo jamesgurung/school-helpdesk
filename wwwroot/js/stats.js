@@ -45,6 +45,7 @@ function updateLatestWeekHeadline() {
   const latestWeekCount = document.getElementById('latest-week-count');
   const latestWeekResponse = document.getElementById('latest-week-response');
 
+  const latestWeek = weeks[weeks.length - 1];
   if (!latestWeek) {
     latestWeekRange.textContent = 'No data';
     latestWeekCount.textContent = '0';
