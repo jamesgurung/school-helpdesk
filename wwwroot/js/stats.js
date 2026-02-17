@@ -171,7 +171,7 @@ function renderWeeklyChart() {
           beginAtZero: true,
           title: {
             display: true,
-            text: 'Median time to first response'
+            text: 'Time to first response'
           },
           ticks: {
             callback(value) {

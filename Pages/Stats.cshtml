@@ -3,8 +3,10 @@
 @{
   var tickets = await TableService.GetAllTicketsAsync();
   var currentWeekStartUtc = DateTime.UtcNow.Date.AddDays(-(((int)DateTime.UtcNow.DayOfWeek + 6) % 7));
+  var threeMonthsAgo = currentWeekStartUtc.AddDays(-13 * 7);
+  var sixMonthsAgo = currentWeekStartUtc.AddDays(-26 * 7);
   var weeks = tickets
-    .Where(o => o.IsClosed && o.LastUpdated < currentWeekStartUtc)
+    .Where(o => o.IsClosed && o.LastUpdated >= sixMonthsAgo && o.LastUpdated < currentWeekStartUtc)
     .GroupBy(o => DateOnly.FromDateTime(o.LastUpdated.Date.AddDays(-(((int)o.LastUpdated.DayOfWeek + 6) % 7))))
     .OrderBy(g => g.Key)
     .Select(g => new
@@ -16,9 +18,7 @@
         : null
     })
     .ToList();
-  var latestWeek = weeks.LastOrDefault();
 
-  var threeMonthsAgo = DateTime.UtcNow.AddMonths(-3);
   var parents = tickets
     .Where(o => o.LastUpdated >= threeMonthsAgo)
     .GroupBy(o => o.ParentEmail)
@@ -165,7 +165,6 @@
 <script src="/lib/chart.js/dist/chart.umd.min.js"></script>
 <script nonce="@HttpContext.Items["csp-nonce"]">
   const weeks = @Html.Raw(Json.Serialize(weeks));
-  const latestWeek = @Html.Raw(Json.Serialize(latestWeek));
   const parents = @Html.Raw(Json.Serialize(parents));
   const assignees = @Html.Raw(Json.Serialize(assignees));
 </script>

@@ -42,6 +42,11 @@ public static partial class EmailService
     var spfHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "received-spf", StringComparison.OrdinalIgnoreCase))?.Value;
     if (spfHeader?.StartsWith("fail", StringComparison.OrdinalIgnoreCase) ?? false) return;
 
+    var autoSubmittedHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "auto-submitted", StringComparison.OrdinalIgnoreCase))?.Value;
+    if (autoSubmittedHeader is not null && !autoSubmittedHeader.Equals("no", StringComparison.OrdinalIgnoreCase)) return;
+
+    if (message.Subject.StartsWith("automatic reply: ", StringComparison.OrdinalIgnoreCase)) return;
+
     var textBody = string.IsNullOrWhiteSpace(message.TextBody) ? null : message.TextBody.Trim();
     var htmlBody = string.IsNullOrWhiteSpace(message.HtmlBody) ? null : message.HtmlBody.Trim();
     var strippedTextReply = string.IsNullOrWhiteSpace(message.StrippedTextReply) ? null : message.StrippedTextReply.Trim();
@@ -49,6 +54,9 @@ public static partial class EmailService
 
     var messageId = message.GetHeader("message-id");
     var parents = School.Instance.ParentsByEmail[message.From].ToList();
+
+    var to = message.ToFull?.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To?.Trim();
+    var cc = string.IsNullOrWhiteSpace(message.Cc) ? null : message.Cc.Trim();
 
     if (parents.Count == 0)
     {
@@ -59,7 +67,7 @@ public static partial class EmailService
       if (!isStaff && School.Instance.NotifyFirstManager)
       {
         var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
-        await SendUnknownSenderNotificationAsync(message.From, message.Subject, body.MessageText);
+        await SendUnknownSenderNotificationAsync(message.From, to, cc, message.Subject, body.MessageText);
       }
       return;
     }
@@ -98,8 +106,8 @@ public static partial class EmailService
           Content = body.MessageText,
           OriginalEmail = body.SanitizedHtml,
           Attachments = attachments,
-          EmailTo = message.ToFull?.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To?.Trim(),
-          EmailCc = string.IsNullOrWhiteSpace(message.Cc) ? null : message.Cc.Trim()
+          EmailTo = to,
+          EmailCc = cc
         });
         await BlobService.AppendMessagesAsync(ticketNumber, messages);
         await TableService.UpdateForNewParentMessageAsync(ticket, now);
@@ -161,8 +169,8 @@ public static partial class EmailService
           OriginalEmail = body.SanitizedHtml,
           Attachments = attachments,
           EmailSubject = string.IsNullOrWhiteSpace(message.Subject) ? null : message.Subject.Trim(),
-          EmailTo = message.ToFull?.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To?.Trim(),
-          EmailCc = string.IsNullOrWhiteSpace(message.Cc) ? null : message.Cc.Trim()
+          EmailTo = to,
+          EmailCc = cc
         }
       };
 
@@ -358,11 +366,13 @@ public static partial class EmailService
     await SendAsync(to, replySubject, body, EmailTag.Unknown, messageId);
   }
 
-  private static async Task SendUnknownSenderNotificationAsync(string from, string subject, string content)
+  private static async Task SendUnknownSenderNotificationAsync(string from, string to, string cc, string subject, string content)
   {
     if (!School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var staff)) return;
     var body = $"<b>This message was rejected from our helpdesk because the sender email address was not recognised.</b>\n\n" +
       $"<b>From:</b>\n{from}\n\n" +
+      (string.IsNullOrEmpty(to) ? string.Empty : $"<b>To:</b>\n{to}\n\n") +
+      (string.IsNullOrEmpty(cc) ? string.Empty : $"<b>Cc:</b>\n{cc}\n\n") +
       $"<b>Subject:</b>\n{subject}\n\n" +
       $"<b>Message:</b>\n{content}";
     await SendAsync(staff.Email, subject, body, EmailTag.Staff, replyTo: from);
