@@ -92,7 +92,7 @@ function setupTicketCreation() {
 
 function setupUserActions() { 
   elements.logoutBtn.addEventListener('click', () => window.location.href = '/logout');
-  elements.statsBtn.addEventListener('click', () => window.location.href = '/stats/');
+  elements.statsBtn?.addEventListener('click', () => window.location.href = '/stats/');
 }
 
 function setupParentSearch() {

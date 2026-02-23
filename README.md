@@ -94,6 +94,7 @@ By default, only open tickets and the most recent closed tickets are shown. To d
     * `Postmark__ServerToken` - the token for your Postmark server
     * `School__Admins__0` - the email address of the first admin user, who has full administrative access (subsequent admins can be configured by adding items with incrementing indices)
     * `School__AppWebsite` - the host name where this app will be hosted, e.g. `example.com`
+    * `School__Dispatchers__0` - the email address of the first dispatcher, who can assign tickets to staff (subsequent dispatchers can be configured by adding items with incrementing indices)
     * `School__HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
     * `School__Managers__0` - the email address of the first manager, who can create, view, and edit all tickets (subsequent managers can be configured by adding items with incrementing indices)
     * `School__Name` - the name of your school
