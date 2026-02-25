@@ -35,6 +35,7 @@ public static partial class EmailService
     if (School.Instance.BlockedEmails.Contains(message.From)) return;
     var fromDomain = message.From.Split('@')[^1];
     if (School.Instance.BlockedDomains.Contains(fromDomain)) return;
+    if (School.Instance.BlockedDomains.Any(o => fromDomain.EndsWith("." + o, StringComparison.OrdinalIgnoreCase))) return;
 
     var spamHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "x-spam-status", StringComparison.OrdinalIgnoreCase))?.Value;
     if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
