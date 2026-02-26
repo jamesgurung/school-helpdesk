@@ -45,7 +45,7 @@ function updateLatestWeekHeadline() {
   const latestWeekCount = document.getElementById('latest-week-count');
   const latestWeekResponse = document.getElementById('latest-week-response');
 
-  const latestWeek = weeks[weeks.length - 1];
+  const latestWeek = [...weeks].reverse().find(week => !week.isCurrentWeek && !week.isHolidayWeek);
   if (!latestWeek) {
     latestWeekRange.textContent = 'No data';
     latestWeekCount.textContent = '0';
@@ -76,6 +76,8 @@ function renderWeeklyChart() {
   const responseMinutes = chartWeeks.map(row => row.averageTimeToFirstResponse == null ? null : +(row.averageTimeToFirstResponse / 60).toFixed(1));
 
   const barFill = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#5e5ce6';
+  const barFillRegular = `${barFill}CC`;
+  const barFillCurrentWeek = `${barFill}66`;
   const lineColor = getComputedStyle(document.documentElement).getPropertyValue('--secondary-dark').trim() || '#08807a';
 
   new Chart(canvas, {
@@ -87,8 +89,8 @@ function renderWeeklyChart() {
           label: 'Tickets closed',
           type: 'bar',
           data: ticketCounts,
-          backgroundColor: `${barFill}CC`,
-          borderColor: barFill,
+          backgroundColor: chartWeeks.map(row => row.isCurrentWeek ? barFillCurrentWeek : barFillRegular),
+          borderColor: chartWeeks.map(row => row.isCurrentWeek ? barFillCurrentWeek : barFill),
           borderWidth: 1,
           borderRadius: 6,
           yAxisID: 'yTickets',

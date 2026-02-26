@@ -2,16 +2,22 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AuthConstants.Manager)]
 @{
   var tickets = await TableService.GetAllTicketsAsync();
+  var holidays = School.Instance.Holidays ?? [];
   var currentWeekStartUtc = DateTime.UtcNow.Date.AddDays(-(((int)DateTime.UtcNow.DayOfWeek + 6) % 7));
   var threeMonthsAgo = currentWeekStartUtc.AddDays(-13 * 7);
   var sixMonthsAgo = currentWeekStartUtc.AddDays(-26 * 7);
+  bool IsHolidayWeek(DateOnly weekStart) => Enumerable.Range(0, 5)
+    .Select(offset => weekStart.AddDays(offset))
+    .All(day => holidays.Any(h => h.Start <= day && h.End >= day));
   var weeks = tickets
-    .Where(o => o.IsClosed && o.LastUpdated >= sixMonthsAgo && o.LastUpdated < currentWeekStartUtc)
+    .Where(o => o.IsClosed && o.LastUpdated >= sixMonthsAgo)
     .GroupBy(o => DateOnly.FromDateTime(o.LastUpdated.Date.AddDays(-(((int)o.LastUpdated.DayOfWeek + 6) % 7))))
     .OrderBy(g => g.Key)
     .Select(g => new
     {
       WeekStart = g.Key,
+      IsCurrentWeek = g.Key == DateOnly.FromDateTime(currentWeekStartUtc),
+      IsHolidayWeek = IsHolidayWeek(g.Key),
       TicketsClosed = g.Count(),
       AverageTimeToFirstResponse = g.Any(t => t.TimeToFirstResponse is not null)
         ? (int?)g.Where(t => t.TimeToFirstResponse is not null).Median(t => t.TimeToFirstResponse.Value)
@@ -24,8 +30,10 @@
     .GroupBy(o => o.ParentEmail)
     .Select(g => new
     {
-      ParentName = string.Join(", ", g.GroupBy(o => o.ParentName).OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key).Select(gg => gg.Key)),
-      StudentName = string.Join(", ", g.GroupBy(o => $"{o.StudentFirstName} {o.StudentLastName}").OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key).Select(gg => gg.Key)),
+      ParentName = string.Join(", ", g.GroupBy(o => o.ParentName).OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key)
+        .Select(gg => gg.Key).Where(o => !string.IsNullOrWhiteSpace(o))),
+      StudentName = string.Join(", ", g.GroupBy(o => $"{o.StudentFirstName} {o.StudentLastName}").OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key)
+        .Select(gg => gg.Key).Where(o => !string.IsNullOrWhiteSpace(o))),
       Count = g.Count()
     })
     .OrderByDescending(o => o.Count)
