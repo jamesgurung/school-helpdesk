@@ -13,3 +13,4 @@
 [assembly: SuppressMessage("Style", "IDE0058:Expression value is never used")]
 [assembly: SuppressMessage("Style", "IDE0305:Simplify collection initialization")]
 [assembly: SuppressMessage("Style", "IDE0350:Use implicitly typed lambda", Scope = "member", Target = "~M:SchoolHelpdesk.Api.MapApiPaths(Microsoft.AspNetCore.Builder.WebApplication)")]
+[assembly: SuppressMessage("Style", "IDE0028:Simplify collection initialization", Scope = "member", Target = "~M:SchoolHelpdesk.BlobService.AddToBlocklistAsync(System.String)~System.Threading.Tasks.Task")]

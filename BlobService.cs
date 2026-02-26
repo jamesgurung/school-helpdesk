@@ -199,6 +199,18 @@ public static class BlobService
     }
   }
 
+  public static async Task AddToBlocklistAsync(string entry)
+  {
+    var blobClient = configClient.GetBlobClient("blocklist.txt");
+    var response = await blobClient.DownloadContentAsync();
+    var array = response.Value.Content.ToString().ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var hashset = new HashSet<string>(array, StringComparer.OrdinalIgnoreCase);
+    hashset.Add(entry);
+    var content = string.Join("\n", hashset);
+    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+    await blobClient.UploadAsync(stream, true);
+  }
+
   private static string FormatPhoneNumber(string phoneNumber)
   {
     if (string.IsNullOrWhiteSpace(phoneNumber)) return null;

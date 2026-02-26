@@ -373,6 +373,18 @@ public static class Api
       await BlobService.LoadConfigAsync();
       return Results.NoContent();
     });
+
+    app.MapGet("/block/{entry}", [Authorize(Roles = AuthConstants.Manager)] async (string entry) =>
+    {
+      if (string.IsNullOrWhiteSpace(entry)) return Results.BadRequest("Blocklist entry is required.");
+      var normalisedEntry = entry.Trim().ToLowerInvariant();
+      var collection = normalisedEntry.Contains('@') ? School.Instance.BlockedEmails : School.Instance.BlockedDomains;
+      if (collection.Add(normalisedEntry))
+      {
+        await BlobService.AddToBlocklistAsync(normalisedEntry);
+      }
+      return Results.Content($"Blocked: {normalisedEntry}", "text/plain");
+    });
   }
 
   private static string GetSalutation(string addressee)

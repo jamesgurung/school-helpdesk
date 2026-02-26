@@ -370,7 +370,10 @@ public static partial class EmailService
   private static async Task SendUnknownSenderNotificationAsync(string from, string to, string cc, string subject, string content)
   {
     if (!School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var staff)) return;
-    var body = $"<b>This message was rejected from our helpdesk because the sender email address was not recognised.</b>\n\n" +
+    var blockEmail = $"https://{School.Instance.AppWebsite}/block/{Uri.EscapeDataString(from)}";
+    var blockDomain = $"https://{School.Instance.AppWebsite}/block/{Uri.EscapeDataString(from.Split('@')[^1])}";
+    var body = $"<b>This message was rejected from our helpdesk because the sender email address was not recognised.</b>\n" +
+      $"<b>[ <a href=\"{blockEmail}\">Block user</a> ] [ <a href=\"{blockDomain}\">Block domain</a> ]</b>\n\n" +
       $"<b>From:</b>\n{from}\n\n" +
       (string.IsNullOrEmpty(to) ? string.Empty : $"<b>To:</b>\n{to}\n\n") +
       (string.IsNullOrEmpty(cc) ? string.Empty : $"<b>Cc:</b>\n{cc}\n\n") +
