@@ -18,8 +18,8 @@ public static partial class AIService
   {
     ArgumentNullException.ThrowIfNull(endpoint);
     var clientOptions = new OpenAIClientOptions { NetworkTimeout = TimeSpan.FromMinutes(10), Endpoint = new Uri($"{endpoint.TrimEnd('/')}/openai/v1/") };
-    var azureClient = new OpenAIClient(new ApiKeyCredential(apiKey), clientOptions);
-    _client = azureClient.GetResponsesClient();
+    var aiClient = new OpenAIClient(new ApiKeyCredential(apiKey), clientOptions);
+    _client = aiClient.GetResponsesClient();
     _deployment = deployment;
   }
 
