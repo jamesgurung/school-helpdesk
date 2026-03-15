@@ -1,6 +1,6 @@
-﻿using Azure;
-using Azure.AI.OpenAI;
+﻿using OpenAI;
 using OpenAI.Responses;
+using System.ClientModel;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -12,11 +12,15 @@ namespace SchoolHelpdesk;
 public static partial class AIService
 {
   private static ResponsesClient _client;
+  private static string _deployment;
 
   public static void Configure(string endpoint, string deployment, string apiKey)
   {
-    var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
-    _client = azureClient.GetResponsesClient(deployment);
+    ArgumentNullException.ThrowIfNull(endpoint);
+    var clientOptions = new OpenAIClientOptions { NetworkTimeout = TimeSpan.FromMinutes(10), Endpoint = new Uri($"{endpoint.TrimEnd('/')}/openai/v1/") };
+    var azureClient = new OpenAIClient(new ApiKeyCredential(apiKey), clientOptions);
+    _client = azureClient.GetResponsesClient();
+    _deployment = deployment;
   }
 
   public static async Task<string> GenerateReplyAsync(string studentName, List<Message> messages, string guidance, string ticketId, CancellationToken ct)
@@ -40,6 +44,7 @@ public static partial class AIService
 
     var options = new CreateResponseOptions
     {
+      Model = _deployment,
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
       StoredOutputEnabled = false,
@@ -66,6 +71,7 @@ public static partial class AIService
 
     var options = new CreateResponseOptions
     {
+      Model = _deployment,
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
       StoredOutputEnabled = false,
@@ -113,6 +119,7 @@ public static partial class AIService
 
     var options = new CreateResponseOptions
     {
+      Model = _deployment,
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
       StoredOutputEnabled = false,
@@ -162,6 +169,7 @@ public static partial class AIService
 
     var options = new CreateResponseOptions
     {
+      Model = _deployment,
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
       StoredOutputEnabled = false,

@@ -53,7 +53,7 @@ public static class Api
       if (string.IsNullOrWhiteSpace(message))
         return Results.BadRequest("Initial message is required.");
 
-      if (message.StartsWith('#'))
+      if (message.StartsWith('#', StringComparison.Ordinal))
         return Results.BadRequest("Message content cannot start with a hash (#).");
 
       var parent = School.Instance.ParentsByEmail[ticket.ParentEmail].FirstOrDefault(p => p.Name == ticket.ParentName);
@@ -241,7 +241,7 @@ public static class Api
       if (string.IsNullOrWhiteSpace(content))
         return Results.BadRequest("Message content is required.");
 
-      if (content.StartsWith('#'))
+      if (content.StartsWith('#', StringComparison.Ordinal))
         return Results.BadRequest("Message content cannot start with a hash (#).");
 
       foreach (var file in form.Files)
@@ -378,7 +378,7 @@ public static class Api
     {
       if (string.IsNullOrWhiteSpace(entry)) return Results.BadRequest("Blocklist entry is required.");
       var normalisedEntry = entry.Trim().ToLowerInvariant();
-      var collection = normalisedEntry.Contains('@') ? School.Instance.BlockedEmails : School.Instance.BlockedDomains;
+      var collection = normalisedEntry.Contains('@', StringComparison.Ordinal) ? School.Instance.BlockedEmails : School.Instance.BlockedDomains;
       if (collection.Add(normalisedEntry))
       {
         await BlobService.AddToBlocklistAsync(normalisedEntry);
