@@ -53,7 +53,7 @@ By default, only open tickets and the most recent closed tickets are shown. To d
         Email,Title,FirstName,LastName
         ```
     
-    * Upload a file `blocklist.txt` containing one email address per line that should be blocked from contacting the helpdesk. Emails from these addresses will be ignored with no bounce message sent. This is useful for blocking spam or banned users.
+    * Upload a file `blocklist.txt` containing one email address or domain per line that should be blocked from contacting the helpdesk. Emails from these addresses will be ignored with no bounce message sent. This is useful for blocking spam. Registered parents cannot be blocked.
     
     * Upload `template.html` and `template.txt` templates to use for all outgoing emails. There are sample files in the [examples](examples) folder. Use the token `{{BODY}}` as a placeholder for the email body.
 

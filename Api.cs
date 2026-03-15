@@ -378,7 +378,21 @@ public static class Api
     {
       if (string.IsNullOrWhiteSpace(entry)) return Results.BadRequest("Blocklist entry is required.");
       var normalisedEntry = entry.Trim().ToLowerInvariant();
-      var collection = normalisedEntry.Contains('@', StringComparison.Ordinal) ? School.Instance.BlockedEmails : School.Instance.BlockedDomains;
+      var isEmail = normalisedEntry.Contains('@', StringComparison.Ordinal);
+
+      var matchesParent = isEmail
+        ? School.Instance.ParentsByEmail.Contains(normalisedEntry)
+        : School.Instance.ParentsByEmail.SelectMany(o => o).Any(parent =>
+        {
+          var parentDomain = parent.Email.Split('@')[^1];
+          return string.Equals(parentDomain, normalisedEntry, StringComparison.OrdinalIgnoreCase)
+            || parentDomain.EndsWith("." + normalisedEntry, StringComparison.OrdinalIgnoreCase);
+        });
+
+      if (matchesParent)
+        return Results.Content("Cannot block an existing parent email address or domain.", "text/plain");
+
+      var collection = isEmail ? School.Instance.BlockedEmails : School.Instance.BlockedDomains;
       if (collection.Add(normalisedEntry))
       {
         await BlobService.AddToBlocklistAsync(normalisedEntry);

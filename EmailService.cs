@@ -32,11 +32,6 @@ public static partial class EmailService
   {
     if (authKey != _authKey || message is null) return;
 
-    if (School.Instance.BlockedEmails.Contains(message.From)) return;
-    var fromDomain = message.From.Split('@')[^1];
-    if (School.Instance.BlockedDomains.Contains(fromDomain)) return;
-    if (School.Instance.BlockedDomains.Any(o => fromDomain.EndsWith("." + o, StringComparison.OrdinalIgnoreCase))) return;
-
     var spamHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "x-spam-status", StringComparison.OrdinalIgnoreCase))?.Value;
     if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
 
@@ -63,6 +58,11 @@ public static partial class EmailService
     {
       // Unknown sender
       if (!(spfHeader?.StartsWith("pass", StringComparison.OrdinalIgnoreCase) ?? false)) return;
+      if (School.Instance.BlockedEmails.Contains(message.From)) return;
+      var fromDomain = message.From.Split('@')[^1];
+      if (School.Instance.BlockedDomains.Contains(fromDomain)) return;
+      if (School.Instance.BlockedDomains.Any(o => fromDomain.EndsWith("." + o, StringComparison.OrdinalIgnoreCase))) return;
+
       var isStaff = School.Instance.StaffByEmail.ContainsKey(message.From);
       await SendRejectionEmailAsync(message.From, message.Subject, messageId, isStaff ? RejectionReason.StaffSender : RejectionReason.UnknownSender);
       if (!isStaff && School.Instance.NotifyFirstManager)
@@ -371,9 +371,19 @@ public static partial class EmailService
   {
     if (!School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var staff)) return;
     var blockEmail = $"https://{School.Instance.AppWebsite}/block/{Uri.EscapeDataString(from)}";
-    var blockDomain = $"https://{School.Instance.AppWebsite}/block/{Uri.EscapeDataString(from.Split('@')[^1])}";
+    var fromDomain = from.Split('@')[^1];
+    var canBlockDomain = !School.Instance.ParentsByEmail.SelectMany(o => o).Any(parent =>
+    {
+      var parentDomain = parent.Email.Split('@')[^1];
+      return string.Equals(parentDomain, fromDomain, StringComparison.OrdinalIgnoreCase)
+        || parentDomain.EndsWith("." + fromDomain, StringComparison.OrdinalIgnoreCase);
+    });
+    var blockDomain = $"https://{School.Instance.AppWebsite}/block/{Uri.EscapeDataString(fromDomain)}";
+    var blockActions = canBlockDomain
+      ? $"<b>[ <a href=\"{blockEmail}\">Block user</a> ] [ <a href=\"{blockDomain}\">Block domain</a> ]</b>\n\n"
+      : $"<b>[ <a href=\"{blockEmail}\">Block user</a> ]</b>\n\n";
     var body = $"<b>This message was rejected from our helpdesk because the sender email address was not recognised.</b>\n" +
-      $"<b>[ <a href=\"{blockEmail}\">Block user</a> ] [ <a href=\"{blockDomain}\">Block domain</a> ]</b>\n\n" +
+      blockActions +
       $"<b>From:</b>\n{from}\n\n" +
       (string.IsNullOrEmpty(to) ? string.Empty : $"<b>To:</b>\n{to}\n\n") +
       (string.IsNullOrEmpty(cc) ? string.Empty : $"<b>Cc:</b>\n{cc}\n\n") +
