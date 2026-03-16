@@ -210,7 +210,7 @@ const tableConfig = {
     rows: Array.isArray(assignees) ? assignees : [],
     cells: [
       row => row.assigneeName || '-',
-      row => formatWorkingDuration(row.averageResponseTime),
+      row => row.averageResponseTime != null && row.averageResponseTime < 1800 ? '< 30 mins' : formatWorkingDuration(row.averageResponseTime),
       row => `<span class="stats-pill">${formatNumber(row.count)}</span>`
     ]
   }

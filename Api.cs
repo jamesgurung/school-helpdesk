@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PostmarkDotNet;
 using PostmarkDotNet.Webhooks;
+using System.Globalization;
 
 namespace SchoolHelpdesk;
 
@@ -23,6 +24,18 @@ public static class Api
     group.MapGet("/refresh", [Authorize(Roles = AuthConstants.Administrator)] async () =>
     {
       await BlobService.LoadConfigAsync();
+      return Results.Content("Refreshed config cache", "text/plain");
+    });
+
+    group.MapGet("/recalculatestats", [Authorize(Roles = AuthConstants.Administrator)] async () =>
+    {
+      foreach (var ticket in await TableService.GetAllTicketsAsync())
+      {
+        var (first, average) = CalculateStats(await BlobService.GetMessagesAsync(int.Parse(ticket.RowKey, CultureInfo.InvariantCulture)), ticket.AssigneeName);
+        await TableService.SetLastUpdatedAsync(ticket, ticket.LastUpdated, false, first, average);
+        Console.WriteLine($"Recalculated stats for ticket #{ticket.RowKey}");
+      }
+      return Results.Content("Recalculated stats for all tickets", "text/plain");
     });
 
     group.MapPost("/tickets", [Authorize(Roles = AuthConstants.Dispatcher)] async (NewTicketEntity ticket, HttpContext context) =>
@@ -413,8 +426,10 @@ public static class Api
     ArgumentNullException.ThrowIfNull(messages);
     if (messages.Count < 2) return (null, null);
 
+    if (messages[0].IsEmployee && string.Equals(messages[0].AuthorName, assigneeName, StringComparison.OrdinalIgnoreCase)) return (null, null);
+
     var ticketOpened = messages[0].Timestamp;
-    var firstResponse = messages.Skip(1).FirstOrDefault(m => m.IsEmployee && !m.IsPrivate);
+    var firstResponse = messages.Skip(1).FirstOrDefault(m => m.IsEmployee && (!m.IsPrivate || string.Equals(m.Content, "#close", StringComparison.OrdinalIgnoreCase)));
     var firstResponseTime = firstResponse is null ? (int?)null : WorkingSecondsBetweenTimestamps(ticketOpened, firstResponse.Timestamp);
 
     if (string.IsNullOrWhiteSpace(assigneeName)) return (firstResponseTime, null);
