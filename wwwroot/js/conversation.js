@@ -106,6 +106,9 @@ function showImageModal(src, name) {
   document.getElementById('modal-image').src = src;
   document.getElementById('modal-image').alt = name;
   document.getElementById('image-caption').textContent = name;
+  const downloadLink = document.getElementById('download-full-size');
+  downloadLink.href = src;
+  downloadLink.download = name;
 }
 const closeImageModal = () => document.getElementById('image-modal').style.display = 'none';
 
@@ -146,6 +149,7 @@ function renderMessageAttachments(container, attachments) {
       const link = document.createElement('a');
       link.href = url;
       link.className = 'attachment-link';
+      link.download = fileName;
       link.append(item);
       wrap.append(link);
     }

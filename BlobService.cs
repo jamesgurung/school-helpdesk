@@ -33,7 +33,7 @@ public static class BlobService
     var messages = JsonSerializer.Deserialize<List<Message>>(content.Value.Content.ToString(), JsonSerializerOptions.Web);
     foreach (var attachment in messages.Where(o => o.Attachments is not null).SelectMany(o => o.Attachments))
     {
-      attachment.Url = GetAttachmentSasUrl(attachment.Url);
+      attachment.Url = GetAttachmentSasUrl(attachment.Url, attachment.FileName);
     }
     return messages;
   }
@@ -58,7 +58,7 @@ public static class BlobService
     return messages;
   }
 
-  public static string GetAttachmentSasUrl(string blobName)
+  public static string GetAttachmentSasUrl(string blobName, string fileName)
   {
     var builder = new BlobSasBuilder
     {
@@ -67,7 +67,8 @@ public static class BlobService
       Resource = "b",
       StartsOn = DateTime.UtcNow.AddMinutes(-2),
       ExpiresOn = DateTime.UtcNow.AddDays(1),
-      Protocol = SasProtocol.Https
+      Protocol = SasProtocol.Https,
+      ContentDisposition = $"inline; filename=\"{fileName}\"; filename*=UTF-8''{Uri.EscapeDataString(fileName)}"
     };
     builder.SetPermissions(BlobSasPermissions.Read);
     return $"{attachmentsClient.Uri}/{blobName}?{builder.ToSasQueryParameters(sharedKeyCredential)}";

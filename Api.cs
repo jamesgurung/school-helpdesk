@@ -323,7 +323,7 @@ public static class Api
       {
         foreach (var attachment in message.Attachments)
         {
-          attachment.Url = BlobService.GetAttachmentSasUrl(attachment.Url);
+          attachment.Url = BlobService.GetAttachmentSasUrl(attachment.Url, attachment.FileName);
         }
       }
       return Results.Ok(message);
