@@ -67,7 +67,7 @@ function renderWeeklyChart() {
   cutoffDate.setMonth(cutoffDate.getMonth() - monthsBack);
   const chartWeeks = weeks.filter(row => {
     const week = parseDateOnly(row.weekStart);
-    return week && week >= cutoffDate;
+    return week && week >= cutoffDate && !row.isHolidayWeek;
   });
   if (chartWeeks.length === 0) return;
 
