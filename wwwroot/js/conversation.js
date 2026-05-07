@@ -97,7 +97,7 @@ function renderConversation() {
   });
 }
 
-const isImage = name => !['pdf', 'docx'].includes(name.toLowerCase().split('.').pop());
+const isImage = name => ['png', 'jpg', 'jpeg', 'webp', 'avif'].includes(name.toLowerCase().split('.').pop());
 const getFileIcon = name => isImage(name) ? 'image' : 'description';
 
 function showImageModal(src, name) {
