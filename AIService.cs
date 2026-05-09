@@ -7,8 +7,6 @@ using System.Text.RegularExpressions;
 
 namespace SchoolHelpdesk;
 
-#pragma warning disable OPENAI001
-
 public static partial class AIService
 {
   private static ResponsesClient _client;
