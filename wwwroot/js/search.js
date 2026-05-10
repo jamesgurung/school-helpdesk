@@ -61,6 +61,10 @@ function parentMatchesQuery(parent, query) {
   if (matchesWordBeginning(parent.name, query) || matchesWordBeginning(parent.email, query)) {
     return true;
   }
+
+  if (parent.phone?.replace(/\s/g, '').startsWith(query.replace(/\s/g, ''))) {
+    return true;
+  }
   
   return parent.children && parent.children.some(child => {
     const fullName = `${child.firstName} ${child.lastName}`;
