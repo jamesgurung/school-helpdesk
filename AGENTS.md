@@ -7,7 +7,7 @@
 - Do not edit or reformat unrelated code. Keep edits local to the relevant files unless a wider change is required.
 - Avoid introducing new dependencies unless they are clearly necessary.
 - Reuse existing code and patterns in the codebase where possible.
-- To avoid interfering with active processes, use an external temporary artifacts directory for validation builds (for example `dotnet build --no-restore --artifacts-path "$TMPDIR/dotnet-build-$RANDOM"`), then delete it afterwards.
+- To avoid interfering with active processes, run validation builds with a temporary artifacts directory outside the repo, then delete it afterwards. Example PowerShell flow: `$artifacts = Join-Path $env:TEMP ("dotnet-build-" + [guid]::NewGuid().ToString("N")); dotnet build --artifacts-path $artifacts; Remove-Item -LiteralPath $artifacts -Recurse -Force`
 - Do not introduce any test projects.
 - Do not access files named `appsettings.json`, `secrets.json`, or `local.settings.json` under any circumstances.
 
