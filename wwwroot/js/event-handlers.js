@@ -13,13 +13,7 @@ function setupEventListeners() {
 
 function setupTabNavigation() {
   elements.tabs.forEach(tab => tab.addEventListener('click', () => {
-    confirmNavigationWithUnsentText('switch tabs', () => {
-      elements.tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      state.activeTab = tab.dataset.tab;
-      renderTickets(state.activeTab);
-      resetDetailsView();
-    });
+    confirmNavigationWithUnsentText('switch tabs', () => activateTicketsTab(tab.dataset.tab));
   }));
 }
 
@@ -97,6 +91,7 @@ function setupUserActions() {
 
 function setupParentSearch() {
   setupSearchInputListeners(elements.parentSearchInput, filterParents, results => displayParentAutocompleteResults(results, state.activeParent));
+  setupTicketSearchListeners();
   elements.parentInfo.addEventListener('click', toggleParentSearchMode);
   document.getElementById('parent-edit-icon').addEventListener('click', toggleParentSearchMode);
   setupParentSearchKeyboardNavigation();
@@ -228,6 +223,9 @@ function setupDocumentClickHandlers() {
     }
     if (!elements.assigneeSearchInput.contains(e.target) && !elements.assigneeAutocompleteResults.contains(e.target)) {
       elements.assigneeAutocompleteResults.style.display = 'none';
+    }
+    if (!elements.ticketSearchInput.contains(e.target) && !elements.ticketSearchAutocompleteResults.contains(e.target)) {
+      elements.ticketSearchAutocompleteResults.style.display = 'none';
     }
     const editIcon = elements.assigneeInfoSection.querySelector('.edit-icon');
     if (!elements.assigneeEditInput.contains(e.target) && !elements.assigneeEditAutocompleteResults.contains(e.target) && !(editIcon && editIcon.contains(e.target))) {

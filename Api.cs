@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PostmarkDotNet;
 using PostmarkDotNet.Webhooks;
@@ -36,6 +36,14 @@ public static class Api
         Console.WriteLine($"Recalculated stats for ticket #{ticket.RowKey}");
       }
       return Results.Content("Recalculated stats for all tickets", "text/plain");
+    });
+
+    group.MapGet("/tickets", async (HttpContext context) =>
+    {
+      var tickets = context.User.IsInRole(AuthConstants.Manager)
+        ? await TableService.GetAllTicketsAsync()
+        : await TableService.GetTicketsByAssigneeAsync(context.User.Identity.Name);
+      return Results.Ok(tickets);
     });
 
     group.MapPost("/tickets", [Authorize(Roles = AuthConstants.Dispatcher)] async (NewTicketEntity ticket, HttpContext context) =>

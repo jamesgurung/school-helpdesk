@@ -71,7 +71,235 @@ function parentMatchesQuery(parent, query) {
     return matchesWordBeginning(fullName, query) ||
       matchesWordBeginning(child.firstName, query) ||
       matchesWordBeginning(child.lastName, query);
+    });
+}
+
+function normalisePhone(phone) {
+  return (phone || '').replace(/\s/g, '');
+}
+
+function mergeTickets(loadedTickets) {
+  loadedTickets.forEach(ticket => {
+    const existing = tickets.find(t => t.id === ticket.id);
+    if (existing) {
+      Object.assign(existing, ticket);
+    } else {
+      tickets.push(ticket);
+    }
   });
+  tickets.sort((a, b) => Date.parse(b.lastUpdated) - Date.parse(a.lastUpdated));
+}
+
+async function loadAllTickets() {
+  if (state.allTicketsLoaded) return;
+  if (state.allTicketsLoading) return await state.allTicketsLoading;
+
+  state.allTicketsLoading = (async () => {
+    const loadedTickets = await apiGetAllTickets();
+    mergeTickets(loadedTickets);
+    state.allTicketsLoaded = true;
+    updateOpenTicketsBadge();
+  })();
+  updateTicketSearchPanel();
+
+  try {
+    await state.allTicketsLoading;
+  } finally {
+    state.allTicketsLoading = null;
+    updateTicketSearchPanel();
+  }
+}
+
+function ticketMatchesActiveSearch(ticket) {
+  const search = state.activeTicketSearch;
+  if (!search) return false;
+
+  if (search.type === 'id') return ticket.id === search.value;
+  if (search.type === 'parent') return getParentSearchValue(ticket) === search.value;
+  if (search.type === 'student') return getStudentSearchValue(ticket) === search.value;
+  if (search.type === 'assignee') return getAssigneeSearchValue(ticket) === search.value;
+  if (search.type === 'title') return normalise(ticket.title || '').includes(search.value);
+
+  return false;
+}
+
+function addTicketSearchOption(options, seen, type, value, name, detail, inputValue = name) {
+  if (!value) return;
+  const key = `${type}:${value}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  options.push({ type, value, name, detail, inputValue });
+}
+
+function getStudentName(ticket) {
+  return getFullName(ticket.studentFirstName || '', ticket.studentLastName || '').trim();
+}
+
+function getStudentSearchValue(ticket) {
+  return [ticket.studentFirstName, ticket.studentLastName, ticket.tutorGroup].map(o => normalise(o || '')).join('|');
+}
+
+function getStudentDetail(ticket) {
+  const name = getStudentName(ticket);
+  return `${name || 'Not Set'}${ticket.tutorGroup ? ` (${ticket.tutorGroup})` : ''}`;
+}
+
+function getParentSearchValue(ticket) {
+  return [ticket.parentName, ticket.parentEmail].map(o => normalise(o || '')).join('|');
+}
+
+function getAssigneeSearchValue(ticket) {
+  return [ticket.assigneeName, ticket.assigneeEmail].map(o => normalise(o || '')).join('|');
+}
+
+function getParentStudents(parentValue) {
+  return tickets
+    .filter(ticket => getParentSearchValue(ticket) === parentValue)
+    .map(getStudentName)
+    .filter(Boolean)
+    .filter((student, index, students) => students.indexOf(student) === index)
+    .join(', ');
+}
+
+function filterTicketSearchOptions(query) {
+  const rawQuery = query.trim();
+  const normalisedQuery = normalise(rawQuery);
+  const idQuery = rawQuery.replace(/^#/, '');
+  const phoneQuery = normalisePhone(rawQuery);
+  const isExplicitTicketNumberQuery = rawQuery.startsWith('#');
+  const isTicketNumberQuery = /^\d+$/.test(idQuery);
+  if (!normalisedQuery && !idQuery) return [];
+
+  const maxOptions = 10;
+  const options = [];
+  const seen = new Set();
+
+  if (isTicketNumberQuery) {
+    for (const ticket of tickets) {
+      const id = parseInt(ticket.id);
+      if (String(id).startsWith(idQuery)) {
+        addTicketSearchOption(options, seen, 'id', ticket.id, `#${id} ${ticket.title || ''}`.trim(), `Ticket for ${getStudentDetail(ticket)}`, `#${id}`);
+        if (options.length >= maxOptions) break;
+      }
+    }
+    if (isExplicitTicketNumberQuery || options.length >= maxOptions || normalisedQuery.length < 3) return options;
+  }
+
+  if (normalisedQuery.length < 3) return [];
+
+  for (const ticket of tickets) {
+    const studentName = getStudentName(ticket);
+    if (matchesWordBeginning(studentName, normalisedQuery)) {
+      addTicketSearchOption(options, seen, 'student', getStudentSearchValue(ticket), studentName, `Student in ${ticket.tutorGroup || 'unknown tutor group'}`);
+      if (options.length >= maxOptions) break;
+    }
+
+    if (matchesWordBeginning(ticket.parentName, normalisedQuery) ||
+      matchesWordBeginning(ticket.parentEmail, normalisedQuery) ||
+      (phoneQuery && normalisePhone(ticket.parentPhone).startsWith(phoneQuery))) {
+      const parentValue = getParentSearchValue(ticket);
+      addTicketSearchOption(options, seen, 'parent', parentValue, ticket.parentName, `Parent of ${getParentStudents(parentValue) || 'no students'}`);
+      if (options.length >= maxOptions) break;
+    }
+
+    if (ticket.assigneeName && (matchesWordBeginning(ticket.assigneeName, normalisedQuery) ||
+      matchesWordBeginning(ticket.assigneeEmail, normalisedQuery))) {
+      addTicketSearchOption(options, seen, 'assignee', getAssigneeSearchValue(ticket), ticket.assigneeName, 'Tickets assigned to staff member');
+      if (options.length >= maxOptions) break;
+    }
+  }
+
+  if (options.length < maxOptions && tickets.some(ticket => normalise(ticket.title || '').includes(normalisedQuery))) {
+    addTicketSearchOption(options, seen, 'title', normalisedQuery, `Title containing "${rawQuery}"`, 'Ticket search', rawQuery);
+  } else if (options.length === 0) {
+    addTicketSearchOption(options, seen, 'title', normalisedQuery, `Title containing "${rawQuery}"`, 'No matches', rawQuery);
+    options[0].detailClass = 'autocomplete-error';
+  }
+
+  return options;
+}
+
+function displayTicketSearchAutocompleteResults(results) {
+  elements.ticketSearchAutocompleteResults.innerHTML = '';
+  if (results.length === 0) {
+    elements.ticketSearchAutocompleteResults.style.display = 'none';
+    return;
+  }
+
+  results.forEach(result => {
+    const item = document.createElement('div');
+    item.className = 'autocomplete-item';
+
+    const name = document.createElement('div');
+    name.className = 'autocomplete-name';
+    name.textContent = result.name;
+
+    const detail = document.createElement('div');
+    detail.className = 'autocomplete-email';
+    if (result.detailClass) detail.classList.add(result.detailClass);
+    detail.textContent = result.detail;
+
+    item.append(name, detail);
+    item.addEventListener('click', () => selectTicketSearch(result));
+    elements.ticketSearchAutocompleteResults.appendChild(item);
+  });
+
+  elements.ticketSearchAutocompleteResults.style.display = 'block';
+}
+
+function selectTicketSearch(search, openIdTicket = true) {
+  state.activeTicketSearch = search;
+  elements.ticketSearchInput.value = search.inputValue;
+  elements.ticketSearchAutocompleteResults.style.display = 'none';
+  renderTickets('search');
+
+  if (openIdTicket && search.type === 'id') {
+    confirmNavigationWithUnsentText('switch to another ticket', () => {
+      openTicketDetails(search.value);
+    });
+  }
+}
+
+async function openTicketFromSearch(ticketId) {
+  await activateTicketsTab('search', false, false);
+  const ticket = tickets.find(t => t.id === ticketId);
+  const search = {
+    type: 'id',
+    value: ticketId,
+    name: ticket ? `#${parseInt(ticketId)} ${ticket.title || ''}`.trim() : `#${parseInt(ticketId)}`,
+    inputValue: `#${parseInt(ticketId)}`,
+    detail: ticket ? `Ticket for ${getStudentDetail(ticket)}` : 'Ticket for Not Set'
+  };
+  selectTicketSearch(search, false);
+
+  if (!ticket) {
+    history.replaceState(null, '', '/tickets/');
+    showToast('This ticket is no longer accessible.', 'error');
+    return;
+  }
+
+  openTicketDetails(ticketId, true);
+  history.replaceState(null, '', `/tickets/${parseInt(ticketId)}`);
+}
+
+function setupTicketSearchListeners() {
+  elements.ticketSearchInput.addEventListener('input', e => {
+    state.activeTicketSearch = null;
+    renderTickets('search');
+    displayTicketSearchAutocompleteResults(filterTicketSearchOptions(e.target.value));
+  });
+  elements.ticketSearchInput.addEventListener('focus', e => setTimeout(() => {
+    const value = e.target.value.trim();
+    if (value) displayTicketSearchAutocompleteResults(filterTicketSearchOptions(value));
+  }, 50));
+  elements.ticketSearchInput.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || elements.ticketSearchAutocompleteResults.style.display === 'none') return;
+    const items = elements.ticketSearchAutocompleteResults.querySelectorAll('.autocomplete-item');
+    if (items.length !== 1) return;
+    e.preventDefault();
+    items[0].click();
+  });
+  handleAutocompleteKeyboardNavigation(elements.ticketSearchInput, elements.ticketSearchAutocompleteResults, () => { }, null);
 }
 
 function selectAssignee(assignee) {

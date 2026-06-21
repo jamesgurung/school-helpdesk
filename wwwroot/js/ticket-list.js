@@ -1,11 +1,53 @@
 // Ticket List Rendering
+async function activateTicketsTab(tabName, resetDetails = true, focusSearch = true) {
+  elements.tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  state.activeTab = tabName;
+  updateTicketSearchPanel();
+
+  if (resetDetails) resetDetailsView();
+
+  if (tabName === 'search') {
+    elements.ticketsContainer.innerHTML = '';
+    try {
+      await loadAllTickets();
+    } catch {
+      renderTickets(state.activeTab);
+      return;
+    }
+    updateTicketSearchPanel();
+    renderTickets(state.activeTab);
+    if (focusSearch) elements.ticketSearchInput.focus();
+  } else {
+    renderTickets(state.activeTab);
+  }
+}
+
+function updateTicketSearchPanel() {
+  const isSearch = state.activeTab === 'search';
+  elements.ticketSearchPanel.style.display = isSearch ? 'block' : 'none';
+  elements.ticketSearchLoading.style.display = isSearch && state.allTicketsLoading ? 'flex' : 'none';
+  elements.ticketSearchContainer.style.display = isSearch && state.allTicketsLoaded ? 'block' : 'none';
+  if (!isSearch) elements.ticketSearchAutocompleteResults.style.display = 'none';
+}
+
+function isRecentClosedTicket(ticket) {
+  return Date.parse(ticket.lastUpdated) > Date.parse(recentTicketsAfter);
+}
+
+function getTicketsForTab(status) {
+  if (status === 'search') {
+    return state.activeTicketSearch ? tickets.filter(ticketMatchesActiveSearch) : [];
+  }
+  return tickets.filter(ticket => ticket.isClosed === (status === 'closed') && (status !== 'closed' || isRecentClosedTicket(ticket)));
+}
+
 function renderTickets(status) {
   elements.ticketsContainer.innerHTML = '';
-  const filteredTickets = tickets.filter(ticket => ticket.isClosed === (status === 'closed'));
+  const filteredTickets = getTicketsForTab(status);
 
   if (filteredTickets.length === 0) {
     const emptyClone = document.getElementById('empty-tickets-template').content.cloneNode(true);
-    emptyClone.querySelector('.status-text').textContent = status;
+    emptyClone.querySelector('.status-text').textContent = status === 'search' ? 'matching' : status;
     elements.ticketsContainer.appendChild(emptyClone);
     return;
   }

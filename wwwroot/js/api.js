@@ -105,6 +105,15 @@ async function apiCreateTicket(ticketData) {
   return await response.json();
 }
 
+async function apiGetAllTickets() {
+  const response = await fetch('/api/tickets');
+  if (!response.ok) {
+    showToast('Failed to load tickets. Please try again.', 'error');
+    throw new Error(`load tickets: ${response.status}`);
+  }
+  return await response.json();
+}
+
 async function apiSuggestResponse(ticketId, assigneeEmail, guidance) {
   const response = await apiRequest(
     'POST',

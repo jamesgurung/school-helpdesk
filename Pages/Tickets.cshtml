@@ -1,13 +1,13 @@
-﻿@page "/tickets"
+@page "/tickets"
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject IWebHostEnvironment Environment
 @{
   var isManager = User.IsInRole(AuthConstants.Manager);
   var isDispatcher = User.IsInRole(AuthConstants.Dispatcher);
-	var all = Request.QueryString.HasValue && Request.QueryString.ToString().StartsWith("?archive", StringComparison.OrdinalIgnoreCase);
+  var recentTicketsAfter = DateTime.Today.AddDays(isManager ? -14 : -90);
   var tickets = isManager
-    ? await TableService.GetAllTicketsAsync(all ? null : DateTime.Today.AddDays(-14))
-    : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name, all ? null : DateTime.Today.AddDays(-90));
+    ? await TableService.GetAllTicketsAsync(recentTicketsAfter)
+    : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name, recentTicketsAfter);
 }
 
 <header>
@@ -44,6 +44,17 @@
     <div class="tabs">
       <div class="tab active" data-tab="open">Open<span class="badge" id="open-badge" style="display: none;"></span></div>
       <div class="tab" data-tab="closed">Closed</div>
+      <div class="tab" data-tab="search">Search</div>
+    </div>
+    <div class="ticket-search-panel" id="ticket-search-panel" style="display: none;">
+      <div class="ticket-search-loading" id="ticket-search-loading" style="display: none;">
+        <span class="ticket-search-spinner"></span>
+        <span>Loading tickets...</span>
+      </div>
+      <div class="autocomplete-container" id="ticket-search-container" style="display: none;">
+        <input type="text" id="ticket-search-input" placeholder="Search tickets" autocomplete="off" data-lpignore="true" data-form-type="other">
+        <div id="ticket-search-autocomplete-results" class="autocomplete-results"></div>
+      </div>
     </div>
     <div id="tickets-container"></div>
   </div>
@@ -334,24 +345,24 @@
   const currentUser = '@School.Instance.StaffByEmail[HttpContext.User.Identity.Name].Name';
   const currentUserEmail = '@HttpContext.User.Identity.Name';
   const isManager = @isManager.ToString().ToLowerInvariant();
+  const recentTicketsAfter = @Html.Raw(Json.Serialize(recentTicketsAfter));
   const holidays = @Html.Raw(Json.Serialize(School.Instance.Holidays));
   const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
 </script>
 
-@if (Environment.IsDevelopment())
-{
-<script src="/js/core.js"></script>
-<script src="/js/date-utils.js"></script>
-<script src="/js/utils.js"></script>
-<script src="/js/api.js"></script>
-<script src="/js/search.js"></script>
-<script src="/js/conversation.js"></script>
-<script src="/js/ticket-list.js"></script>
-<script src="/js/ticket-details.js"></script>
-<script src="/js/ticket-edit.js"></script>
-<script src="/js/modal.js"></script>
-<script src="/js/event-handlers.js"></script>
-} else
-{
-<script src="/js/site.js"></script>
-}
+<environment include="Development">
+  <script src="/js/core.js"></script>
+  <script src="/js/date-utils.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/search.js"></script>
+  <script src="/js/conversation.js"></script>
+  <script src="/js/ticket-list.js"></script>
+  <script src="/js/ticket-details.js"></script>
+  <script src="/js/ticket-edit.js"></script>
+  <script src="/js/modal.js"></script>
+  <script src="/js/event-handlers.js"></script>
+</environment>
+<environment exclude="Development">
+  <script src="/js/site.js"></script>
+</environment>

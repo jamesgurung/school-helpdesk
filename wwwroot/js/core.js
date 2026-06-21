@@ -5,6 +5,11 @@ const elements = {
   detailsContent: document.querySelector('.details-content'),
   backBtn: document.getElementById('back-button'),
   tabs: document.querySelectorAll('.tab'),
+  ticketSearchPanel: document.getElementById('ticket-search-panel'),
+  ticketSearchLoading: document.getElementById('ticket-search-loading'),
+  ticketSearchContainer: document.getElementById('ticket-search-container'),
+  ticketSearchInput: document.getElementById('ticket-search-input'),
+  ticketSearchAutocompleteResults: document.getElementById('ticket-search-autocomplete-results'),
   ticketTitleInput: document.getElementById('ticket-title'),
   studentSelect: document.getElementById('student-select'),
   parentSelect: document.getElementById('parent-select'),
@@ -73,6 +78,9 @@ const state = {
   activeParent: null,
   activeAssignee: null,
   activeEditAssignee: null,
+  allTicketsLoaded: false,
+  allTicketsLoading: null,
+  activeTicketSearch: null,
   updating: false
 };
 
@@ -90,7 +98,7 @@ async function init() {
     populateNewTicketForm();
     state.timeUpdateInterval = setInterval(updateAllElapsedTimes, 1000);
     elements.valediction.querySelector('span').textContent = getSalutation(currentUser);
-    fromHash();
+    await fromHash();
   } catch (error) {
     console.error('Failed to initialize the app:', error);
     await fetchUsers();
@@ -104,15 +112,8 @@ async function fromHash() {
   const { hash } = window.location;
   if (hash.length > 1 && /^\d+$/.test(hash.slice(1))) {
     const ticketId = hash.slice(1).padStart(6, '0');
-    const ticket = tickets.find(t => t.id === ticketId);
-    if (ticket) {
-      openTicketDetails(ticketId, true);
-      history.replaceState(null, '', '/tickets/' + hash.slice(1));
-      return;
-    } else if (isManager && !window.location.search.startsWith('?archive')) {
-      window.location = '/tickets/?archive/#' + hash.slice(1);
-      return;
-    }
+    await openTicketFromSearch(ticketId);
+    return;
   }
   history.replaceState(null, '', '/tickets/');
 }
