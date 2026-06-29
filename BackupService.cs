@@ -1,4 +1,3 @@
-using Azure;
 using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using CsvHelper;
@@ -120,34 +119,42 @@ public static class BackupService
     }
   }
 
-  private static bool IsSystemProperty(string name) =>
-    string.Equals(name, "PartitionKey", StringComparison.Ordinal)
+  private static bool IsSystemProperty(string name)
+  {
+    return string.Equals(name, "PartitionKey", StringComparison.Ordinal)
     || string.Equals(name, "RowKey", StringComparison.Ordinal)
     || string.Equals(name, "Timestamp", StringComparison.Ordinal)
     || string.Equals(name, "odata.etag", StringComparison.OrdinalIgnoreCase);
+  }
 
-  private static string GetTypeName(object value) => value switch
+  private static string GetTypeName(object value)
   {
-    string => "String",
-    int => "Int32",
-    long => "Int64",
-    double => "Double",
-    bool => "Boolean",
-    DateTime => "DateTime",
-    DateTimeOffset => "DateTime",
-    Guid => "Guid",
-    byte[] => "Binary",
-    _ => "String"
-  };
+    return value switch
+    {
+      string => "String",
+      int => "Int32",
+      long => "Int64",
+      double => "Double",
+      bool => "Boolean",
+      DateTime => "DateTime",
+      DateTimeOffset => "DateTime",
+      Guid => "Guid",
+      byte[] => "Binary",
+      _ => "String"
+    };
+  }
 
-  private static string FormatValue(object value) => value switch
+  private static string FormatValue(object value)
   {
-    null => string.Empty,
-    DateTime date => date.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
-    DateTimeOffset date => date.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
-    byte[] bytes => Convert.ToBase64String(bytes),
-    double number => number.ToString("R", CultureInfo.InvariantCulture),
-    IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-    _ => value.ToString()
-  };
+    return value switch
+    {
+      null => string.Empty,
+      DateTime date => date.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+      DateTimeOffset date => date.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+      byte[] bytes => Convert.ToBase64String(bytes),
+      double number => number.ToString("R", CultureInfo.InvariantCulture),
+      IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+      _ => value.ToString()
+    };
+  }
 }
