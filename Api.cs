@@ -19,6 +19,17 @@ public static class Api
       return Results.Ok();
     });
 
+    app.MapGet("/backup", [Authorize(Roles = AuthConstants.Administrator)] async (HttpContext context, CancellationToken ct) =>
+    {
+      var path = await BackupService.CreateBackupAsync(ct);
+      context.Response.OnCompleted(() =>
+      {
+        File.Delete(path);
+        return Task.CompletedTask;
+      });
+      return Results.File(path, "application/zip", $"schoolhelpdesk-{DateTime.UtcNow:yyyy-MM-dd}.zip");
+    });
+
     var group = app.MapGroup("/api").ValidateAntiforgery().RequireAuthorization();
 
     group.MapGet("/refresh", [Authorize(Roles = AuthConstants.Administrator)] async () =>

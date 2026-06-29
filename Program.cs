@@ -22,6 +22,7 @@ var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAcco
 
 School.Instance = builder.Configuration.GetSection(nameof(School)).Get<School>();
 BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
+BackupService.Configure(connectionString);
 QueueService.Configure(connectionString);
 TableService.Configure(connectionString);
 EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"], School.Instance.DebugEmail);
