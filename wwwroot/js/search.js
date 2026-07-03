@@ -261,6 +261,16 @@ function selectTicketSearch(search, openIdTicket = true) {
 }
 
 async function openTicketFromSearch(ticketId) {
+  const preloadedTicket = tickets.find(t => t.id === ticketId);
+  const preloadedTab = preloadedTicket && (!preloadedTicket.isClosed ? 'open' : isRecentClosedTicket(preloadedTicket) ? 'closed' : null);
+  if (preloadedTab) {
+    await activateTicketsTab(preloadedTab, false, false);
+    document.querySelector(`.ticket-item[data-id="${ticketId}"]`)?.scrollIntoView({ block: 'nearest' });
+    openTicketDetails(ticketId, true);
+    history.replaceState(null, '', `/tickets/${parseInt(ticketId)}`);
+    return;
+  }
+
   await activateTicketsTab('search', false, false);
   const ticket = tickets.find(t => t.id === ticketId);
   const search = {

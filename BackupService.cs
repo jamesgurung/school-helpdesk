@@ -52,9 +52,9 @@ public static class BackupService
       {
         if (container.Name == "config" && blob.Name == "keys.xml") continue;
 
-        var safeBlobName = Uri.EscapeDataString(blob.Name).Replace("..", "%2E%2E");
+        var safeBlobName = Uri.EscapeDataString(blob.Name).Replace("..", "%2E%2E", StringComparison.Ordinal);
         var entry = zip.CreateEntry($"blobs/{container.Name}/{safeBlobName}", CompressionLevel.SmallestSize);
-        await using var entryStream = entry.Open();
+        await using var entryStream = await entry.OpenAsync(ct);
         await containerClient.GetBlobClient(blob.Name).DownloadToAsync(entryStream, ct);
       }
     }
@@ -79,7 +79,7 @@ public static class BackupService
       }
 
       var entry = zip.CreateEntry($"tables/{table.Name}.csv", CompressionLevel.SmallestSize);
-      await using var entryStream = entry.Open();
+      await using var entryStream = await entry.OpenAsync(ct);
       await using var writer = new StreamWriter(entryStream);
       await using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
 
