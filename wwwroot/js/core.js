@@ -1,5 +1,9 @@
 const elements = {
   ticketsContainer: document.getElementById('tickets-container'),
+  ticketItemTemplate: document.getElementById('ticket-item-template'),
+  emptyTicketsTemplate: document.getElementById('empty-tickets-template'),
+  messageTemplate: document.getElementById('message-template'),
+  infoSectionTemplate: document.getElementById('info-section-template'),
   ticketDetails: document.getElementById('ticket-details'),
   detailsEmpty: document.querySelector('.details-empty'),
   detailsContent: document.querySelector('.details-content'),
@@ -13,6 +17,7 @@ const elements = {
   ticketTitleInput: document.getElementById('ticket-title'),
   studentSelect: document.getElementById('student-select'),
   parentSelect: document.getElementById('parent-select'),
+  hiddenSelects: document.querySelector('.hidden-selects'),
   parentInfoSection: document.getElementById('parent-info-section'),
   studentInfoSection: document.getElementById('student-info-section'),
   assigneeInfoSection: document.getElementById('assignee-info-section'),
@@ -47,10 +52,17 @@ const elements = {
   assigneeSearchInput: document.getElementById('assignee-search-input'),
   assigneeAutocompleteResults: document.getElementById('assignee-autocomplete-results'),
   parentInfo: document.getElementById('parent-info'),
+  parentEditIcon: document.getElementById('parent-edit-icon'),
   assigneeInfoDisplay: document.getElementById('assignee-info'),
   assigneeNameDisplay: document.getElementById('assignee-name-display'),
   assigneeEditIcon: document.getElementById('assignee-edit-icon'),
+  imageModal: document.getElementById('image-modal'),
+  closeImageModalBtn: document.getElementById('close-image-modal'),
+  modalImage: document.getElementById('modal-image'),
+  imageCaption: document.getElementById('image-caption'),
+  downloadFullSize: document.getElementById('download-full-size'),
   originalEmailModal: document.getElementById('original-email-modal'),
+  closeOriginalEmailModalBtn: document.getElementById('close-original-email-modal'),
   originalEmailIframe: document.getElementById('original-email-frame'),
   originalEmailMetadata: document.getElementById('original-email-metadata'),
   originalEmailTo: document.getElementById('original-email-to'),
@@ -83,9 +95,10 @@ const state = {
   activeTicketSearch: null,
   updating: false
 };
+const ticketsById = new Map(tickets.map(ticket => [ticket.id, ticket]));
 
 function getCurrentTicket() {
-  return tickets.find(ticket => ticket.id === state.currentTicketId);
+  return ticketsById.get(state.currentTicketId);
 }
 
 async function init() {
@@ -101,7 +114,6 @@ async function init() {
     await fromHash();
   } catch (error) {
     console.error('Failed to initialize the app:', error);
-    await fetchUsers();
   }
 }
 

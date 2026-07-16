@@ -2,7 +2,7 @@
 function openNewTicketModal() {
   elements.newTicketModal.style.display = 'block';
   elements.parentSearchInput.focus();
-  document.getElementById('parent-edit-icon').style.display = 'none';
+  elements.parentEditIcon.style.display = 'none';
 }
 
 function closeNewTicketModal() {
@@ -29,29 +29,7 @@ function closeNewTicketModal() {
   elements.assigneeSearchContainer.style.display = 'block';
   elements.assigneeInfoDisplay.style.display = 'none';
 
-  document.getElementById('parent-edit-icon').style.display = 'none';
-  document.getElementById('assignee-edit-icon').style.display = 'none';
-}
-
-function resetNewTicketForm() {
-  elements.newTicketForm.reset();
-  elements.ticketTitleFormInput.value = '';
-  elements.messageInput.value = '';
-  elements.studentSelectInput.innerHTML = '<option value="">Select a student...</option>';
-
-  state.activeParent = null;
-  elements.parentNameDisplay.textContent = 'No parent selected';
-  elements.parentNameDisplay.classList.add('no-parent');
-  elements.parentRelationshipDisplay.textContent = '';
-  elements.parentInfo.style.display = 'flex';
-  elements.parentSearchContainer.style.display = 'none';
-  document.getElementById('parent-edit-icon').style.display = 'none';
-
-  state.activeAssignee = null;
-  elements.assigneeNameDisplay.textContent = 'No assignee selected';
-  elements.assigneeNameDisplay.classList.add('no-parent');
-  elements.assigneeInfoDisplay.style.display = 'flex';
-  elements.assigneeSearchContainer.style.display = 'none';
+  elements.parentEditIcon.style.display = 'none';
   elements.assigneeEditIcon.style.display = 'none';
 }
 
@@ -65,7 +43,7 @@ async function createNewTicket() {
     showToast('Please select a parent/carer', 'error');
     return;
   }
-  if (!title || !studentValue || !message || !state.activeAssignee) {
+  if (!title || !studentValue || !message || !assignee) {
     showToast('Please fill in all required fields', 'error');
     return;
   }
@@ -76,30 +54,33 @@ async function createNewTicket() {
     child.firstName === firstName && child.lastName === lastName
   );
 
-  const now = new Date().toISOString();
   const newTicketData = {
-    title: title,
-    isClosed: false,
-    created: now,
-    waitingSince: now,
+    title,
     studentFirstName: firstName,
     studentLastName: lastName,
-    tutorGroup: tutorGroup,
+    tutorGroup,
     assigneeName: assignee.name,
     assigneeEmail: assignee.email,
     parentName: state.activeParent.name,
     parentEmail: state.activeParent.email,
     parentPhone: state.activeParent.phone,
     parentRelationship: selectedChild?.parentRelationship || '',
-    message: message
+    message
   };
   elements.createNewTicketBtn.disabled = true;
-  const newTicket = await apiCreateTicket(newTicketData);
+  let newTicket;
+  try {
+    newTicket = await apiCreateTicket(newTicketData);
+  } catch {
+    elements.createNewTicketBtn.disabled = false;
+    return;
+  }
 
   closeNewTicketModal();
   elements.tabs[0].click();
   if (isManager || newTicket.assigneeEmail === currentUserEmail) {
     tickets.unshift(newTicket);
+    ticketsById.set(newTicket.id, newTicket);
     updateOpenTicketsBadge();
     renderTickets(state.activeTab);
     openTicketDetails(newTicket.id);

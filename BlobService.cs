@@ -30,7 +30,7 @@ public static class BlobService
   {
     var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
     var content = await blobClient.DownloadContentAsync();
-    var messages = JsonSerializer.Deserialize<List<Message>>(content.Value.Content.ToString(), JsonSerializerOptions.Web);
+    var messages = content.Value.Content.ToObjectFromJson<List<Message>>(JsonSerializerOptions.Web);
     foreach (var attachment in messages.Where(o => o.Attachments is not null).SelectMany(o => o.Attachments))
     {
       attachment.Url = GetAttachmentSasUrl(attachment.Url, attachment.FileName);
@@ -41,20 +41,16 @@ public static class BlobService
   public static async Task CreateConversationAsync(int ticketId, params List<Message> messages)
   {
     var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
-    var json = JsonSerializer.Serialize(messages, JsonSerializerOptions.Web);
-    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-    await blobClient.UploadAsync(stream);
+    await blobClient.UploadAsync(BinaryData.FromObjectAsJson(messages, JsonSerializerOptions.Web));
   }
 
   public static async Task<List<Message>> AppendMessagesAsync(int ticketId, params List<Message> newMessages)
   {
     var blobClient = messagesClient.GetBlobClient($"{ticketId.ToRowKey()}.json");
     var existingContent = await blobClient.DownloadContentAsync();
-    var messages = JsonSerializer.Deserialize<List<Message>>(existingContent.Value.Content.ToString(), JsonSerializerOptions.Web) ?? [];
+    var messages = existingContent.Value.Content.ToObjectFromJson<List<Message>>(JsonSerializerOptions.Web) ?? [];
     messages.AddRange(newMessages);
-    var json = JsonSerializer.Serialize(messages, JsonSerializerOptions.Web);
-    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-    await blobClient.UploadAsync(stream, true);
+    await blobClient.UploadAsync(BinaryData.FromObjectAsJson(messages, JsonSerializerOptions.Web), true);
     return messages;
   }
 
@@ -89,41 +85,17 @@ public static class BlobService
     ArgumentNullException.ThrowIfNull(fileName);
     ArgumentNullException.ThrowIfNull(content);
     var blobClient = configClient.GetBlobClient(fileName);
-    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-    await blobClient.UploadAsync(stream, true);
+    await blobClient.UploadAsync(BinaryData.FromString(content), true);
   }
 
   public static async Task LoadConfigAsync()
   {
     var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture) { Encoding = Encoding.UTF8 };
 
-    var students = new List<CsvStudent>();
-    var studentsBlob = configClient.GetBlobClient("students.csv");
-    using (var stream = await studentsBlob.OpenReadAsync())
-    using (var reader = new StreamReader(stream))
-    using (var csv = new CsvReader(reader, csvConfig))
-    {
-      await foreach (var student in csv.GetRecordsAsync<CsvStudent>())
-      {
-        if (string.IsNullOrWhiteSpace(student.ParentEmailAddress)) continue;
-        students.Add(student);
-      }
-      students = students.OrderBy(s => s.ParentLastName).ThenBy(s => s.ParentFirstName).ThenBy(s => s.TutorGroup).ThenBy(s => s.LastName).ThenBy(s => s.FirstName).ToList();
-    }
-
-    var staff = new List<CsvStaff>();
-    var staffBlob = configClient.GetBlobClient("staff.csv");
-    using (var stream = await staffBlob.OpenReadAsync())
-    using (var reader = new StreamReader(stream))
-    using (var csv = new CsvReader(reader, csvConfig))
-    {
-      await foreach (var person in csv.GetRecordsAsync<CsvStaff>())
-      {
-        if (string.IsNullOrWhiteSpace(person.Email)) continue;
-        staff.Add(person);
-      }
-      staff = staff.OrderBy(s => s.LastName).ThenBy(s => s.FirstName).ThenBy(s => s.Email).ToList();
-    }
+    var students = (await ReadCsvAsync<CsvStudent>("students.csv", csvConfig, s => !string.IsNullOrWhiteSpace(s.ParentEmailAddress)))
+      .OrderBy(s => s.ParentLastName).ThenBy(s => s.ParentFirstName).ThenBy(s => s.TutorGroup).ThenBy(s => s.LastName).ThenBy(s => s.FirstName).ToList();
+    var staff = (await ReadCsvAsync<CsvStaff>("staff.csv", csvConfig, s => !string.IsNullOrWhiteSpace(s.Email)))
+      .OrderBy(s => s.LastName).ThenBy(s => s.FirstName).ThenBy(s => s.Email).ToList();
 
     School.Instance.StaffByEmail = staff.ToDictionary(s => s.Email, s => new Staff
     {
@@ -155,7 +127,7 @@ public static class BlobService
           Phone = first.ParentPhoneNumber,
           Children = g.Select(s => new Student { FirstName = s.FirstName, LastName = s.LastName, TutorGroup = s.TutorGroup, ParentRelationship = s.Relationship }).ToList()
         };
-      });
+      }).ToList();
 
     School.Instance.ParentsByEmail = parents.ToLookup(o => o.Email, StringComparer.OrdinalIgnoreCase);
 
@@ -172,17 +144,7 @@ public static class BlobService
     var textTemplate = await configClient.GetBlobClient("template.txt").DownloadContentAsync();
     School.Instance.TextEmailTemplate = textTemplate.Value.Content.ToString().ReplaceLineEndings("\n");
 
-    School.Instance.Holidays = [];
-    var holidaysBlob = configClient.GetBlobClient("holidays.csv");
-    using (var stream = await holidaysBlob.OpenReadAsync())
-    using (var reader = new StreamReader(stream))
-    using (var csv = new CsvReader(reader, csvConfig))
-    {
-      await foreach (var holiday in csv.GetRecordsAsync<Holiday>())
-      {
-        School.Instance.Holidays.Add(holiday);
-      }
-    }
+    School.Instance.Holidays = await ReadCsvAsync<Holiday>("holidays.csv", csvConfig);
 
     var blocklistBlob = configClient.GetBlobClient("blocklist.txt");
     try
@@ -194,9 +156,8 @@ public static class BlobService
     }
     catch (RequestFailedException ex) when (ex.Status == 404)
     {
-      var emptyHashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-      School.Instance.BlockedEmails = emptyHashSet;
-      School.Instance.BlockedDomains = emptyHashSet;
+      School.Instance.BlockedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      School.Instance.BlockedDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
   }
 
@@ -208,8 +169,20 @@ public static class BlobService
     var hashset = new HashSet<string>(array, StringComparer.OrdinalIgnoreCase);
     hashset.Add(entry);
     var content = string.Join("\n", hashset);
-    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-    await blobClient.UploadAsync(stream, true);
+    await blobClient.UploadAsync(BinaryData.FromString(content), true);
+  }
+
+  private static async Task<List<T>> ReadCsvAsync<T>(string blobName, CsvConfiguration config, Func<T, bool> predicate = null)
+  {
+    using var stream = await configClient.GetBlobClient(blobName).OpenReadAsync();
+    using var reader = new StreamReader(stream);
+    using var csv = new CsvReader(reader, config);
+    var records = new List<T>();
+    await foreach (var record in csv.GetRecordsAsync<T>())
+    {
+      if (predicate?.Invoke(record) ?? true) records.Add(record);
+    }
+    return records;
   }
 
   private static string FormatPhoneNumber(string phoneNumber)

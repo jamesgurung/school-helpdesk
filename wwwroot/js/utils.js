@@ -9,7 +9,7 @@ function normalise(text) {
 }
 
 function populateNewTicketForm() {
-  Object.assign(elements.assigneeSearchContainer.style, { display: 'block' });
+  elements.assigneeSearchContainer.style.display = 'block';
   elements.assigneeSearchInput.value = '';
   elements.assigneeAutocompleteResults.style.display = 'none';
   state.activeAssignee = null;
@@ -22,7 +22,7 @@ function populateNewTicketForm() {
   elements.parentSearchInput.value = '';
   state.activeParent = null;
   elements.parentInfo.style.display = 'none';
-  document.getElementById('parent-edit-icon').style.display = 'none';
+  elements.parentEditIcon.style.display = 'none';
   
   elements.parentNameDisplay.textContent = 'No parent selected';
   elements.parentNameDisplay.classList.add('no-parent');
@@ -54,13 +54,13 @@ function hasUnsentText() {
 }
 
 function hasUnsentNewTicketText() {
-  return elements.messageInput?.value.trim().length > 0 ||
-         elements.ticketTitleFormInput?.value.trim().length > 0 ||
-         elements.parentSearchInput?.value.trim().length > 0 ||
-         elements.assigneeSearchInput?.value.trim().length > 0 ||
-         state.activeParent ||
-         state.activeAssignee ||
-         (elements.studentSelectInput?.value && elements.studentSelectInput.value !== '');
+  return Boolean(elements.messageInput?.value.trim().length > 0 ||
+    elements.ticketTitleFormInput?.value.trim().length > 0 ||
+    elements.parentSearchInput?.value.trim().length > 0 ||
+    elements.assigneeSearchInput?.value.trim().length > 0 ||
+    state.activeParent ||
+    state.activeAssignee ||
+    elements.studentSelectInput?.value);
 }
 
 function confirmNavigationWithUnsentText(actionDescription, callback) {
@@ -91,10 +91,9 @@ function getTicketValidationStatus(ticket) {
 function canEditField(ticket, fieldType) {
   if (!isManager) return false;
   const { hasParent, hasStudent } = getTicketValidationStatus(ticket);
-  return fieldType === 'parent'
-    || (fieldType === 'student' ? hasParent
-    : fieldType === 'assignee' ? hasParent && hasStudent
-    : false);
+  if (fieldType === 'parent') return true;
+  if (fieldType === 'student') return hasParent;
+  return fieldType === 'assignee' && hasParent && hasStudent;
 }
 
 function canSendMessages(ticket) {

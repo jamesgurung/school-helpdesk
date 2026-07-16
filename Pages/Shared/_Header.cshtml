@@ -1,0 +1,30 @@
+@model HeaderModel
+
+<header>
+  <div class="header-container">
+    <a class="logo-section" href="/tickets/">
+      <img src="/img/logo.png" alt="Parent Helpdesk Logo" class="header-logo">
+      <h1>Parent Helpdesk</h1>
+    </a>
+    <div class="user-actions">
+      @if (Model.ShowNewTicket)
+      {
+        <button class="new-ticket-button" id="new-ticket-button">
+          <span class="material-symbols-rounded">add</span>
+          <span>New Ticket</span>
+        </button>
+      }
+      @if (Model.ShowStats)
+      {
+        <button class="stats-button" id="stats-button">
+          <span class="material-symbols-rounded">monitoring</span>
+          <span>Stats</span>
+        </button>
+      }
+      <button class="logout-button" id="logout-button">
+        <span class="material-symbols-rounded">logout</span>
+        <span>Logout</span>
+      </button>
+    </div>
+  </div>
+</header>

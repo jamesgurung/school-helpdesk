@@ -1,75 +1,8 @@
 @page "/stats"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = AuthConstants.Manager)]
-@{
-  var tickets = (await TableService.GetAllTicketsAsync()).Where(o => o.TimeToFirstResponse is not null).ToList();
-  var holidays = School.Instance.Holidays ?? [];
-  var currentWeekStartUtc = DateTime.UtcNow.Date.AddDays(-(((int)DateTime.UtcNow.DayOfWeek + 6) % 7));
-  var threeMonthsAgo = currentWeekStartUtc.AddDays(-13 * 7);
-  var sixMonthsAgo = currentWeekStartUtc.AddDays(-26 * 7);
-  bool IsHolidayWeek(DateOnly weekStart) => Enumerable.Range(0, 5)
-    .Select(offset => weekStart.AddDays(offset))
-    .All(day => holidays.Any(h => h.Start <= day && h.End >= day));
-  var weeks = tickets
-    .Where(o => o.IsClosed && o.LastUpdated >= sixMonthsAgo)
-    .GroupBy(o => DateOnly.FromDateTime(o.LastUpdated.Date.AddDays(-(((int)o.LastUpdated.DayOfWeek + 6) % 7))))
-    .OrderBy(g => g.Key)
-    .Select(g => new
-    {
-      WeekStart = g.Key,
-      IsCurrentWeek = g.Key == DateOnly.FromDateTime(currentWeekStartUtc),
-      IsHolidayWeek = IsHolidayWeek(g.Key),
-      TicketsClosed = g.Count(),
-      AverageTimeToFirstResponse = g.Any(t => t.TimeToFirstResponse is not null)
-        ? (int?)g.Where(t => t.TimeToFirstResponse is not null).Median(t => t.TimeToFirstResponse.Value)
-        : null
-    })
-    .ToList();
+@model StatsModel
 
-  var parents = tickets
-    .Where(o => o.LastUpdated >= threeMonthsAgo)
-    .GroupBy(o => o.ParentEmail)
-    .Select(g => new
-    {
-      ParentName = string.Join(", ", g.GroupBy(o => o.ParentName).OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key)
-        .Select(gg => gg.Key).Where(o => !string.IsNullOrWhiteSpace(o))),
-      StudentName = string.Join(", ", g.GroupBy(o => $"{o.StudentFirstName} {o.StudentLastName}").OrderByDescending(gg => gg.Count()).ThenBy(gg => gg.Key)
-        .Select(gg => gg.Key).Where(o => !string.IsNullOrWhiteSpace(o))),
-      Count = g.Count()
-    })
-    .OrderByDescending(o => o.Count)
-    .Take(10)
-    .ToList();
-
-  var assignees = tickets
-    .Where(o => o.LastUpdated >= threeMonthsAgo && o.AssigneeName is not null)
-    .GroupBy(o => o.AssigneeName)
-    .Select(g => new
-    {
-      AssigneeName = g.Key,
-      Count = g.Count(),
-      AverageResponseTime = g.Any(t => t.AverageAssigneeResponseTime is not null)
-        ? (int?)g.Where(t => t.AverageAssigneeResponseTime is not null).Average(t => t.AverageAssigneeResponseTime.Value)
-        : null
-    })
-    .Where(o => o.Count >= 3)
-    .OrderByDescending(o => o.Count)
-    .ToList();
-}
-
-<header>
-  <div class="header-container">
-    <a class="logo-section" href="/tickets/">
-      <img src="/img/logo.png" alt="Logo" class="header-logo">
-      <h1>Parent Helpdesk</h1>
-    </a>
-    <div class="user-actions">
-      <button class="logout-button" onclick="window.location.href = '/logout'">
-        <span class="material-symbols-rounded">logout</span>
-        <span>Logout</span>
-      </button>
-    </div>
-  </div>
-</header>
+<partial name="_Header" model="new HeaderModel()" />
 
 <main class="stats-page">
 
@@ -172,8 +105,8 @@
 
 <script src="/lib/chart.js/dist/chart.umd.min.js"></script>
 <script nonce="@HttpContext.Items["csp-nonce"]">
-  const weeks = @Html.Raw(Json.Serialize(weeks));
-  const parents = @Html.Raw(Json.Serialize(parents));
-  const assignees = @Html.Raw(Json.Serialize(assignees));
+  const weeks = @Html.Raw(Json.Serialize(Model.Weeks));
+  const parents = @Html.Raw(Json.Serialize(Model.Parents));
+  const assignees = @Html.Raw(Json.Serialize(Model.Assignees));
 </script>
 <script src="/js/stats.js"></script>

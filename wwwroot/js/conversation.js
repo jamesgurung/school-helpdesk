@@ -2,7 +2,7 @@ function renderConversation() {
   const ticket = getCurrentTicket();
   if (!ticket || !state.conversation) return;
   elements.conversationContainer.innerHTML = '';
-  const template = document.getElementById('message-template').content;
+  const template = elements.messageTemplate.content;
 
   state.conversation.forEach((msg, i) => {
     const { isEmployee, isPrivate, authorName, timestamp, content, attachments, originalEmail, emailSubject, emailTo, emailCc } = msg;
@@ -11,20 +11,42 @@ function renderConversation() {
       const eventEl = document.createElement('div');
       eventEl.className = 'message-header ticket-event';
 
-      let eventText, icon;
+      let action, icon;
       if (content === '#close') {
-        eventText = `${authorName} <span>closed this ticket</span>`;
+        action = 'closed this ticket';
         icon = 'check_circle';
       } else if (content === '#reopen') {
-        eventText = `${authorName} <span>reopened this ticket</span>`;
+        action = 'reopened this ticket';
         icon = 'arrow_circle_down';
-      } else if (content.startsWith('#assign ')) {
-        const assigneeName = content.substring(8);
-        eventText = `<span>Assigned to</span> ${assigneeName}`;
+      } else {
+        action = 'Assigned to';
         icon = 'assignment_ind';
       }
 
-      eventEl.innerHTML = `<div class="message-author"><div class="message-icon material-symbols-rounded">${icon}</div><div class="author-name">${eventText}</div></div><div class="message-date">${formatDateTime(timestamp)}</div>`;
+      const iconEl = document.createElement('div');
+      iconEl.className = 'message-icon material-symbols-rounded';
+      iconEl.textContent = icon;
+
+      const actionEl = document.createElement('span');
+      actionEl.textContent = action;
+
+      const authorEl = document.createElement('div');
+      authorEl.className = 'author-name';
+      if (content.startsWith('#assign ')) {
+        authorEl.append(actionEl, ` ${content.substring(8)}`);
+      } else {
+        authorEl.append(`${authorName} `, actionEl);
+      }
+
+      const messageAuthor = document.createElement('div');
+      messageAuthor.className = 'message-author';
+      messageAuthor.append(iconEl, authorEl);
+
+      const dateEl = document.createElement('div');
+      dateEl.className = 'message-date';
+      dateEl.textContent = formatDateTime(timestamp);
+
+      eventEl.append(messageAuthor, dateEl);
       elements.conversationContainer.appendChild(eventEl);
       return;
     }
@@ -46,9 +68,13 @@ function renderConversation() {
 
     const authorEl = clone.querySelector('.author-name');
     authorEl.style.color = `var(${colorVar})`;
-    authorEl.innerHTML = isOnBehalf
-      ? `${authorName} <span>on behalf of</span> ${ticket.parentName ?? 'the parent/carer'}`
-      : authorName;
+    if (isOnBehalf) {
+      const onBehalf = document.createElement('span');
+      onBehalf.textContent = 'on behalf of';
+      authorEl.append(`${authorName} `, onBehalf, ` ${ticket.parentName ?? 'the parent/carer'}`);
+    } else {
+      authorEl.textContent = authorName;
+    }
 
     clone.querySelector('.message-date').textContent = formatDateTime(timestamp);
 
@@ -88,8 +114,10 @@ function renderConversation() {
     contentEl.appendChild(messageText);
 
     if (isOnBehalf) {
-      const replyInstructions = '<p class="reply-note">Replies will be sent directly to the parent/carer.</p>';
-      contentEl.insertAdjacentHTML('beforeend', replyInstructions);
+      const replyInstructions = document.createElement('p');
+      replyInstructions.className = 'reply-note';
+      replyInstructions.textContent = 'Replies will be sent directly to the parent/carer.';
+      contentEl.appendChild(replyInstructions);
     }
 
     if (attachments?.length) renderMessageAttachments(el, attachments);
@@ -101,16 +129,14 @@ const isImage = name => ['png', 'jpg', 'jpeg', 'webp', 'avif'].includes(name.toL
 const getFileIcon = name => isImage(name) ? 'image' : 'description';
 
 function showImageModal(src, name) {
-  const modal = document.getElementById('image-modal');
-  modal.style.display = 'block';
-  document.getElementById('modal-image').src = src;
-  document.getElementById('modal-image').alt = name;
-  document.getElementById('image-caption').textContent = name;
-  const downloadLink = document.getElementById('download-full-size');
-  downloadLink.href = src;
-  downloadLink.download = name;
+  elements.imageModal.style.display = 'block';
+  elements.modalImage.src = src;
+  elements.modalImage.alt = name;
+  elements.imageCaption.textContent = name;
+  elements.downloadFullSize.href = src;
+  elements.downloadFullSize.download = name;
 }
-const closeImageModal = () => document.getElementById('image-modal').style.display = 'none';
+const closeImageModal = () => elements.imageModal.style.display = 'none';
 
 function showOriginalEmailModal(html, to, cc, subject) {
   elements.originalEmailIframe.srcdoc = html;
@@ -127,7 +153,7 @@ function showOriginalEmailModal(html, to, cc, subject) {
   }
   elements.originalEmailModal.style.display = 'block';
 }
-const closeOriginalEmailModal = () => document.getElementById('original-email-modal').style.display = 'none';
+const closeOriginalEmailModal = () => elements.originalEmailModal.style.display = 'none';
 
 function renderMessageAttachments(container, attachments) {
   const wrap = document.createElement('div');

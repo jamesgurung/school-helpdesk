@@ -1,18 +1,16 @@
 async function apiRequest(httpMethod, endpoint, data, actionText) {
   try {
+    const isFormData = data instanceof FormData;
     const response = await fetch(endpoint, {
       method: httpMethod,
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         'X-XSRF-TOKEN': antiforgeryToken
       },
-      body: JSON.stringify(data)
+      body: isFormData ? data : JSON.stringify(data)
     });
 
-    if (!response.ok) {
-      throw new Error(`${actionText}: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`${actionText}: ${response.status}`);
     return response;
   } catch (error) {
     showToast(`Failed to ${actionText.toLowerCase()}. Please try again.`, 'error');
@@ -20,14 +18,23 @@ async function apiRequest(httpMethod, endpoint, data, actionText) {
   }
 }
 
+async function apiJsonRequest(httpMethod, endpoint, data, actionText, reportParseError = false) {
+  const response = await apiRequest(httpMethod, endpoint, data, actionText);
+  try {
+    return await response.json();
+  } catch (error) {
+    if (reportParseError) showToast(`Failed to ${actionText.toLowerCase()}. Please try again.`, 'error');
+    throw error;
+  }
+}
+
 async function apiUpdateTicketAssignee(ticketId, assigneeEmail, newAssigneeEmail) {
-  const response = await apiRequest(
+  return apiJsonRequest(
     'PUT',
     `/api/tickets/${ticketId}/assignee`,
     { assigneeEmail, newAssigneeEmail },
     'update assignee'
   );
-  return await response.json();
 }
 
 async function apiUpdateTicketStudent(ticketId, assigneeEmail, studentFirst, studentLast, studentTutorGroup) {
@@ -56,7 +63,7 @@ async function apiUpdateTicketStatus(ticketId, assigneeEmail, isClosed) {
     'update ticket status'
   );
   if (response.status === 204) return null;
-  return await response.json();
+  return response.json();
 }
 
 async function apiUpdateTicketTitle(ticketId, assigneeEmail, newTitle) {
@@ -74,35 +81,16 @@ async function apiSendMessage(ticketId, assigneeEmail, content, isPrivate, files
   formData.append('content', content);
   formData.append('isPrivate', isPrivate.toString());
   files.forEach(file => { formData.append('attachments', file); });
-
-  try {
-    const response = await fetch(`/api/tickets/${ticketId}/message`, {
-      method: 'POST',
-      headers: {
-        'X-XSRF-TOKEN': antiforgeryToken
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error(`send message: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    showToast('Failed to send message. Please try again.', 'error');
-    throw error;
-  }
+  return apiJsonRequest('POST', `/api/tickets/${ticketId}/message`, formData, 'send message', true);
 }
 
 async function apiCreateTicket(ticketData) {
-  const response = await apiRequest(
+  return apiJsonRequest(
     'POST',
     '/api/tickets',
     ticketData,
     'create ticket'
   );
-  return await response.json();
 }
 
 async function apiGetAllTickets() {
@@ -111,21 +99,20 @@ async function apiGetAllTickets() {
     showToast('Failed to load tickets. Please try again.', 'error');
     throw new Error(`load tickets: ${response.status}`);
   }
-  return await response.json();
+  return response.json();
 }
 
 async function apiSuggestResponse(ticketId, assigneeEmail, guidance) {
-  const response = await apiRequest(
+  return apiJsonRequest(
     'POST',
     `/api/tickets/${ticketId}/suggest`,
     { assigneeEmail, guidance },
     'generate suggestion'
   );
-  return await response.json();
 }
 
 async function apiGetLastUpdated(ticketId) {
   const response = await fetch(`/api/tickets/${ticketId}/lastupdated`);
   if (!response.ok) return null;
-  return await response.json();
+  return response.json();
 }

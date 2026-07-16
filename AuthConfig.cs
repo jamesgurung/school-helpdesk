@@ -120,9 +120,9 @@ public static class AuthConfig
       return Results.Challenge(authProperties, authenticationSchemes);
     });
 
-    app.MapGet("/logout", (HttpContext context) =>
+    app.MapGet("/logout", async (HttpContext context) =>
     {
-      context.SignOutAsync();
+      await context.SignOutAsync();
       return Results.Redirect("/login");
     });
   }

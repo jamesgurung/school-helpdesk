@@ -1,8 +1,7 @@
 ﻿using Azure;
 using Azure.Data.Tables;
+using System.Collections.Concurrent;
 using System.Globalization;
-using System.Runtime.Serialization;
-using System.Text.Json.Serialization;
 
 namespace SchoolHelpdesk;
 
@@ -19,7 +18,7 @@ public static class TableService
   public static async Task WarmUpAsync()
   {
     var nonExistentKey = "warmup";
-    await ticketsClient.QueryAsync<TableEntity>(o => o.PartitionKey == nonExistentKey).ToListAsync();
+    await foreach (var _ in ticketsClient.QueryAsync<TableEntity>(o => o.PartitionKey == nonExistentKey)) { }
   }
 
   public static async Task<TicketEntity> GetTicketAsync(string assigneeEmail, int id)
@@ -31,8 +30,7 @@ public static class TableService
 
   public static async Task<TicketEntity> GetTicketAsync(int id)
   {
-    var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.RowKey == id.ToRowKey()).ToListAsync();
-    return tickets.Count == 1 ? tickets[0] : null;
+    return await ticketsClient.QueryAsync<TicketEntity>(o => o.RowKey == id.ToRowKey()).SingleOrDefaultAsync();
   }
 
   public static async Task<List<TicketEntity>> GetAllTicketsAsync(DateTime? after = null)
@@ -170,22 +168,16 @@ public static class TableService
     return id.ToString("D6", CultureInfo.InvariantCulture);
   }
 
-  private static readonly Dictionary<int, TicketCacheItem> LastUpdatedCache = [];
+  private static readonly ConcurrentDictionary<int, TicketCacheItem> LastUpdatedCache = [];
 
   public static async Task<DateTime?> GetTicketCacheItemAsync(int ticketId, string user)
   {
     if (!LastUpdatedCache.TryGetValue(ticketId, out var cacheItem))
     {
-      var tickets = await ticketsClient.QueryAsync<TicketEntity>(o => o.RowKey == ticketId.ToRowKey(), select: ["PartitionKey", "LastUpdated"]).ToListAsync();
-      if (tickets.Count == 1)
-      {
-        cacheItem = new(tickets[0].PartitionKey, tickets[0].LastUpdated);
-        LastUpdatedCache[ticketId] = cacheItem;
-      }
-      else
-      {
-        return null;
-      }
+      var ticket = await ticketsClient.QueryAsync<TicketEntity>(o => o.RowKey == ticketId.ToRowKey(), select: ["PartitionKey", "LastUpdated"]).SingleOrDefaultAsync();
+      if (ticket is null) return null;
+      cacheItem = new(ticket.PartitionKey, ticket.LastUpdated);
+      LastUpdatedCache[ticketId] = cacheItem;
     }
     return user is null || user == cacheItem.AssigneeEmail ? cacheItem.LastUpdated : null;
   }
@@ -198,9 +190,8 @@ public static class TableService
   public static async Task HydrateCacheAsync()
   {
     LastUpdatedCache.Clear();
-    var tickets = await ticketsClient.QueryAsync<TicketEntity>(select: ["RowKey", "PartitionKey", "LastUpdated"]).ToListAsync();
     var maxId = 0;
-    foreach (var ticket in tickets)
+    await foreach (var ticket in ticketsClient.QueryAsync<TicketEntity>(select: ["RowKey", "PartitionKey", "LastUpdated"]))
     {
       var id = int.Parse(ticket.RowKey, CultureInfo.InvariantCulture);
       LastUpdatedCache[id] = new(ticket.PartitionKey, ticket.LastUpdated);
@@ -209,42 +200,6 @@ public static class TableService
     latestTicketId = maxId;
   }
 }
-
-public class TicketEntity : ITableEntity
-{
-  [JsonPropertyName("assigneeEmail")]
-  public string PartitionKey { get; set; }
-  [JsonPropertyName("id")]
-  public string RowKey { get; set; }
-  [JsonIgnore]
-  public DateTimeOffset? Timestamp { get; set; }
-  [JsonIgnore]
-  public ETag ETag { get; set; }
-
-  public bool IsClosed { get; set; }
-  public string Title { get; set; }
-  public DateTime Created { get; set; }
-  public DateTime LastUpdated { get; set; }
-  public DateTime? WaitingSince { get; set; }
-  public string StudentFirstName { get; set; }
-  public string StudentLastName { get; set; }
-  public string TutorGroup { get; set; }
-  public string AssigneeName { get; set; }
-  public string ParentName { get; set; }
-  public string ParentEmail { get; set; }
-  public string ParentPhone { get; set; }
-  public string ParentRelationship { get; set; }
-  public int? TimeToFirstResponse { get; set; }
-  public int? AverageAssigneeResponseTime { get; set; }
-}
-
-public class NewTicketEntity : TicketEntity
-{
-  [IgnoreDataMember]
-  public string Message { get; set; }
-}
-
-public record TicketCacheItem(string AssigneeEmail, DateTime LastUpdated);
 
 public static class QueryExtensions
 {
@@ -257,5 +212,14 @@ public static class QueryExtensions
       list.Add(item);
     }
     return list;
+  }
+
+  public static async Task<T> SingleOrDefaultAsync<T>(this AsyncPageable<T> query)
+  {
+    ArgumentNullException.ThrowIfNull(query);
+    await using var enumerator = query.GetAsyncEnumerator();
+    if (!await enumerator.MoveNextAsync()) return default;
+    var item = enumerator.Current;
+    return await enumerator.MoveNextAsync() ? default : item;
   }
 }

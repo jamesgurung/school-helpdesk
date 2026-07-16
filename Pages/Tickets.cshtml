@@ -1,43 +1,8 @@
 @page "/tickets"
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
-@inject IWebHostEnvironment Environment
-@{
-  var isManager = User.IsInRole(AuthConstants.Manager);
-  var isDispatcher = User.IsInRole(AuthConstants.Dispatcher);
-  var recentTicketsAfter = DateTime.Today.AddDays(isManager ? -14 : -90);
-  var tickets = isManager
-    ? await TableService.GetAllTicketsAsync(recentTicketsAfter)
-    : await TableService.GetTicketsByAssigneeAsync(User.Identity.Name, recentTicketsAfter);
-}
+@model TicketsModel
 
-<header>
-  <div class="header-container">
-    <a class="logo-section" href="/tickets/">
-      <img src="/img/logo.png" alt="Logo" class="header-logo">
-      <h1>Parent Helpdesk</h1>
-    </a>
-    <div class="user-actions">
-      @if (isDispatcher)
-      {
-        <button class="new-ticket-button" id="new-ticket-button">
-          <span class="material-symbols-rounded">add</span>
-          <span>New Ticket</span>
-        </button>
-      }
-      @if (isManager)
-      {
-        <button class="stats-button" id="stats-button">
-          <span class="material-symbols-rounded">monitoring</span>
-          <span>Stats</span>
-        </button>
-      }
-      <button class="logout-button" id="logout-button">
-        <span class="material-symbols-rounded">logout</span>
-        <span>Logout</span>
-      </button>
-    </div>
-  </div>
-</header>
+<partial name="_Header" model="new HeaderModel(Model.IsDispatcher, Model.IsManager)" />
 
 <div class="container">
   <div class="ticket-list">
@@ -143,7 +108,7 @@
     <div class="ticket-info-grid">
       <div class="ticket-info-item">
         <div class="ticket-info-value student-value">
-					<span class="material-symbols-rounded" title="Student">school</span>
+          <span class="material-symbols-rounded" title="Student">school</span>
           <span></span>
         </div>
       </div>
@@ -340,14 +305,14 @@
 </div>
 
 <script nonce="@HttpContext.Items["csp-nonce"]">
-  const tickets = @Html.Raw(Json.Serialize(tickets));
-  const { parents, staff } = @Html.Raw(isDispatcher ? School.Instance.UsersJson : "{\"parents\":[],\"staff\":[]}");
-  const currentUser = '@School.Instance.StaffByEmail[HttpContext.User.Identity.Name].Name';
-  const currentUserEmail = '@HttpContext.User.Identity.Name';
-  const isManager = @isManager.ToString().ToLowerInvariant();
-  const recentTicketsAfter = @Html.Raw(Json.Serialize(recentTicketsAfter));
+  const tickets = @Html.Raw(Json.Serialize(Model.Tickets));
+  const { parents, staff } = @Html.Raw(Model.IsDispatcher ? School.Instance.UsersJson : "{\"parents\":[],\"staff\":[]}");
+  const currentUser = @Html.Raw(Json.Serialize(School.Instance.StaffByEmail[HttpContext.User.Identity.Name].Name));
+  const currentUserEmail = @Html.Raw(Json.Serialize(HttpContext.User.Identity.Name));
+  const isManager = @Model.IsManager.ToString().ToLowerInvariant();
+  const recentTicketsAfter = @Html.Raw(Json.Serialize(Model.RecentTicketsAfter));
   const holidays = @Html.Raw(Json.Serialize(School.Instance.Holidays));
-  const antiforgeryToken = '@(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken)';
+  const antiforgeryToken = @Html.Raw(Json.Serialize(Antiforgery.GetAndStoreTokens(HttpContext).RequestToken));
 </script>
 
 <environment include="Development">

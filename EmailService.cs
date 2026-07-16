@@ -73,164 +73,148 @@ public static partial class EmailService
       return;
     }
 
-    var parentEmail = parents[0].Email;
-
     var ticketNumberMatch = TicketNumberRegex().Match(message.Subject);
     if (ticketNumberMatch.Success && int.TryParse(ticketNumberMatch.Groups[1].Value, out var ticketNumber))
     {
-      var ticket = await TableService.GetTicketAsync(ticketNumber);
-      if (ticket is not null && string.Equals(ticket.ParentEmail, parentEmail, StringComparison.OrdinalIgnoreCase))
+      await ProcessTicketReplyAsync(message, ticketNumber, parents[0].Email, messageId, textBody, htmlBody, strippedTextReply, to, cc);
+      return;
+    }
+
+    await CreateTicketFromEmailAsync(message, parents, textBody, htmlBody, strippedTextReply, to, cc);
+  }
+
+  private static async Task ProcessTicketReplyAsync(PostmarkInboundWebhookMessage message, int ticketNumber, string parentEmail, string messageId,
+    string textBody, string htmlBody, string strippedTextReply, string to, string cc)
+  {
+    var ticket = await TableService.GetTicketAsync(ticketNumber);
+    if (ticket is null || !string.Equals(ticket.ParentEmail, parentEmail, StringComparison.OrdinalIgnoreCase))
+    {
+      await SendRejectionEmailAsync(parentEmail, message.Subject, messageId, RejectionReason.UnknownTicket);
+      return;
+    }
+
+    var parentName = ticket.ParentName ?? "Parent/Carer";
+    var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, true);
+    var attachments = await UploadAttachmentsAsync(message.Attachments);
+    var messages = new List<Message>(2);
+    var now = DateTime.UtcNow;
+    if (ticket.IsClosed)
+    {
+      messages.Add(new()
       {
-        // Existing ticket for this parent
-        var parentName = ticket.ParentName ?? "Parent/Carer";
-        var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, true);
-        var attachments = await UploadAttachmentsAsync(message.Attachments);
-        var messages = new List<Message>(2);
-        var now = DateTime.UtcNow;
-        if (ticket.IsClosed)
+        AuthorName = parentName,
+        IsEmployee = false,
+        IsPrivate = true,
+        Timestamp = now,
+        Content = "#reopen"
+      });
+    }
+    messages.Add(new()
+    {
+      AuthorName = parentName,
+      IsEmployee = false,
+      IsPrivate = false,
+      Timestamp = now,
+      Content = body.MessageText,
+      OriginalEmail = body.SanitizedHtml,
+      Attachments = attachments,
+      EmailTo = to,
+      EmailCc = cc
+    });
+    await BlobService.AppendMessagesAsync(ticketNumber, messages);
+    await TableService.UpdateForNewParentMessageAsync(ticket, now);
+    if (ticket.PartitionKey != "unassigned" && School.Instance.StaffByEmail.TryGetValue(ticket.PartitionKey, out var assignee))
+      await SendTicketUpdateEmailAsync(ticketNumber, ticket, assignee, TicketUpdateAction.Updated);
+  }
+
+  private static async Task CreateTicketFromEmailAsync(PostmarkInboundWebhookMessage message, List<Parent> parents, string textBody, string htmlBody,
+    string strippedTextReply, string to, string cc)
+  {
+    var parentEmail = parents[0].Email;
+    var parentName = parents.Count == 1 ? parents[0].Name : null;
+    var students = parents.SelectMany(o => o.Children).DistinctBy(o => (o.FirstName, o.LastName)).ToList();
+    var student = students.Count == 1 ? students[0] : null;
+    var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
+    var subject = string.IsNullOrWhiteSpace(message.Subject) ? "Enquiry" : message.Subject.Trim();
+    if (subject.StartsWith("RE: ", StringComparison.OrdinalIgnoreCase) || subject.StartsWith("FW: ", StringComparison.OrdinalIgnoreCase))
+      subject = subject[3..].Trim();
+    var now = DateTime.UtcNow;
+
+    var ticket = new TicketEntity
+    {
+      PartitionKey = "unassigned",
+      Title = subject.Length <= 40 ? subject : (subject[..37].Trim() + "..."),
+      ParentName = parentName,
+      ParentEmail = parentEmail,
+      ParentPhone = parentName is null ? null : parents[0].Phone,
+      ParentRelationship = parentName is null ? null : student?.ParentRelationship,
+      StudentFirstName = student?.FirstName,
+      StudentLastName = student?.LastName,
+      TutorGroup = student?.TutorGroup
+    };
+
+    var id = await TableService.CreateTicketAsync(ticket);
+    var attachments = await UploadAttachmentsAsync(message.Attachments);
+    await BlobService.CreateConversationAsync(id, new Message
+    {
+      AuthorName = parentName ?? "Parent/Carer",
+      IsEmployee = false,
+      IsPrivate = false,
+      Timestamp = now,
+      Content = body.MessageText,
+      OriginalEmail = body.SanitizedHtml,
+      Attachments = attachments,
+      EmailSubject = string.IsNullOrWhiteSpace(message.Subject) ? null : message.Subject.Trim(),
+      EmailTo = to,
+      EmailCc = cc
+    });
+
+    try
+    {
+      await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title, null, null);
+    }
+    catch { } // Ignore notification email failures
+
+    try
+    {
+      var idString = id.ToRowKey();
+      if (ticket.ParentName is null)
+      {
+        var parent = await AIService.InferParentAsync(body.MessageText, parents, idString);
+        if (parent is not null)
         {
-          messages.Add(new()
-          {
-            AuthorName = parentName,
-            IsEmployee = false,
-            IsPrivate = true,
-            Timestamp = now,
-            Content = "#reopen"
-          });
-        }
-        messages.Add(new()
-        {
-          AuthorName = parentName,
-          IsEmployee = false,
-          IsPrivate = false,
-          Timestamp = now,
-          Content = body.MessageText,
-          OriginalEmail = body.SanitizedHtml,
-          Attachments = attachments,
-          EmailTo = to,
-          EmailCc = cc
-        });
-        await BlobService.AppendMessagesAsync(ticketNumber, messages);
-        await TableService.UpdateForNewParentMessageAsync(ticket, now);
-        if (ticket.PartitionKey != "unassigned" && School.Instance.StaffByEmail.TryGetValue(ticket.PartitionKey, out var assignee))
-        {
-          await SendTicketUpdateEmailAsync(ticketNumber, ticket, assignee, TicketUpdateAction.Updated);
+          students = parent.Children;
+          var studentWasUnknown = student is null;
+          if (students.Count == 1) student = students[0];
+          await TableService.ChangeTicketParentAsync(ticket, parent, student?.ParentRelationship);
+          if (studentWasUnknown && student is not null)
+            await TableService.ChangeTicketStudentAsync(ticket, student);
         }
       }
-      else
+
+      if (ticket.ParentName is not null && student is null)
       {
-        // Ticket not associated with this parent
-        await SendRejectionEmailAsync(parentEmail, message.Subject, messageId, RejectionReason.UnknownTicket);
+        student = await AIService.InferStudentAsync(subject, body.MessageText, students, idString);
+        if (student is not null)
+          await TableService.ChangeTicketStudentAsync(ticket, student);
+      }
+
+      var title = await AIService.GenerateTitleAsync(subject, body.MessageText, idString);
+      if (!string.IsNullOrWhiteSpace(title) && title != ticket.Title)
+      {
+        await TableService.RenameTicketAsync("unassigned", id, title);
+        ticket.Title = title;
       }
     }
-    else
+    catch { } // Ignore AI failures
+
+    if (School.Instance.NotifyFirstManager && School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var manager))
     {
-      // New ticket
-      var parentName = parents.Count == 1 ? parents[0].Name : null;
-      var students = parents.SelectMany(o => o.Children).DistinctBy(o => (o.FirstName, o.LastName)).ToList();
-      var student = students.Count == 1 ? students[0] : null;
-      var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
-      var subject = string.IsNullOrWhiteSpace(message.Subject) ? "Enquiry" : message.Subject.Trim();
-      if (subject.StartsWith("RE: ", StringComparison.OrdinalIgnoreCase) || subject.StartsWith("FW: ", StringComparison.OrdinalIgnoreCase))
-      {
-        subject = subject[3..].Trim();
-      }
-      var now = DateTime.UtcNow;
-
-      var ticket = new TicketEntity
-      {
-        PartitionKey = "unassigned",
-        AssigneeName = null,
-        Title = subject.Length <= 40 ? subject : (subject[..37].Trim() + "..."),
-        ParentName = parentName,
-        ParentEmail = parentEmail,
-        ParentPhone = parentName is null ? null : parents[0].Phone,
-        ParentRelationship = parentName is null ? null : student?.ParentRelationship,
-        Created = now,
-        LastUpdated = now,
-        WaitingSince = now,
-        StudentFirstName = student?.FirstName,
-        StudentLastName = student?.LastName,
-        TutorGroup = student?.TutorGroup,
-        IsClosed = false
-      };
-
-      var id = await TableService.CreateTicketAsync(ticket);
-      var attachments = await UploadAttachmentsAsync(message.Attachments);
-
-      var messages = new List<Message>
-      {
-        new()
-        {
-          AuthorName = parentName ?? "Parent/Carer",
-          IsEmployee = false,
-          IsPrivate = false,
-          Timestamp = now,
-          Content = body.MessageText,
-          OriginalEmail = body.SanitizedHtml,
-          Attachments = attachments,
-          EmailSubject = string.IsNullOrWhiteSpace(message.Subject) ? null : message.Subject.Trim(),
-          EmailTo = to,
-          EmailCc = cc
-        }
-      };
-
-      await BlobService.CreateConversationAsync(id, messages);
-
       try
       {
-        await SendTicketCreatedEmailAsync(parentEmail, id, ticket.Title, null, null);
+        await SendTicketUpdateEmailAsync(id, ticket, manager, TicketUpdateAction.NotifyNew);
       }
       catch { } // Ignore notification email failures
-
-      try
-      {
-        var idString = id.ToRowKey();
-        if (ticket.ParentName is null)
-        {
-          var parent = await AIService.InferParentAsync(body.MessageText, parents, idString);
-          if (parent is not null)
-          {
-            students = parent.Children;
-            var studentWasUnknown = student is null;
-            if (students.Count == 1)
-            {
-              student = students[0];
-            }
-            await TableService.ChangeTicketParentAsync(ticket, parent, student?.ParentRelationship);
-            if (studentWasUnknown && student is not null)
-            {
-              await TableService.ChangeTicketStudentAsync(ticket, student);
-            }
-          }
-        }
-
-        if (ticket.ParentName is not null && student is null)
-        {
-          student = await AIService.InferStudentAsync(subject, body.MessageText, students, idString);
-          if (student is not null)
-          {
-            await TableService.ChangeTicketStudentAsync(ticket, student);
-          }
-        }
-
-        var title = await AIService.GenerateTitleAsync(subject, body.MessageText, idString);
-        if (!string.IsNullOrWhiteSpace(title) && title != ticket.Title)
-        {
-          await TableService.RenameTicketAsync("unassigned", id, title);
-          ticket.Title = title;
-        }
-      }
-      catch { } // Ignore AI failures
-
-      if (School.Instance.NotifyFirstManager && School.Instance.StaffByEmail.TryGetValue(School.Instance.Managers?[0], out var manager))
-      {
-        try
-        {
-          await SendTicketUpdateEmailAsync(id, ticket, manager, TicketUpdateAction.NotifyNew);
-        }
-        catch { } // Ignore notification email failures
-      }
     }
   }
 

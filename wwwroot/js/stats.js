@@ -1,3 +1,14 @@
+const elements = {
+  latestWeekRange: document.getElementById('latest-week-range'),
+  latestWeekCount: document.getElementById('latest-week-count'),
+  latestWeekResponse: document.getElementById('latest-week-response'),
+  weeklyChart: document.getElementById('weekly-stats-chart'),
+  parentsTableBody: document.getElementById('parents-table-body'),
+  assigneesTableBody: document.getElementById('assignees-table-body'),
+  sortButtons: document.querySelectorAll('.stats-sort-btn'),
+  logoutBtn: document.getElementById('logout-button')
+};
+
 function parseDateOnly(value) {
   if (!value) return null;
   const [year, month, day] = value.split('-').map(Number);
@@ -41,26 +52,21 @@ function formatNumber(value) {
 }
 
 function updateLatestWeekHeadline() {
-  const latestWeekRange = document.getElementById('latest-week-range');
-  const latestWeekCount = document.getElementById('latest-week-count');
-  const latestWeekResponse = document.getElementById('latest-week-response');
-
   const latestWeek = [...weeks].reverse().find(week => !week.isCurrentWeek && !week.isHolidayWeek);
   if (!latestWeek) {
-    latestWeekRange.textContent = 'No data';
-    latestWeekCount.textContent = '0';
-    latestWeekResponse.textContent = 'No data';
+    elements.latestWeekRange.textContent = 'No data';
+    elements.latestWeekCount.textContent = '0';
+    elements.latestWeekResponse.textContent = 'No data';
     return;
   }
 
-  latestWeekRange.textContent = formatWeek(latestWeek.weekStart);
-  latestWeekCount.textContent = formatNumber(latestWeek.ticketsClosed);
-  latestWeekResponse.textContent = formatWorkingDuration(latestWeek.averageTimeToFirstResponse);
+  elements.latestWeekRange.textContent = formatWeek(latestWeek.weekStart);
+  elements.latestWeekCount.textContent = formatNumber(latestWeek.ticketsClosed);
+  elements.latestWeekResponse.textContent = formatWorkingDuration(latestWeek.averageTimeToFirstResponse);
 }
 
 function renderWeeklyChart() {
-  const canvas = document.getElementById('weekly-stats-chart');
-  if (!canvas || !Array.isArray(weeks) || weeks.length === 0) return;
+  if (!elements.weeklyChart || !Array.isArray(weeks) || weeks.length === 0) return;
 
   const monthsBack = window.innerWidth < 600 ? 3 : 6;
   const cutoffDate = new Date();
@@ -80,7 +86,7 @@ function renderWeeklyChart() {
   const barFillCurrentWeek = `${barFill}66`;
   const lineColor = getComputedStyle(document.documentElement).getPropertyValue('--secondary-dark').trim() || '#08807a';
 
-  new Chart(canvas, {
+  new Chart(elements.weeklyChart, {
     type: 'bar',
     data: {
       labels,
@@ -197,22 +203,20 @@ const sortState = {
 
 const tableConfig = {
   parents: {
-    bodyId: 'parents-table-body',
+    body: elements.parentsTableBody,
     rows: Array.isArray(parents) ? parents : [],
-    cells: [
-      row => row.parentName || '-',
-      row => row.studentName || '-',
-      row => `<span class="stats-pill">${formatNumber(row.count)}</span>`
-    ]
+    cells: row => [row.parentName || '-', row.studentName || '-', formatNumber(row.count)],
+    pillColumn: 2
   },
   assignees: {
-    bodyId: 'assignees-table-body',
+    body: elements.assigneesTableBody,
     rows: Array.isArray(assignees) ? assignees : [],
-    cells: [
-      row => row.assigneeName || '-',
-      row => row.averageResponseTime != null && row.averageResponseTime < 1800 ? '< 30 mins' : formatWorkingDuration(row.averageResponseTime),
-      row => `<span class="stats-pill">${formatNumber(row.count)}</span>`
-    ]
+    cells: row => [
+      row.assigneeName || '-',
+      row.averageResponseTime != null && row.averageResponseTime < 1800 ? '< 30 mins' : formatWorkingDuration(row.averageResponseTime),
+      formatNumber(row.count)
+    ],
+    pillColumn: 2
   }
 };
 
@@ -244,23 +248,44 @@ function getSortedRows(tableName) {
 
 function renderTable(tableName) {
   const config = tableConfig[tableName];
-  const tbody = document.getElementById(config.bodyId);
+  const tbody = config.body;
   if (!tbody) return;
 
   const sortedRows = getSortedRows(tableName);
+  tbody.replaceChildren();
   if (sortedRows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" class="stats-empty-row">No data available.</td></tr>';
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 3;
+    cell.className = 'stats-empty-row';
+    cell.textContent = 'No data available.';
+    row.appendChild(cell);
+    tbody.appendChild(row);
     return;
   }
 
-  tbody.innerHTML = sortedRows.map(row => {
-    const cells = config.cells.map(cell => `<td>${cell(row)}</td>`).join('');
-    return `<tr>${cells}</tr>`;
-  }).join('');
+  const fragment = document.createDocumentFragment();
+  sortedRows.forEach(item => {
+    const row = document.createElement('tr');
+    config.cells(item).forEach((value, index) => {
+      const cell = document.createElement('td');
+      if (index === config.pillColumn) {
+        const pill = document.createElement('span');
+        pill.className = 'stats-pill';
+        pill.textContent = value;
+        cell.appendChild(pill);
+      } else {
+        cell.textContent = value;
+      }
+      row.appendChild(cell);
+    });
+    fragment.appendChild(row);
+  });
+  tbody.appendChild(fragment);
 }
 
 function updateSortButtonLabels() {
-  document.querySelectorAll('.stats-sort-btn').forEach(button => {
+  elements.sortButtons.forEach(button => {
     const tableName = button.dataset.table;
     const key = button.dataset.key;
     const state = sortState[tableName];
@@ -277,7 +302,7 @@ function updateSortButtonLabels() {
 }
 
 function setupTableSorting() {
-  document.querySelectorAll('.stats-sort-btn').forEach(button => {
+  elements.sortButtons.forEach(button => {
     button.addEventListener('click', () => {
       const tableName = button.dataset.table;
       const key = button.dataset.key;
@@ -301,6 +326,7 @@ function setupTableSorting() {
 }
 
 function initStatsPage() {
+  elements.logoutBtn.addEventListener('click', () => window.location.href = '/logout');
   updateLatestWeekHeadline();
   renderWeeklyChart();
   renderTable('parents');

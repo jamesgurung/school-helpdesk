@@ -93,7 +93,7 @@ function setupParentSearch() {
   setupSearchInputListeners(elements.parentSearchInput, filterParents, results => displayParentAutocompleteResults(results, state.activeParent));
   setupTicketSearchListeners();
   elements.parentInfo.addEventListener('click', toggleParentSearchMode);
-  document.getElementById('parent-edit-icon').addEventListener('click', toggleParentSearchMode);
+  elements.parentEditIcon.addEventListener('click', toggleParentSearchMode);
   setupParentSearchKeyboardNavigation();
 }
 
@@ -125,7 +125,16 @@ function populateAutocompleteResults(container, items, nameField, emailField, on
   items.forEach(item => {
     const div = document.createElement('div');
     div.className = 'autocomplete-item';
-    div.innerHTML = `<div class="autocomplete-name">${item[nameField]}</div><div class="autocomplete-email">${item[emailField]}</div>`;
+
+    const name = document.createElement('div');
+    name.className = 'autocomplete-name';
+    name.textContent = item[nameField];
+
+    const email = document.createElement('div');
+    email.className = 'autocomplete-email';
+    email.textContent = item[emailField];
+
+    div.append(name, email);
     div.addEventListener('click', () => onClick(item));
     container.appendChild(div);
   });
@@ -214,8 +223,8 @@ function setupSuggestModal() {
 }
 
 function setupDocumentClickHandlers() {
-  document.getElementById('close-image-modal').addEventListener('click', closeImageModal);
-  document.getElementById('close-original-email-modal').addEventListener('click', closeOriginalEmailModal);
+  elements.closeImageModalBtn.addEventListener('click', closeImageModal);
+  elements.closeOriginalEmailModalBtn.addEventListener('click', closeOriginalEmailModal);
   
   document.addEventListener('click', e => {
     if (!elements.parentSearchInput.contains(e.target) && !elements.parentAutocompleteResults.contains(e.target)) {
@@ -232,17 +241,17 @@ function setupDocumentClickHandlers() {
       elements.assigneeEditAutocompleteResults.style.display = 'none'; 
       elements.assigneeEditContainer.style.display = 'none';
       const infoC = elements.assigneeInfoSection.querySelector('.info-container'); 
-      infoC && (infoC.style.display = 'flex');
+      if (infoC) infoC.style.display = 'flex';
     }
     if (e.target === elements.newTicketModal) {
       if (!hasUnsentNewTicketText()) {
         closeNewTicketModal();
       }
     }
-    if (e.target.id === 'image-modal') {
+    if (e.target === elements.imageModal) {
       closeImageModal();
     }
-    if (e.target.id === 'original-email-modal') {
+    if (e.target === elements.originalEmailModal) {
       closeOriginalEmailModal();
     }
     if (e.target.id === 'suggest-modal') {
@@ -254,10 +263,10 @@ function setupDocumentClickHandlers() {
       if (elements.newTicketModal.style.display === 'block') {
         confirmModalCloseWithUnsentText('close the new ticket form', closeNewTicketModal); 
       }
-      if (document.getElementById('image-modal').style.display === 'block') {
+      if (elements.imageModal.style.display === 'block') {
         closeImageModal(); 
       }
-      if (document.getElementById('original-email-modal').style.display === 'block') {
+      if (elements.originalEmailModal.style.display === 'block') {
         closeOriginalEmailModal(); 
       }
       if (elements.suggestModal.style.display === 'block') {
@@ -279,10 +288,10 @@ function setupIFrameStyles() {
 }
 
 function updateCloseTicketButtonText() {
-  const t = getCurrentTicket(); 
-  if (!t) return;
-  const hasMsg = elements.newMessageInput.value.trim();
-  if (t.isClosed) elements.closeTicketBtn.textContent = hasMsg ? 'Send & Reopen' : 'Reopen Ticket';
-  else elements.closeTicketBtn.textContent = hasMsg ? 'Send & Close' : 'Close Ticket';
-  elements.suggestStart.style.display = hasMsg ? 'none' : 'flex';
+  const ticket = getCurrentTicket();
+  if (!ticket) return;
+  const hasMessage = elements.newMessageInput.value.trim();
+  if (ticket.isClosed) elements.closeTicketBtn.textContent = hasMessage ? 'Send & Reopen' : 'Reopen Ticket';
+  else elements.closeTicketBtn.textContent = hasMessage ? 'Send & Close' : 'Close Ticket';
+  elements.suggestStart.style.display = hasMessage ? 'none' : 'flex';
 }

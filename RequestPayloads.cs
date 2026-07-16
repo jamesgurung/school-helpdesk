@@ -26,13 +26,6 @@ public class ChangeTitlePayload
   public string NewTitle { get; set; }
 }
 
-public class NewMessagePayload
-{
-  public string AssigneeEmail { get; set; }
-  public string Content { get; set; }
-  public bool IsPrivate { get; set; }
-}
-
 public class ChangeParentPayload
 {
   public string AssigneeEmail { get; set; }

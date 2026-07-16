@@ -38,18 +38,8 @@ public static partial class AIService
       (m, i) => $"## {(m.IsEmployee ? (i == 0 ? "Receptionist on behalf of the parent" : "Teacher") : "Parent")}:\n\n{m.Content}")
     );
 
-    var userMessage = ResponseItem.CreateUserMessageItem(
-      $"# Student name:\n\n{studentName}\n\n# Conversation history:\n\n{history}\n\n# Your response should communicate the following points:\n\n{guidance}");
-
-    var options = new CreateResponseOptions
-    {
-      Model = _deployment,
-      Instructions = instructions,
-      ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
-      StoredOutputEnabled = false,
-      EndUserId = $"helpdesk-{ticketId}"
-    };
-    options.InputItems.Add(userMessage);
+    var input = $"# Student name:\n\n{studentName}\n\n# Conversation history:\n\n{history}\n\n# Your response should communicate the following points:\n\n{guidance}";
+    var options = CreateOptions(instructions, input, ticketId);
 
     var response = await _client.CreateResponseAsync(options, ct);
     return NormaliseText(response.Value.OutputItems.Select(o => o as MessageResponseItem).First(o => o is not null).Content.First().Text);
@@ -66,17 +56,8 @@ public static partial class AIService
       Examples of good titles: "Late bus", "Science homework", "Unwell today", "New contact details", "Sport Studies trip", "Lost property", "Password reset", "ADHD support".
       """;
 
-    var userMessage = ResponseItem.CreateUserMessageItem($"# Email subject:\n\n{subject}\n\n# Email body:\n\n{body}");
-
-    var options = new CreateResponseOptions
-    {
-      Model = _deployment,
-      Instructions = instructions,
-      ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
-      StoredOutputEnabled = false,
-      EndUserId = $"helpdesk-{ticketId}"
-    };
-    options.InputItems.Add(userMessage);
+    var input = $"# Email subject:\n\n{subject}\n\n# Email body:\n\n{body}";
+    var options = CreateOptions(instructions, input, ticketId);
 
     var response = await _client.CreateResponseAsync(options);
     var title = NormaliseText(response.Value.OutputItems.Select(o => o as MessageResponseItem).First(o => o is not null).Content.First().Text);
@@ -98,39 +79,8 @@ public static partial class AIService
       For example, if the options were "Mr A Smith" and "Mrs A Jones" and the email was signed "Andrew", you would respond with { "parentName": "Mr A Smith" }.
       """;
 
-    var userMessage = ResponseItem.CreateUserMessageItem($"# Email received:\n\n{body}\n\n# Parent names:\n\n" + string.Join("\n", parentNames));
-
-    var schema = BinaryData.FromString("""
-    {
-      "type": "object",
-      "properties": {
-        "parentName": {
-          "anyOf": [
-            { "type": "string", "enum": ["[PARENT_NAMES]"] },
-            { "type": "null" }
-          ]
-        }
-      },
-      "required": ["parentName"],
-      "additionalProperties": false
-    }
-    """.Replace("[PARENT_NAMES]", string.Join("\", \"", parentNames), StringComparison.Ordinal));
-
-    var options = new CreateResponseOptions
-    {
-      Model = _deployment,
-      Instructions = instructions,
-      ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
-      StoredOutputEnabled = false,
-      EndUserId = $"helpdesk-{ticketId}",
-      TextOptions = new ResponseTextOptions { TextFormat = ResponseTextFormat.CreateJsonSchemaFormat("inference", schema, jsonSchemaIsStrict: true) }
-    };
-    options.InputItems.Add(userMessage);
-
-    var response = await _client.CreateResponseAsync(options);
-    var text = response.Value.OutputItems.Select(o => o as MessageResponseItem).FirstOrDefault(o => o is not null)?.Content.FirstOrDefault()?.Text;
-    if (text is null) return null;
-    var parentName = JsonElement.Parse(text).GetProperty("parentName").GetString();
+    var input = $"# Email received:\n\n{body}\n\n# Parent names:\n\n" + string.Join("\n", parentNames);
+    var parentName = await InferNameAsync(instructions, input, ticketId, "parentName", parentNames);
     return parentName is null ? null : parents.FirstOrDefault(p => p.Name.Equals(parentName, StringComparison.OrdinalIgnoreCase));
   }
 
@@ -148,40 +98,48 @@ public static partial class AIService
       For example, if the options were "John Smith 7ABC" and "Lauren Smith 8DEF" and the email referred to "my son", you would respond with { "studentName": "John Smith 7ABC" }.
       """;
 
-    var userMessage = ResponseItem.CreateUserMessageItem($"# Email received:\n\nSubject: {subject}\n\n{body}\n\n# Student names:\n\n" + string.Join("\n", studentNames));
+    var input = $"# Email received:\n\nSubject: {subject}\n\n{body}\n\n# Student names:\n\n" + string.Join("\n", studentNames);
+    var studentName = await InferNameAsync(instructions, input, ticketId, "studentName", studentNames);
+    return studentName is null ? null : students.FirstOrDefault(s => $"{s.FirstName} {s.LastName} {s.TutorGroup}".Trim().Equals(studentName, StringComparison.OrdinalIgnoreCase));
+  }
 
+  private static async Task<string> InferNameAsync(string instructions, string input, string ticketId, string propertyName, List<string> names)
+  {
     var schema = BinaryData.FromString("""
     {
       "type": "object",
       "properties": {
-        "studentName": {
+        "[PROPERTY_NAME]": {
           "anyOf": [
-            { "type": "string", "enum": ["[STUDENT_NAMES]"] },
+            { "type": "string", "enum": ["[NAMES]"] },
             { "type": "null" }
           ]
         }
       },
-      "required": ["studentName"],
+      "required": ["[PROPERTY_NAME]"],
       "additionalProperties": false
     }
-    """.Replace("[STUDENT_NAMES]", string.Join("\", \"", studentNames), StringComparison.Ordinal));
+    """.Replace("[PROPERTY_NAME]", propertyName, StringComparison.Ordinal)
+      .Replace("[NAMES]", string.Join("\", \"", names), StringComparison.Ordinal));
+    var textOptions = new ResponseTextOptions { TextFormat = ResponseTextFormat.CreateJsonSchemaFormat("inference", schema, jsonSchemaIsStrict: true) };
+    var response = await _client.CreateResponseAsync(CreateOptions(instructions, input, ticketId, textOptions));
+    var text = response.Value.OutputItems.Select(o => o as MessageResponseItem).FirstOrDefault(o => o is not null)?.Content.FirstOrDefault()?.Text;
+    return text is null ? null : JsonElement.Parse(text).GetProperty(propertyName).GetString();
+  }
 
+  private static CreateResponseOptions CreateOptions(string instructions, string input, string ticketId, ResponseTextOptions textOptions = null)
+  {
     var options = new CreateResponseOptions
     {
       Model = _deployment,
       Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
       StoredOutputEnabled = false,
-      EndUserId = $"helpdesk-{ticketId}",
-      TextOptions = new ResponseTextOptions { TextFormat = ResponseTextFormat.CreateJsonSchemaFormat("inference", schema, jsonSchemaIsStrict: true) }
+      EndUserId = $"helpdesk-{ticketId}"
     };
-    options.InputItems.Add(userMessage);
-
-    var response = await _client.CreateResponseAsync(options);
-    var text = response.Value.OutputItems.Select(o => o as MessageResponseItem).FirstOrDefault(o => o is not null)?.Content.FirstOrDefault()?.Text;
-    if (text is null) return null;
-    var studentName = JsonElement.Parse(text).GetProperty("studentName").GetString();
-    return studentName is null ? null : students.FirstOrDefault(s => $"{s.FirstName} {s.LastName} {s.TutorGroup}".Trim().Equals(studentName, StringComparison.OrdinalIgnoreCase));
+    if (textOptions is not null) options.TextOptions = textOptions;
+    options.InputItems.Add(ResponseItem.CreateUserMessageItem(input));
+    return options;
   }
 
   private static string NormaliseText(string text)

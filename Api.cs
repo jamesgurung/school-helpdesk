@@ -10,6 +10,7 @@ public static class Api
 {
   public static void MapApiPaths(this WebApplication app)
   {
+    ArgumentNullException.ThrowIfNull(app);
     app.MapGet("/", () => Results.Redirect("/tickets/"));
     app.MapGet("/tickets/{id:int}", (int id) => Results.Redirect($"/tickets/#{id}"));
 
@@ -31,7 +32,13 @@ public static class Api
     });
 
     var group = app.MapGroup("/api").ValidateAntiforgery().RequireAuthorization();
+    MapMaintenancePaths(group, app.Logger);
+    MapTicketPaths(group);
+    MapExternalPaths(app);
+  }
 
+  private static void MapMaintenancePaths(RouteGroupBuilder group, ILogger logger)
+  {
     group.MapGet("/refresh", [Authorize(Roles = AuthConstants.Administrator)] async () =>
     {
       await BlobService.LoadConfigAsync();
@@ -42,13 +49,17 @@ public static class Api
     {
       foreach (var ticket in await TableService.GetAllTicketsAsync())
       {
-        var (first, average) = CalculateStats(await BlobService.GetMessagesAsync(int.Parse(ticket.RowKey, CultureInfo.InvariantCulture)), ticket.AssigneeName);
+        var (first, average) = ResponseTimeCalculator.Calculate(await BlobService.GetMessagesAsync(int.Parse(ticket.RowKey, CultureInfo.InvariantCulture)), ticket.AssigneeName);
         await TableService.SetLastUpdatedAsync(ticket, ticket.LastUpdated, false, first, average);
-        Console.WriteLine($"Recalculated stats for ticket #{ticket.RowKey}");
+        if (logger.IsEnabled(LogLevel.Information))
+          logger.LogInformation("Recalculated stats for ticket #{TicketId}", ticket.RowKey);
       }
       return Results.Content("Recalculated stats for all tickets", "text/plain");
     });
+  }
 
+  private static void MapTicketPaths(RouteGroupBuilder group)
+  {
     group.MapGet("/tickets", async (HttpContext context) =>
     {
       var tickets = context.User.IsInRole(AuthConstants.Manager)
@@ -80,7 +91,7 @@ public static class Api
       if (ticket.IsClosed)
         return Results.BadRequest("Cannot create a closed ticket.");
 
-      var message = ticket?.Message?.Trim();
+      var message = ticket.Message?.Trim();
 
       if (string.IsNullOrWhiteSpace(message))
         return Results.BadRequest("Initial message is required.");
@@ -100,21 +111,19 @@ public static class Api
         return Results.BadRequest("Student does not match any child of the parent.");
 
       var user = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
-      var ticketEntity = ticket as TicketEntity;
-
-      var id = await TableService.CreateTicketAsync(ticketEntity);
+      var id = await TableService.CreateTicketAsync(ticket);
       var tasks = new List<Task>
       {
-        BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = ticketEntity.LastUpdated, Content = message },
-          new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = ticketEntity.LastUpdated, Content = $"#assign {assignee.Name}" }),
+        BlobService.CreateConversationAsync(id, new Message { AuthorName = user, IsEmployee = true, Timestamp = ticket.LastUpdated, Content = message },
+          new Message { AuthorName = user, IsEmployee = true, IsPrivate = true, Timestamp = ticket.LastUpdated, Content = $"#assign {assignee.Name}" }),
         EmailService.SendTicketCreatedEmailAsync(parent.Email, id, ticket.Title, user, GetSalutation(parent.Name))
       };
       if (ticket.PartitionKey != context.User.Identity.Name)
       {
-        tasks.Add(EmailService.SendTicketUpdateEmailAsync(id, ticketEntity, assignee, TicketUpdateAction.Assigned));
+        tasks.Add(EmailService.SendTicketUpdateEmailAsync(id, ticket, assignee, TicketUpdateAction.Assigned));
       }
       await Task.WhenAll(tasks);
-      return Results.Created((string)null, ticketEntity);
+      return Results.Created((string)null, (TicketEntity)ticket);
     });
 
     group.MapGet("/tickets/{id:int}", async (int id, HttpContext context) =>
@@ -168,7 +177,7 @@ public static class Api
       return Results.Ok(ticket.LastUpdated);
     });
 
-    group.MapPut("/tickets/{id:int}/student", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeStudentPayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/student", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeStudentPayload payload) =>
     {
       if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
         return Results.BadRequest("Assignee email is required.");
@@ -190,7 +199,7 @@ public static class Api
       return Results.NoContent();
     });
 
-    group.MapPut("/tickets/{id:int}/parent", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeParentPayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/parent", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeParentPayload payload) =>
     {
       if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
         return Results.BadRequest("Assignee email is required.");
@@ -243,7 +252,7 @@ public static class Api
       return Results.Ok(updated.Value);
     });
 
-    group.MapPut("/tickets/{id:int}/title", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeTitlePayload payload, HttpContext context) =>
+    group.MapPut("/tickets/{id:int}/title", [Authorize(Roles = AuthConstants.Manager)] async (int id, [FromBody] ChangeTitlePayload payload) =>
     {
       if (string.IsNullOrWhiteSpace(payload?.NewTitle))
         return Results.BadRequest("Ticket title is required.");
@@ -330,7 +339,7 @@ public static class Api
         Attachments = attachments.Count > 0 ? attachments : null
       };
       var messages = await BlobService.AppendMessagesAsync(id, message);
-      var (first, average) = CalculateStats(messages, ticket.AssigneeName);
+      var (first, average) = ResponseTimeCalculator.Calculate(messages, ticket.AssigneeName);
       await TableService.SetLastUpdatedAsync(ticket, now, !isPrivate, first, average);
 
       if (!isPrivate)
@@ -375,7 +384,10 @@ public static class Api
       var lastUpdated = await TableService.GetTicketCacheItemAsync(id, user);
       return lastUpdated is null ? Results.NotFound() : Results.Ok(lastUpdated.Value);
     });
+  }
 
+  private static void MapExternalPaths(WebApplication app)
+  {
     app.MapPut("/api/users", [AllowAnonymous] async (HttpContext context, [FromHeader(Name = "X-Api-Key")] string auth) =>
     {
       if (string.IsNullOrEmpty(School.Instance.SyncApiKey)) return Results.Conflict("An sync API key is not configured.");
@@ -440,76 +452,4 @@ public static class Api
     return tokens.Length == 3 && tokens[1].Length == 1 ? $"{tokens[0]} {tokens[2]}" : (tokens.Length >= 2 ? addressee : "Parent/Carer");
   }
 
-  private static (int? First, int? Average) CalculateStats(List<Message> messages, string assigneeName)
-  {
-    ArgumentNullException.ThrowIfNull(messages);
-    if (messages.Count < 2) return (null, null);
-
-    if (messages[0].IsEmployee && string.Equals(messages[0].AuthorName, assigneeName, StringComparison.OrdinalIgnoreCase)) return (null, null);
-
-    var ticketOpened = messages[0].Timestamp;
-    var firstResponse = messages.Skip(1).FirstOrDefault(m => m.IsEmployee && (!m.IsPrivate || string.Equals(m.Content, "#close", StringComparison.OrdinalIgnoreCase)));
-    var firstResponseTime = firstResponse is null ? (int?)null : WorkingSecondsBetweenTimestamps(ticketOpened, firstResponse.Timestamp);
-
-    if (string.IsNullOrWhiteSpace(assigneeName)) return (firstResponseTime, null);
-    const string assignCommand = "#assign ";
-    var responseTimes = new List<int>();
-    var isAssigned = false;
-    DateTime? waitingSince = null;
-
-    foreach (var message in messages)
-    {
-      if (message.Content?.StartsWith(assignCommand, StringComparison.OrdinalIgnoreCase) ?? false)
-      {
-        var assignedName = message.Content[assignCommand.Length..];
-        isAssigned = string.Equals(assignedName, assigneeName, StringComparison.OrdinalIgnoreCase);
-        waitingSince = isAssigned ? message.Timestamp : null;
-        continue;
-      }
-      if (!isAssigned) continue;
-      if (!message.IsEmployee)
-      {
-        waitingSince ??= message.Timestamp;
-        continue;
-      }
-      if (!string.Equals(message.AuthorName, assigneeName, StringComparison.OrdinalIgnoreCase) || waitingSince is null)
-      {
-        continue;
-      }
-      responseTimes.Add(WorkingSecondsBetweenTimestamps(waitingSince.Value, message.Timestamp));
-      waitingSince = null;
-    }
-
-    return (firstResponseTime, responseTimes.Count == 0 ? null : (int?)responseTimes.Average());
-  }
-
-  private static int WorkingSecondsBetweenTimestamps(DateTime start, DateTime end)
-  {
-    if (end <= start) return 0;
-
-    var workingDayStart = TimeSpan.FromHours(8) + TimeSpan.FromMinutes(30);
-    var workingDayEnd = TimeSpan.FromHours(16) + TimeSpan.FromMinutes(30);
-    var holidays = School.Instance.Holidays;
-    var seconds = 0;
-
-    for (var day = start.Date; day <= end.Date; day = day.AddDays(1))
-    {
-      if (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) continue;
-
-      var date = DateOnly.FromDateTime(day);
-      if (holidays?.Any(h => h.Start <= date && h.End >= date) ?? false) continue;
-
-      var workingStart = day + workingDayStart;
-      var workingEnd = day + workingDayEnd;
-      var intervalStart = start > workingStart ? start : workingStart;
-      var intervalEnd = end < workingEnd ? end : workingEnd;
-
-      if (intervalEnd > intervalStart)
-      {
-        seconds += (int)(intervalEnd - intervalStart).TotalSeconds;
-      }
-    }
-
-    return seconds;
-  }
 }

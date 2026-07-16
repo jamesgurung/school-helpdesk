@@ -10,10 +10,13 @@ public static partial class TextFormatting
 {
   private static readonly Converter _markdownConverter = new(new()
   {
-    CleanupUnnecessarySpaces = true,
-    RemoveComments = true,
-    SmartHrefHandling = true,
-    UnknownTags = Config.UnknownTagsOption.Bypass
+    Formatting =
+    {
+      CleanupSpaces = true,
+      RemoveComments = true
+    },
+    Links = { SmartHref = true },
+    Tags = { Unknown = Config.UnknownTagsOption.Bypass }
   });
 
   public static string CleanText(string text)

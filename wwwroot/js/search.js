@@ -80,11 +80,12 @@ function normalisePhone(phone) {
 
 function mergeTickets(loadedTickets) {
   loadedTickets.forEach(ticket => {
-    const existing = tickets.find(t => t.id === ticket.id);
+    const existing = ticketsById.get(ticket.id);
     if (existing) {
       Object.assign(existing, ticket);
     } else {
       tickets.push(ticket);
+      ticketsById.set(ticket.id, ticket);
     }
   });
   tickets.sort((a, b) => Date.parse(b.lastUpdated) - Date.parse(a.lastUpdated));
@@ -92,7 +93,7 @@ function mergeTickets(loadedTickets) {
 
 async function loadAllTickets() {
   if (state.allTicketsLoaded) return;
-  if (state.allTicketsLoading) return await state.allTicketsLoading;
+  if (state.allTicketsLoading) return state.allTicketsLoading;
 
   state.allTicketsLoading = (async () => {
     const loadedTickets = await apiGetAllTickets();
@@ -153,11 +154,10 @@ function getAssigneeSearchValue(ticket) {
 }
 
 function getParentStudents(parentValue) {
-  return tickets
+  return [...new Set(tickets
     .filter(ticket => getParentSearchValue(ticket) === parentValue)
     .map(getStudentName)
-    .filter(Boolean)
-    .filter((student, index, students) => students.indexOf(student) === index)
+    .filter(Boolean))]
     .join(', ');
 }
 
@@ -176,7 +176,7 @@ function filterTicketSearchOptions(query) {
 
   if (isTicketNumberQuery) {
     for (const ticket of tickets) {
-      const id = parseInt(ticket.id);
+      const id = parseInt(ticket.id, 10);
       if (String(id).startsWith(idQuery)) {
         addTicketSearchOption(options, seen, 'id', ticket.id, `#${id} ${ticket.title || ''}`.trim(), `Ticket for ${getStudentDetail(ticket)}`, `#${id}`);
         if (options.length >= maxOptions) break;
@@ -261,23 +261,23 @@ function selectTicketSearch(search, openIdTicket = true) {
 }
 
 async function openTicketFromSearch(ticketId) {
-  const preloadedTicket = tickets.find(t => t.id === ticketId);
+  const preloadedTicket = ticketsById.get(ticketId);
   const preloadedTab = preloadedTicket && (!preloadedTicket.isClosed ? 'open' : isRecentClosedTicket(preloadedTicket) ? 'closed' : null);
   if (preloadedTab) {
     await activateTicketsTab(preloadedTab, false, false);
     document.querySelector(`.ticket-item[data-id="${ticketId}"]`)?.scrollIntoView({ block: 'nearest' });
     openTicketDetails(ticketId, true);
-    history.replaceState(null, '', `/tickets/${parseInt(ticketId)}`);
+    history.replaceState(null, '', `/tickets/${parseInt(ticketId, 10)}`);
     return;
   }
 
   await activateTicketsTab('search', false, false);
-  const ticket = tickets.find(t => t.id === ticketId);
+  const ticket = ticketsById.get(ticketId);
   const search = {
     type: 'id',
     value: ticketId,
-    name: ticket ? `#${parseInt(ticketId)} ${ticket.title || ''}`.trim() : `#${parseInt(ticketId)}`,
-    inputValue: `#${parseInt(ticketId)}`,
+    name: ticket ? `#${parseInt(ticketId, 10)} ${ticket.title || ''}`.trim() : `#${parseInt(ticketId, 10)}`,
+    inputValue: `#${parseInt(ticketId, 10)}`,
     detail: ticket ? `Ticket for ${getStudentDetail(ticket)}` : 'Ticket for Not Set'
   };
   selectTicketSearch(search, false);
@@ -289,7 +289,7 @@ async function openTicketFromSearch(ticketId) {
   }
 
   openTicketDetails(ticketId, true);
-  history.replaceState(null, '', `/tickets/${parseInt(ticketId)}`);
+  history.replaceState(null, '', `/tickets/${parseInt(ticketId, 10)}`);
 }
 
 function setupTicketSearchListeners() {
@@ -374,10 +374,15 @@ function displayParentAutocompleteResults(results, selectedParent = null) {
       }).join(', ');
     }
 
-    item.innerHTML = `
-      <div class="autocomplete-name">${parent.name}</div>
-      <div class="autocomplete-email">${parent.email} - ${childrenInfo}</div>
-    `;
+    const name = document.createElement('div');
+    name.className = 'autocomplete-name';
+    name.textContent = parent.name;
+
+    const detail = document.createElement('div');
+    detail.className = 'autocomplete-email';
+    detail.textContent = `${parent.email} - ${childrenInfo}`;
+
+    item.append(name, detail);
     item.addEventListener('click', () => selectParent(parent));
     elements.parentAutocompleteResults.appendChild(item);
   });
@@ -405,7 +410,7 @@ function selectParent(parent) {
     autocompleteResults: elements.parentAutocompleteResults,
     searchContainer: elements.parentSearchContainer,
     infoDisplay: elements.parentInfo,
-    editIcon: document.getElementById('parent-edit-icon'),
+    editIcon: elements.parentEditIcon,
     nameProperty: 'name',
     infoDisplayType: 'flex'
   });
@@ -431,7 +436,9 @@ function updateStudentOptions(children) {
   if (!children || children.length === 0) {
     elements.studentSelectInput.disabled = true;
     return;
-  } children.forEach(child => {
+  }
+
+  children.forEach(child => {
     const option = document.createElement('option');
     option.value = `${child.firstName}|${child.lastName}|${child.tutorGroup}`;
     option.textContent = `${child.firstName} ${child.lastName} (${child.tutorGroup})`;
@@ -444,7 +451,7 @@ function toggleParentSearchMode(e) {
   toggleSearchDisplayMode(e, {
     searchContainer: elements.parentSearchContainer,
     infoDisplay: elements.parentInfo,
-    editIcon: document.getElementById('parent-edit-icon'),
+    editIcon: elements.parentEditIcon,
     searchInput: elements.parentSearchInput,
     activeItem: state.activeParent,
     activeItemNameProperty: 'name',

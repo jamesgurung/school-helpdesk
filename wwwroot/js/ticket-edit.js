@@ -21,7 +21,7 @@ async function updateTicketTitle() {
 
   try {
     ticket.title = newTitle;
-    document.title = `#${+ticket.id} ${newTitle} - Parent Helpdesk`
+    document.title = `#${+ticket.id} ${newTitle} - Parent Helpdesk`;
     renderTicketInList(ticket);
     await apiUpdateTicketTitle(ticket.id, ticket.assigneeEmail, newTitle);
   } catch (error) {
@@ -174,7 +174,7 @@ function toggleSelectEdit(selectEl, infoSection, getOptions, updateFn) {
   if (selectEl.parentElement === infoSection) {
     updateFn();
     selectEl.classList.add('hidden-select');
-    document.querySelector('.hidden-selects').appendChild(selectEl);
+    elements.hiddenSelects.appendChild(selectEl);
     infoContainer.style.display = 'flex';
   } else {
     infoContainer.style.display = 'none';
@@ -205,9 +205,6 @@ function toggleAssigneeEdit() {
   const infoContainer = elements.assigneeInfoSection.querySelector('.info-container');
 
   if (editContainer.style.display === 'none') {
-    const ticket = getCurrentTicket();
-    if (!ticket) return;
-
     infoContainer.style.display = 'none';
     editContainer.style.display = 'block';
     elements.assigneeEditInput.value = ticket.assigneeName;

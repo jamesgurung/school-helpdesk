@@ -10,7 +10,8 @@ async function activateTicketsTab(tabName, resetDetails = true, focusSearch = tr
     elements.ticketsContainer.innerHTML = '';
     try {
       await loadAllTickets();
-    } catch {
+    } catch (error) {
+      console.error('Failed to load all tickets:', error);
       renderTickets(state.activeTab);
       return;
     }
@@ -46,17 +47,18 @@ function renderTickets(status) {
   const filteredTickets = getTicketsForTab(status);
 
   if (filteredTickets.length === 0) {
-    const emptyClone = document.getElementById('empty-tickets-template').content.cloneNode(true);
+    const emptyClone = elements.emptyTicketsTemplate.content.cloneNode(true);
     emptyClone.querySelector('.status-text').textContent = status === 'search' ? 'matching' : status;
     elements.ticketsContainer.appendChild(emptyClone);
     return;
   }
 
+  const fragment = document.createDocumentFragment();
   filteredTickets.forEach(ticket => {
-    const ticketClone = document.getElementById('ticket-item-template').content.cloneNode(true);
+    const ticketClone = elements.ticketItemTemplate.content.cloneNode(true);
     const ticketElement = ticketClone.querySelector('.ticket-item');
     ticketElement.dataset.id = ticket.id;
-    ticketClone.querySelector('.ticket-id').textContent = '#' + parseInt(ticket.id);
+    ticketClone.querySelector('.ticket-id').textContent = '#' + parseInt(ticket.id, 10);
     ticketClone.querySelector('.ticket-title').textContent = ticket.title;
 
     const studentElement = ticketClone.querySelector('.student-value span:not(.material-symbols-rounded)');
@@ -83,24 +85,29 @@ function renderTickets(status) {
     const waitTimeText = ticketClone.querySelector('.wait-time');
 
     if (ticket.isClosed) {
-      waitTimeIcon.textContent = "check_circle";
-      waitTimeText.textContent = "Resolved";
+      waitTimeIcon.textContent = 'check_circle';
+      waitTimeText.textContent = 'Resolved';
     } else if (ticket.waitingSince === null) {
-      waitTimeIcon.textContent = "mark_email_read";
-      waitTimeText.textContent = "Reply sent";
+      waitTimeIcon.textContent = 'mark_email_read';
+      waitTimeText.textContent = 'Reply sent';
     } else {
-      waitTimeIcon.textContent = "timer";
-      waitTimeText.innerHTML = `Open for <span class="elapsed-time">${calculateTimeElapsed(ticket.waitingSince)}</span>`;
+      waitTimeIcon.textContent = 'timer';
+      waitTimeText.textContent = 'Open for ';
+      const elapsedTime = document.createElement('span');
+      elapsedTime.className = 'elapsed-time';
+      elapsedTime.textContent = calculateTimeElapsed(ticket.waitingSince);
+      waitTimeText.appendChild(elapsedTime);
       waitTimeText.classList.toggle('overdue', workingDaysSince(ticket.waitingSince) >= 2);
     }
-    elements.ticketsContainer.appendChild(ticketClone);
 
-    document.querySelector(`.ticket-item[data-id="${ticket.id}"]`).addEventListener('click', () => {
+    ticketElement.addEventListener('click', () => {
       confirmNavigationWithUnsentText('switch to another ticket', () => {
         openTicketDetails(ticket.id);
       });
     });
+    fragment.appendChild(ticketClone);
   });
+  elements.ticketsContainer.appendChild(fragment);
 }
 
 function resetDetailsView() {
@@ -130,7 +137,10 @@ function resetDetailsView() {
 }
 
 function updateOpenTicketsBadge() {
-  const numTickets = tickets.filter(ticket => !ticket.isClosed).length;
+  let numTickets = 0;
+  for (const ticket of tickets) {
+    if (!ticket.isClosed) numTickets++;
+  }
   if (numTickets > 0) {
     elements.openBadge.textContent = numTickets;
     elements.openBadge.style.display = 'flex';

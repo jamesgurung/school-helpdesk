@@ -1,6 +1,6 @@
 // Ticket Details Management
 async function openTicketDetails(ticketId, fromHash = false) {
-  const ticket = tickets.find(t => t.id === ticketId);
+  const ticket = ticketsById.get(ticketId);
   if (!ticket) return;
 
   state.currentTicketId = ticketId;
@@ -51,18 +51,22 @@ async function openTicketDetails(ticketId, fromHash = false) {
   elements.messageAttachments.disabled = true;
   elements.guidanceInput.value = '';
 
-  await fetch(`/api/tickets/${ticketId}`).then(response => response.json())
-    .then(conversation => {
-      state.conversation = conversation;
-      ticket.lastUpdated = conversation.at(-1).timestamp;
-      renderConversation();
-      updateMessageControlsState(ticket);
-      startPollingTicketUpdates(ticketId);
-    })
-    .catch(error => {
-      console.error('Error fetching conversation:', error);
-      showToast('Error fetching ticket conversation: ' + error, 'error');
-    });
+  try {
+    const response = await fetch(`/api/tickets/${ticketId}`);
+    if (!response.ok) throw new Error(`load conversation: ${response.status}`);
+
+    const conversation = await response.json();
+    if (state.currentTicketId !== ticketId) return;
+
+    state.conversation = conversation;
+    ticket.lastUpdated = conversation.at(-1).timestamp;
+    renderConversation();
+    updateMessageControlsState(ticket);
+    startPollingTicketUpdates(ticketId);
+  } catch (error) {
+    console.error('Error fetching conversation:', error);
+    showToast('Error fetching ticket conversation: ' + error, 'error');
+  }
 }
 
 function startPollingTicketUpdates(ticketId) {
@@ -97,7 +101,7 @@ async function checkTicketUpdates(ticketId) {
     currentTicket.lastUpdated = serverLastUpdated;
     const isFocused = document.activeElement === elements.newMessageInput;
     const scrollPosition = elements.ticketDetails.scrollTop;
-    await openTicketDetails(ticketId, false, true);
+    await openTicketDetails(ticketId);
     elements.ticketDetails.scrollTop = scrollPosition;
     if (isFocused) elements.newMessageInput.focus();
     return true;
@@ -214,7 +218,7 @@ function renderInfoSection(type, config) {
   const container = elements[`${type}InfoSection`];
   container.innerHTML = '';
 
-  const infoClone = document.getElementById('info-section-template').content.cloneNode(true);
+  const infoClone = elements.infoSectionTemplate.content.cloneNode(true);
 
   infoClone.querySelector('.heading-text').textContent = config.heading;
 
@@ -316,23 +320,11 @@ function updateMessageControlsState(ticket) {
   const canClose = ticket.isClosed || canSend;
   elements.closeTicketBtn.disabled = !canClose;
 
-  if (!canSend) {
-    elements.newMessageInput.placeholder = 'Complete ticket details first.';
-    elements.sendMessageBtn.style.opacity = '0.5';
-    elements.newMessageInput.style.opacity = '0.5';
-    elements.uploadFilesBtn.style.opacity = '0.5';
-    elements.suggestStart.style.opacity = '0.5';
-  } else {
-    elements.newMessageInput.placeholder = 'Type your message here...';
-    elements.sendMessageBtn.style.opacity = '1';
-    elements.newMessageInput.style.opacity = '1';
-    elements.uploadFilesBtn.style.opacity = '1';
-    elements.suggestStart.style.opacity = '1';
-  }
-
-  if (!canClose) {
-    elements.closeTicketBtn.style.opacity = '0.5';
-  } else {
-    elements.closeTicketBtn.style.opacity = '1';
-  }
+  elements.newMessageInput.placeholder = canSend ? 'Type your message here...' : 'Complete ticket details first.';
+  const messageControlOpacity = canSend ? '1' : '0.5';
+  elements.sendMessageBtn.style.opacity = messageControlOpacity;
+  elements.newMessageInput.style.opacity = messageControlOpacity;
+  elements.uploadFilesBtn.style.opacity = messageControlOpacity;
+  elements.suggestStart.style.opacity = messageControlOpacity;
+  elements.closeTicketBtn.style.opacity = canClose ? '1' : '0.5';
 }

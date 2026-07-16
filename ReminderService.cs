@@ -34,18 +34,18 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
         await SendRemindersAsync();
         logger.LogInformation("Sent reminder emails");
       }
-      catch
+      catch (Exception ex)
       {
-        logger.LogError("Error sending reminder emails");
+        logger.LogError(ex, "Error sending reminder emails");
       }
       try
       {
         await QueueService.ProcessPendingEmailsAsync();
         logger.LogInformation("Processed pending emails from queue");
       }
-      catch
+      catch (Exception ex)
       {
-        logger.LogError("Error processing pending emails from queue");
+        logger.LogError(ex, "Error processing pending emails from queue");
       }
     }
   }
@@ -54,7 +54,7 @@ public class ReminderService(ILogger<ReminderService> logger) : BackgroundServic
   {
     var allTickets = await TableService.GetAllTicketsAsync();
     var now = DateTime.UtcNow;
-    var openTickets = allTickets.Where(t => !t.IsClosed && (t.WaitingSince is null || now - t.WaitingSince > TimeSpan.FromHours(16))).ToList();
+    var openTickets = allTickets.Where(t => !t.IsClosed && (t.WaitingSince is null || now - t.WaitingSince > TimeSpan.FromHours(16)));
 
     foreach (var ticket in openTickets)
     {
