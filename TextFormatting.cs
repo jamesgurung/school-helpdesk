@@ -52,7 +52,7 @@ public static partial class TextFormatting
     var normalized = messageBody.Replace("\r", string.Empty, StringComparison.Ordinal);
     var span = normalized.AsSpan();
     var delimiterRegex = ReplyDelimiterRegex();
-    var helpdeskEmail = $"{School.Instance.Name} <{School.Instance.HelpdeskEmail}>";
+    var helpdeskEmail = $"{School.Instance.SchoolName} <{School.Instance.HelpdeskEmail}>";
     var sb = new StringBuilder();
     var pos = 0;
     while (pos < span.Length)

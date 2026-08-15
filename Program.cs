@@ -1,3 +1,4 @@
+using Azure.Identity;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -7,26 +8,59 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var appConfigEndpoint = builder.Configuration["AppConfigurationEndpoint"];
+var appConfigConnectionString = builder.Configuration.GetConnectionString("AppConfiguration");
+if (appConfigEndpoint is not null || appConfigConnectionString is not null)
+{
+  builder.Configuration.AddAzureAppConfiguration(options =>
+  {
+    if (appConfigEndpoint is not null)
+    {
+      options.Connect(new Uri(appConfigEndpoint), new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned));
+    }
+    else
+    {
+      options.Connect(appConfigConnectionString);
+    }
+    options
+      .Select("Shared:*")
+      .Select("SchoolHelpdesk:*")
+      .TrimKeyPrefix("Shared:")
+      .TrimKeyPrefix("SchoolHelpdesk:");
+  });
+}
+
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
-  o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+  o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
   o.KnownIPNetworks.Clear();
   o.KnownProxies.Clear();
 });
 
-builder.Services.AddDataProtection().PersistKeysToAzureBlobStorage(new Uri(builder.Configuration["Azure:DataProtectionBlobUri"]));
+builder.Services.AddDataProtection().PersistKeysToAzureBlobStorage(new Uri(builder.Configuration["DataProtectionBlobUri"]));
 
-var storageAccountName = builder.Configuration["Azure:StorageAccountName"];
-var storageAccountKey = builder.Configuration["Azure:StorageAccountKey"];
+var storageAccountName = builder.Configuration["StorageAccountName"];
+var storageAccountKey = builder.Configuration["StorageAccountKey"];
 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAccountName};AccountKey={storageAccountKey};EndpointSuffix=core.windows.net";
 
-School.Instance = builder.Configuration.GetSection(nameof(School)).Get<School>();
+School.Instance = new()
+{
+  Admins = builder.Configuration["Admins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [],
+  AppWebsite = builder.Configuration["AppWebsite"],
+  DebugEmail = builder.Configuration["DebugEmail"],
+  Dispatchers = builder.Configuration["Dispatchers"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [],
+  HelpdeskEmail = builder.Configuration["HelpdeskEmail"],
+  Managers = builder.Configuration["Managers"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [],
+  NotifyFirstManager = builder.Configuration.GetValue<bool>("NotifyFirstManager"),
+  SchoolName = builder.Configuration["SchoolName"],
+  SyncApiKey = builder.Configuration["SyncApiKey"]
+};
 BlobService.Configure(connectionString, storageAccountName, storageAccountKey);
 BackupService.Configure(connectionString);
 QueueService.Configure(connectionString);
 TableService.Configure(connectionString);
-EmailService.Configure(builder.Configuration["Postmark:ServerToken"], builder.Configuration["Postmark:InboundAuthKey"], School.Instance.DebugEmail);
-AIService.Configure(builder.Configuration["Azure:AIFoundryEndpoint"], builder.Configuration["Azure:AIFoundryDeployment"], builder.Configuration["Azure:AIFoundryApiKey"]);
+EmailService.Configure(builder.Configuration["PostmarkServerToken"], builder.Configuration["PostmarkInboundAuthKey"], School.Instance.DebugEmail);
+AIService.Configure(builder.Configuration["AIFoundryEndpoint"], builder.Configuration["AIFoundryDeployment"], builder.Configuration["AIFoundryApiKey"]);
 
 await BlobService.LoadConfigAsync();
 await TableService.HydrateCacheAsync();

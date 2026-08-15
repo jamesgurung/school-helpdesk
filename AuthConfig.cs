@@ -56,10 +56,11 @@ public static class AuthConfig
       })
       .AddOpenIdConnect("Microsoft", o =>
       {
-        o.Authority = $"https://login.microsoftonline.com/{builder.Configuration["Azure:TenantId"]}/v2.0/";
-        o.ClientId = builder.Configuration["Azure:ClientId"];
-        o.ClientSecret = builder.Configuration["Azure:ClientSecret"];
+        o.Authority = $"https://login.microsoftonline.com/{builder.Configuration["MicrosoftTenantId"]}/v2.0/";
+        o.ClientId = builder.Configuration["MicrosoftClientId"];
+        o.ClientSecret = builder.Configuration["MicrosoftClientSecret"];
         o.ResponseType = OpenIdConnectResponseType.Code;
+        o.ResponseMode = OpenIdConnectResponseMode.Query;
         o.MapInboundClaims = false;
         o.Scope.Clear();
         o.Scope.Add("openid");

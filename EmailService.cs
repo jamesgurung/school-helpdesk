@@ -224,11 +224,11 @@ public static partial class EmailService
     var body = createdBy is null || parentSalutation is null
       ? ("Thank you for contacting us. We've received your enquiry and created a ticket.\n\n" +
         "Our team will review your message and get back to you shortly.\n\n" +
-        "Best wishes\n\n" + School.Instance.Name)
+        "Best wishes\n\n" + School.Instance.SchoolName)
       : ($"Dear {parentSalutation}\n\n" +
         $"Thank you for contacting us. {createdBy} has created a helpdesk ticket for you.\n\n" +
         "Our team will review your enquiry and get back to you shortly.\n\n" +
-        "Best wishes\n\n" + School.Instance.Name);
+        "Best wishes\n\n" + School.Instance.SchoolName);
     await SendAsync(parentEmail, subject, body, EmailTag.Parent);
   }
 
@@ -273,7 +273,7 @@ public static partial class EmailService
       $"<b>Ticket #{id}</b>\n" +
       $"<b>{ticket.Title}</b>\n" +
       (studentName is null ? string.Empty : $"<b>{studentName}</b>\n") +
-      $"\n{outro}\n\nBest wishes\n\n{School.Instance.Name}";
+      $"\n{outro}\n\nBest wishes\n\n{School.Instance.SchoolName}";
     await SendAsync(staff.Email, subject, body, EmailTag.Staff);
   }
 
@@ -296,7 +296,7 @@ public static partial class EmailService
       Subject = subject,
       HtmlBody = ComposeHtmlEmail(body),
       TextBody = ComposeTextEmail(body),
-      From = $"\"{School.Instance.Name}\" <{School.Instance.HelpdeskEmail}>",
+      From = $"\"{School.Instance.SchoolName}\" <{School.Instance.HelpdeskEmail}>",
       ReplyTo = replyTo,
       Tag = tag,
       MessageStream = "outbound",

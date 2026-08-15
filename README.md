@@ -78,27 +78,39 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
     - Port - 8080
     - Startup command: (blank)
 
-7. Configure the following environment variables for the web app:
+7. Configure the application settings as described below.
 
-    - `Azure__AIFoundryApiKey` - the API key for your Azure AI Foundry project
-    - `Azure__AIFoundryDeployment` - the name of the deployed OpenAI model that you would like to use
-    - `Azure__AIFoundryEndpoint` - the endpoint URL for your Azure AI Foundry deployment, e.g. `https://<project>.cognitiveservices.azure.com/`
-    - `Azure__ClientId` - the client ID of your Azure app registration
-    - `Azure__ClientSecret` - the client secret of your Azure app registration
-    - `Azure__DataProtectionBlobUri` - the SAS URL for the keys file you created earlier
-    - `Azure__StorageAccountKey` - the key for your Azure Storage account
-    - `Azure__StorageAccountName` - the name of your Azure Storage account
-    - `Azure__TenantId` - your Azure tenant ID
-    - `Postmark__InboundAuthKey` - a secret UUID of your choice, used to verify that incoming emails are from Postmark
-    - `Postmark__ServerToken` - the token for your Postmark server
-    - `School__Admins__0` - the email address of the first admin user, who has full administrative access (subsequent admins can be configured by adding items with incrementing indices)
-    - `School__AppWebsite` - the host name where this app will be hosted, e.g. `example.com`
-    - `School__Dispatchers__0` - the email address of the first dispatcher, who can assign tickets to staff (subsequent dispatchers can be configured by adding items with incrementing indices)
-    - `School__HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
-    - `School__Managers__0` - the email address of the first manager, who can create, view, and edit all tickets (subsequent managers can be configured by adding items with incrementing indices)
-    - `School__Name` - the name of your school
-    - `School__NotifyFirstManager` - set to `true` if you want the first manager configured above to be notified of new tickets submitted by email
-    - `School__SyncApiKey` - the secret key to use if you update the `students.csv` and `staff.csv` files with an automated script (optional)
+    #### Bootstrap settings
+
+    If you wish to load settings from Azure App Configuration, specify one of the following:
+
+    - `AppConfigurationEndpoint` - Azure App Configuration endpoint. Enable the App Service's system-assigned managed identity and grant it the App Configuration Data Reader role.
+    - `ConnectionStrings:AppConfiguration` - Azure App Configuration connection string.
+
+    #### Application settings
+
+    The remaining application settings are loaded from the `Shared:*` and `SchoolHelpdesk:*` keys in Azure App Configuration, or from your local configuration:
+
+    - `Admins` - a comma-separated list of admin email addresses; admins have full administrative access
+    - `AIFoundryApiKey` - the API key for your Azure AI Foundry project
+    - `AIFoundryDeployment` - the name of the deployed OpenAI model that you would like to use
+    - `AIFoundryEndpoint` - the endpoint URL for your Azure AI Foundry deployment, e.g. `https://<project>.cognitiveservices.azure.com/`
+    - `AppWebsite` - the host name where this app will be hosted, e.g. `example.com`
+    - `DataProtectionBlobUri` - the SAS URL for the keys file you created earlier
+    - `DebugEmail` - the email address to which emails are redirected when debugging (optional)
+    - `Dispatchers` - a comma-separated list of dispatcher email addresses; dispatchers can assign tickets to staff
+    - `HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
+    - `Managers` - a comma-separated list of manager email addresses; managers can create, view, and edit all tickets
+    - `MicrosoftClientId` - the client ID of your Microsoft Entra app registration
+    - `MicrosoftClientSecret` - the client secret of your Microsoft Entra app registration
+    - `MicrosoftTenantId` - your Microsoft Entra tenant ID
+    - `NotifyFirstManager` - set to `true` to notify the first email address in `Managers` of new tickets submitted by email
+    - `PostmarkInboundAuthKey` - a secret UUID of your choice, used to verify that incoming emails are from Postmark
+    - `PostmarkServerToken` - the token for your Postmark server
+    - `SchoolName` - the name of your school
+    - `StorageAccountKey` - the key for your Azure Storage account
+    - `StorageAccountName` - the name of your Azure Storage account
+    - `SyncApiKey` - the secret key to use if you update the `students.csv` and `staff.csv` files with an automated script (optional)
 
 8. Configure your Postmark server's Default Inbound Stream settings:
     - Set the webhook to `https://<app-website-domain>/inbound?auth=<authkey>`

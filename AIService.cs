@@ -139,6 +139,7 @@ public static partial class AIService
     };
     if (textOptions is not null) options.TextOptions = textOptions;
     options.InputItems.Add(ResponseItem.CreateUserMessageItem(input));
+    options.Patch.Set("$.prompt_cache_options.mode"u8, "explicit");
     return options;
   }
 

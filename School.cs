@@ -6,7 +6,7 @@ public class School
 {
   public static School Instance { get; set; }
 
-  public string Name { get; set; }
+  public string SchoolName { get; set; }
   public string AppWebsite { get; set; }
   public string HelpdeskEmail { get; set; }
   public string DebugEmail { get; set; }
