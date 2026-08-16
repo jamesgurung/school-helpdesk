@@ -117,7 +117,7 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
     - Set the webhook to `https://<app-website-domain>/inbound?auth=<authkey>`
     - In Exchange or Google Workspace, configure a routing rule that auto-forwards your helpdesk email address to the Postmark inbound email address shown on the settings page
 
-## Sender verification
+### Sender verification
 
 The inbound relay chain is trusted as follows:
 
