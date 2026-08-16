@@ -99,6 +99,7 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
     - `DataProtectionBlobUri` - the SAS URL for the keys file you created earlier
     - `DebugEmail` - the email address to which emails are redirected when debugging (optional)
     - `Dispatchers` - a comma-separated list of dispatcher email addresses; dispatchers can assign tickets to staff
+    - `ForwardingProvider` - the provider that forwards inbound helpdesk email; must be `Microsoft` or `Google`
     - `HelpdeskEmail` - the email address that will be used to send and receive helpdesk tickets
     - `Managers` - a comma-separated list of manager email addresses; managers can create, view, and edit all tickets
     - `MicrosoftClientId` - the client ID of your Microsoft Entra app registration
@@ -114,7 +115,26 @@ Bring your own Postmark account and deploy effortlessly to Microsoft Azure.
 
 8. Configure your Postmark server's Default Inbound Stream settings:
     - Set the webhook to `https://<app-website-domain>/inbound?auth=<authkey>`
-    - On your school's main email server, configure your helpdesk email address to auto-forward to the Postmark inbound email address shown on the settings page
+    - In Exchange or Google Workspace, configure a routing rule that auto-forwards your helpdesk email address to the Postmark inbound email address shown on the settings page
+
+## Sender verification
+
+The inbound relay chain is trusted as follows:
+
+- **School email server → Postmark:** the Postmark inbound address is secret.
+- **Postmark → helpdesk app:** the webhook `auth` value is secret.
+
+When an email is received, the helpdesk app verifies the sender in the following order:
+
+1. **Verify the webhook.** Require the webhook `auth` value to match `PostmarkInboundAuthKey`.
+2. **Verify the forwarding relay.** Require the relay to pass SPF.
+3. **Reject spam.** Check Postmark's `X-Spam-Status` header, if present, and reject messages marked as spam.
+4. **Verify the original sender.** Require at least one of the following checks to pass:
+   - Postmark's `X-Spam-Tests` header contains `DKIM_VALID_AU`.
+   - For schools using Microsoft email servers, the first `Authentication-Results` header contains either `compauth=pass` or `dmarc=pass`.
+   - For schools using Google email servers, the first `Authentication-Results` header contains `dmarc=pass`, or contains `dkim=pass` or `spf=pass` with the authenticated `header.d`/`header.i` or `smtp.mailfrom` domain exactly matching the domain in the `From` address.
+5. **Reject automated replies.** Reject messages whose `Auto-Submitted` header is present and has any value other than `no`. Also reject messages with a subject beginning `Automatic reply: `.
+6. **Require a registered parent address.** Create tickets only when the sender address belongs to a registered parent. At this stage only, unknown addresses receive an automated rejection reply.
 
 ### Contributing
 

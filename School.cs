@@ -10,6 +10,7 @@ public class School
   public string AppWebsite { get; set; }
   public string HelpdeskEmail { get; set; }
   public string DebugEmail { get; set; }
+  public string ForwardingProvider { get; set; }
   public string SyncApiKey { get; set; }
   public bool NotifyFirstManager { get; set; }
   public IList<string> Admins { get; set; }

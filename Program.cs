@@ -42,6 +42,11 @@ builder.Services.AddDataProtection().PersistKeysToAzureBlobStorage(new Uri(build
 var storageAccountName = builder.Configuration["StorageAccountName"];
 var storageAccountKey = builder.Configuration["StorageAccountKey"];
 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={storageAccountName};AccountKey={storageAccountKey};EndpointSuffix=core.windows.net";
+var forwardingProvider = builder.Configuration["ForwardingProvider"];
+if (!string.Equals(forwardingProvider, "Microsoft", StringComparison.OrdinalIgnoreCase) && !string.Equals(forwardingProvider, "Google", StringComparison.OrdinalIgnoreCase))
+{
+  throw new InvalidOperationException("Forwarding provider must be Microsoft or Google.");
+}
 
 School.Instance = new()
 {
@@ -49,6 +54,7 @@ School.Instance = new()
   AppWebsite = builder.Configuration["AppWebsite"],
   DebugEmail = builder.Configuration["DebugEmail"],
   Dispatchers = builder.Configuration["Dispatchers"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [],
+  ForwardingProvider = forwardingProvider,
   HelpdeskEmail = builder.Configuration["HelpdeskEmail"],
   Managers = builder.Configuration["Managers"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [],
   NotifyFirstManager = builder.Configuration.GetValue<bool>("NotifyFirstManager"),

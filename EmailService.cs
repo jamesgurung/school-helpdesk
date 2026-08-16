@@ -32,11 +32,7 @@ public static partial class EmailService
   {
     if (authKey != _authKey || message is null) return;
 
-    var spamHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "x-spam-status", StringComparison.OrdinalIgnoreCase))?.Value;
-    if (spamHeader?.StartsWith("yes", StringComparison.OrdinalIgnoreCase) ?? false) return;
-
-    var spfHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "received-spf", StringComparison.OrdinalIgnoreCase))?.Value;
-    if (spfHeader?.StartsWith("fail", StringComparison.OrdinalIgnoreCase) ?? false) return;
+    if (!EmailVerificationService.Validate(message)) return;
 
     var autoSubmittedHeader = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "auto-submitted", StringComparison.OrdinalIgnoreCase))?.Value;
     if (autoSubmittedHeader is not null && !autoSubmittedHeader.Equals("no", StringComparison.OrdinalIgnoreCase)) return;
@@ -48,7 +44,7 @@ public static partial class EmailService
     var strippedTextReply = string.IsNullOrWhiteSpace(message.StrippedTextReply) ? null : message.StrippedTextReply.Trim();
     if (textBody is null && htmlBody is null) return;
 
-    var messageId = message.GetHeader("message-id");
+    var messageId = message.Headers.FirstOrDefault(o => string.Equals(o.Name, "message-id", StringComparison.OrdinalIgnoreCase))?.Value;
     var parents = School.Instance.ParentsByEmail[message.From].ToList();
 
     var to = message.ToFull?.Count == 1 && string.Equals(message.ToFull[0].Email, School.Instance.HelpdeskEmail, StringComparison.OrdinalIgnoreCase) ? null : message.To?.Trim();
@@ -57,7 +53,6 @@ public static partial class EmailService
     if (parents.Count == 0)
     {
       // Unknown sender
-      if (!(spfHeader?.StartsWith("pass", StringComparison.OrdinalIgnoreCase) ?? false)) return;
       if (School.Instance.BlockedEmails.Contains(message.From)) return;
       var fromDomain = message.From.Split('@')[^1];
       if (School.Instance.BlockedDomains.Contains(fromDomain)) return;
@@ -323,11 +318,6 @@ public static partial class EmailService
   {
     body = body.Replace("<b>", string.Empty, StringComparison.OrdinalIgnoreCase).Replace("</b>", string.Empty, StringComparison.OrdinalIgnoreCase).Trim();
     return School.Instance.TextEmailTemplate.Replace("{{BODY}}", body, StringComparison.OrdinalIgnoreCase);
-  }
-
-  private static string GetHeader(this PostmarkInboundWebhookMessage message, string name)
-  {
-    return message.Headers.FirstOrDefault(o => string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase))?.Value;
   }
 
   private static async Task SendRejectionEmailAsync(string to, string subject, string messageId, RejectionReason reason)
