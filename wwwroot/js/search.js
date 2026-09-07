@@ -88,7 +88,6 @@ function mergeTickets(loadedTickets) {
       ticketsById.set(ticket.id, ticket);
     }
   });
-  tickets.sort((a, b) => Date.parse(b.lastUpdated) - Date.parse(a.lastUpdated));
 }
 
 async function loadAllTickets() {

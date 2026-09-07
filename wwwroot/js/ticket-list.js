@@ -36,10 +36,17 @@ function isRecentClosedTicket(ticket) {
 }
 
 function getTicketsForTab(status) {
-  if (status === 'search') {
-    return state.activeTicketSearch ? tickets.filter(ticketMatchesActiveSearch) : [];
-  }
-  return tickets.filter(ticket => ticket.isClosed === (status === 'closed') && (status !== 'closed' || isRecentClosedTicket(ticket)));
+  const filteredTickets = status === 'search'
+    ? (state.activeTicketSearch ? tickets.filter(ticketMatchesActiveSearch) : [])
+    : tickets.filter(ticket => ticket.isClosed === (status === 'closed') && (status !== 'closed' || isRecentClosedTicket(ticket)));
+  return filteredTickets.sort((a, b) => {
+    if (status === 'open') {
+      const aPriority = a.assigneeEmail === 'unassigned' ? 0 : a.assigneeEmail === currentUserEmail ? 1 : 2;
+      const bPriority = b.assigneeEmail === 'unassigned' ? 0 : b.assigneeEmail === currentUserEmail ? 1 : 2;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+    }
+    return Date.parse(b.lastUpdated) - Date.parse(a.lastUpdated) || Number(b.id) - Number(a.id);
+  });
 }
 
 function renderTickets(status) {
@@ -58,6 +65,7 @@ function renderTickets(status) {
     const ticketClone = elements.ticketItemTemplate.content.cloneNode(true);
     const ticketElement = ticketClone.querySelector('.ticket-item');
     ticketElement.dataset.id = ticket.id;
+    ticketElement.classList.toggle('selected', ticket.id === state.currentTicketId);
     ticketClone.querySelector('.ticket-id').textContent = '#' + parseInt(ticket.id, 10);
     ticketClone.querySelector('.ticket-title').textContent = ticket.title;
 

@@ -133,6 +133,7 @@ async function updateTicketAssignee() {
     updateMessageControlsState(ticket);
     state.updating = true;
     ticket.lastUpdated = await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
+    renderTickets(state.activeTab);
   } catch (error) {
     console.error('Failed to update assignee:', error);
   } finally {
@@ -159,6 +160,7 @@ async function toggleTicketStatus() {
     state.updating = true;
     const updated = await apiUpdateTicketStatus(ticket.id, ticket.assigneeEmail, ticket.isClosed);
     if (updated) ticket.lastUpdated = updated;
+    renderTickets(state.activeTab);
   } catch (error) {
     console.error('Failed to update ticket status:', error);
   } finally {

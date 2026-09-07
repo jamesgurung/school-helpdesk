@@ -212,6 +212,7 @@ async function sendMessage() {
     state.updating = true;
     const msg = await apiSendMessage(ticket.id, ticket.assigneeEmail, content, isPrivate, files);
     ticket.lastUpdated = msg.timestamp;
+    renderTickets(state.activeTab);
     state.conversation.push(msg);
     elements.newMessageInput.value = '';
     autoExpandTextarea(elements.newMessageInput);

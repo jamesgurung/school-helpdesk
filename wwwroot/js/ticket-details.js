@@ -59,7 +59,6 @@ async function openTicketDetails(ticketId, fromHash = false) {
     if (state.currentTicketId !== ticketId) return;
 
     state.conversation = conversation;
-    ticket.lastUpdated = conversation.at(-1).timestamp;
     renderConversation();
     updateMessageControlsState(ticket);
     startPollingTicketUpdates(ticketId);
@@ -99,6 +98,7 @@ async function checkTicketUpdates(ticketId) {
   if (currentTicket.lastUpdated.slice(0, 19) !== serverLastUpdated.slice(0, 19)) {
     showToast('This ticket has new changes.', 'success');
     currentTicket.lastUpdated = serverLastUpdated;
+    renderTickets(state.activeTab);
     const isFocused = document.activeElement === elements.newMessageInput;
     const scrollPosition = elements.ticketDetails.scrollTop;
     await openTicketDetails(ticketId);
