@@ -37,11 +37,11 @@ async function apiUpdateTicketAssignee(ticketId, assigneeEmail, newAssigneeEmail
   );
 }
 
-async function apiUpdateTicketStudent(ticketId, assigneeEmail, studentFirst, studentLast, studentTutorGroup) {
+async function apiUpdateTicketStudent(ticketId, assigneeEmail, studentFirst, studentLast, studentTutorGroup, studentId) {
   await apiRequest(
     'PUT',
     `/api/tickets/${ticketId}/student`,
-    { assigneeEmail, studentFirst, studentLast, studentTutorGroup },
+    { assigneeEmail, studentFirst, studentLast, studentTutorGroup, studentId },
     'update student'
   );
 }
@@ -93,8 +93,8 @@ async function apiCreateTicket(ticketData) {
   );
 }
 
-async function apiGetAllTickets() {
-  const response = await fetch('/api/tickets');
+async function apiGetTicketSearch() {
+  const response = await fetch('/api/tickets/search');
   if (!response.ok) {
     showToast('Failed to load tickets. Please try again.', 'error');
     throw new Error(`load tickets: ${response.status}`);

@@ -77,7 +77,7 @@ public static class TableService
     return id;
   }
 
-  public static async Task<TicketEntity> ReassignTicketAsync(string assigneeEmail, int id, string newAssigneeEmail, string newAssigneeName)
+  public static async Task<TicketEntity> ReassignTicketAsync(string assigneeEmail, int id, string newAssigneeEmail, string newAssigneeName, int? newAssigneeId)
   {
     ArgumentNullException.ThrowIfNull(assigneeEmail);
     ArgumentNullException.ThrowIfNull(newAssigneeEmail);
@@ -86,6 +86,7 @@ public static class TableService
     var rowKey = id.ToRowKey();
     var ticket = await ticketsClient.GetEntityAsync<TicketEntity>(assigneeEmail, rowKey);
     ticket.Value.PartitionKey = newAssigneeEmail;
+    ticket.Value.AssigneeId = newAssigneeId;
     ticket.Value.AssigneeName = newAssigneeName;
     ticket.Value.LastUpdated = DateTime.UtcNow;
     ticket.Value.AverageAssigneeResponseTime = null;
@@ -120,6 +121,13 @@ public static class TableService
   public static async Task ChangeTicketStudentAsync(TicketEntity ticket, Student student)
   {
     ArgumentNullException.ThrowIfNull(ticket);
+    if (student is not null && (ticket.StudentId is not null
+      ? ticket.StudentId == student.Id
+      : string.Equals(ticket.StudentFirstName, student.FirstName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(ticket.StudentLastName, student.LastName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(ticket.TutorGroup, student.TutorGroup, StringComparison.OrdinalIgnoreCase)))
+      return;
+    ticket.StudentId = student?.Id;
     ticket.StudentFirstName = student?.FirstName;
     ticket.StudentLastName = student?.LastName;
     ticket.TutorGroup = student?.TutorGroup;

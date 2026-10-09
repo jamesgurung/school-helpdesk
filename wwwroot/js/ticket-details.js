@@ -121,10 +121,10 @@ function populateStudentSelect(ticket, children) {
 
   children.forEach(child => {
     const option = document.createElement('option');
-    option.value = `${child.firstName}|${child.lastName}`;
+    option.value = getStudentSelectionValue(child);
     option.textContent = getFullName(child.firstName, child.lastName) + ` (${child.tutorGroup})`;
     elements.studentSelect.appendChild(option);
-    if (child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName) {
+    if (studentMatchesTicket(child, ticket)) {
       option.selected = true;
       placeholderOption.selected = false;
     }
@@ -178,9 +178,7 @@ function renderParentInfo(ticket) {
     if (!parentRelationship) {
       const parent = parents?.find(p => p.email === ticket.parentEmail && p.name === ticket.parentName);
       const children = parent?.children || [];
-      const currentChild = children.find(child =>
-        child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName
-      );
+      const currentChild = children.find(child => studentMatchesTicket(child, ticket));
       parentRelationship = currentChild?.parentRelationship || '';
     }
   }

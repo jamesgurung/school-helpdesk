@@ -21,9 +21,11 @@ public class TicketEntity : ITableEntity
   public DateTime Created { get; set; }
   public DateTime LastUpdated { get; set; }
   public DateTime? WaitingSince { get; set; }
+  public int? StudentId { get; set; }
   public string StudentFirstName { get; set; }
   public string StudentLastName { get; set; }
   public string TutorGroup { get; set; }
+  public int? AssigneeId { get; set; }
   public string AssigneeName { get; set; }
   public string ParentName { get; set; }
   public string ParentEmail { get; set; }

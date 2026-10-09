@@ -127,7 +127,8 @@ public static partial class EmailService
   {
     var parentEmail = parents[0].Email;
     var parentName = parents.Count == 1 ? parents[0].Name : null;
-    var students = parents.SelectMany(o => o.Children).DistinctBy(o => (o.FirstName, o.LastName)).ToList();
+    var students = parents.SelectMany(o => o.Children)
+      .DistinctBy(o => o.Id is null ? $"name:{o.FirstName}|{o.LastName}|{o.TutorGroup}" : $"id:{o.Id}").ToList();
     var student = students.Count == 1 ? students[0] : null;
     var body = TextFormatting.ParseEmailBody(textBody, htmlBody, strippedTextReply, false);
     var subject = string.IsNullOrWhiteSpace(message.Subject) ? "Enquiry" : message.Subject.Trim();
@@ -143,6 +144,7 @@ public static partial class EmailService
       ParentEmail = parentEmail,
       ParentPhone = parentName is null ? null : parents[0].Phone,
       ParentRelationship = parentName is null ? null : student?.ParentRelationship,
+      StudentId = student?.Id,
       StudentFirstName = student?.FirstName,
       StudentLastName = student?.LastName,
       TutorGroup = student?.TutorGroup

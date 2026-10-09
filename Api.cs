@@ -68,6 +68,22 @@ public static class Api
       return Results.Ok(tickets);
     });
 
+    group.MapGet("/tickets/search", async (HttpContext context) =>
+    {
+      var tickets = context.User.IsInRole(AuthConstants.Manager)
+        ? await TableService.GetAllTicketsAsync()
+        : await TableService.GetTicketsByAssigneeAsync(context.User.Identity.Name);
+      var studentIds = tickets.Select(t => t.StudentId).Where(id => id is not null).ToHashSet();
+      var assigneeIds = tickets.Select(t => t.AssigneeId).Where(id => id is not null).ToHashSet();
+      var students = School.Instance.ParentsByEmail.SelectMany(g => g).SelectMany(p => p.Children)
+        .Where(s => s.Id is not null && studentIds.Contains(s.Id)).DistinctBy(s => s.Id)
+        .Select(s => new { s.Id, s.FirstName, s.LastName, s.TutorGroup });
+      var staff = School.Instance.StaffByEmail.Values
+        .Where(s => s.Id is not null && assigneeIds.Contains(s.Id)).DistinctBy(s => s.Id)
+        .Select(s => new { s.Id, s.Name, s.Email });
+      return Results.Ok(new { tickets, students, staff });
+    });
+
     group.MapPost("/tickets", [Authorize(Roles = AuthConstants.Dispatcher)] async (NewTicketEntity ticket, HttpContext context) =>
     {
       if (ticket is null)
@@ -82,7 +98,8 @@ public static class Api
       if (string.IsNullOrWhiteSpace(ticket.ParentEmail) || string.IsNullOrWhiteSpace(ticket.ParentName) || string.IsNullOrWhiteSpace(ticket.ParentRelationship))
         return Results.BadRequest("Parent email, name, and relationship are required.");
 
-      if (string.IsNullOrWhiteSpace(ticket.StudentFirstName) || string.IsNullOrWhiteSpace(ticket.StudentLastName) || string.IsNullOrWhiteSpace(ticket.TutorGroup))
+      if (ticket.StudentId is null &&
+        (string.IsNullOrWhiteSpace(ticket.StudentFirstName) || string.IsNullOrWhiteSpace(ticket.StudentLastName) || string.IsNullOrWhiteSpace(ticket.TutorGroup)))
         return Results.BadRequest("Student first name, last name, and tutor group are required.");
 
       if (string.IsNullOrEmpty(ticket.Title) || ticket.Title.Length > 40)
@@ -104,12 +121,21 @@ public static class Api
       if (parent is null)
         return Results.BadRequest("Parent does not exist.");
 
-      var hasChild = parent.Children.Any(c => string.Equals(c.FirstName, ticket.StudentFirstName, StringComparison.OrdinalIgnoreCase) &&
-        string.Equals(c.LastName, ticket.StudentLastName, StringComparison.OrdinalIgnoreCase) && string.Equals(c.TutorGroup, ticket.TutorGroup, StringComparison.OrdinalIgnoreCase));
+      var child = parent.Children.FirstOrDefault(c => ticket.StudentId is not null
+        ? c.Id == ticket.StudentId
+        : string.Equals(c.FirstName, ticket.StudentFirstName, StringComparison.OrdinalIgnoreCase) &&
+          string.Equals(c.LastName, ticket.StudentLastName, StringComparison.OrdinalIgnoreCase) && string.Equals(c.TutorGroup, ticket.TutorGroup, StringComparison.OrdinalIgnoreCase));
 
-      if (!hasChild)
+      if (child is null)
         return Results.BadRequest("Student does not match any child of the parent.");
 
+      ticket.StudentId = child.Id;
+      ticket.StudentFirstName = child.FirstName;
+      ticket.StudentLastName = child.LastName;
+      ticket.TutorGroup = child.TutorGroup;
+      ticket.ParentRelationship = child.ParentRelationship;
+      ticket.AssigneeId = assignee.Id;
+      ticket.AssigneeName = assignee.Name;
       var user = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
       var id = await TableService.CreateTicketAsync(ticket);
       var tasks = new List<Task>
@@ -151,7 +177,9 @@ public static class Api
       if (!School.Instance.StaffByEmail.TryGetValue(newAssigneeEmail, out var staff))
         return Results.BadRequest("New assignee email does not match any staff member.");
 
-      var ticket = await TableService.ReassignTicketAsync(payload.AssigneeEmail, id, newAssigneeEmail, staff.Name);
+      var ticket = await TableService.ReassignTicketAsync(payload.AssigneeEmail, id, newAssigneeEmail, staff.Name, staff.Id);
+      if (ticket.PartitionKey == payload.AssigneeEmail)
+        return Results.Ok(ticket.LastUpdated);
 
       var currentUser = School.Instance.StaffByEmail[context.User.Identity.Name].Name;
       await BlobService.AppendMessagesAsync(id, new Message
@@ -182,7 +210,8 @@ public static class Api
       if (string.IsNullOrWhiteSpace(payload?.AssigneeEmail))
         return Results.BadRequest("Assignee email is required.");
 
-      if (string.IsNullOrWhiteSpace(payload?.StudentFirst) || string.IsNullOrWhiteSpace(payload?.StudentLast))
+      if (payload.StudentId is null &&
+        (string.IsNullOrWhiteSpace(payload.StudentFirst) || string.IsNullOrWhiteSpace(payload.StudentLast)))
         return Results.BadRequest("Student information is required.");
 
       var entity = await TableService.GetTicketAsync(payload.AssigneeEmail, id);
@@ -190,8 +219,11 @@ public static class Api
       if (parent is null)
         return Results.BadRequest("Parent associated with this ticket does not exist.");
 
-      var child = parent.Children.FirstOrDefault(c => string.Equals(c.FirstName, payload.StudentFirst, StringComparison.OrdinalIgnoreCase) &&
-        string.Equals(c.LastName, payload.StudentLast, StringComparison.OrdinalIgnoreCase));
+      var child = parent.Children.FirstOrDefault(c => payload.StudentId is not null
+        ? c.Id == payload.StudentId
+        : string.Equals(c.FirstName, payload.StudentFirst, StringComparison.OrdinalIgnoreCase) &&
+          string.Equals(c.LastName, payload.StudentLast, StringComparison.OrdinalIgnoreCase) &&
+          (string.IsNullOrWhiteSpace(payload.StudentTutorGroup) || string.Equals(c.TutorGroup, payload.StudentTutorGroup, StringComparison.OrdinalIgnoreCase)));
       if (child is null)
         return Results.BadRequest("Student does not match any child of the parent associated with this ticket.");
 
@@ -216,9 +248,11 @@ public static class Api
       Student currentStudent = null;
       if (entity.StudentFirstName is not null && entity.StudentLastName is not null)
       {
-        currentStudent = newParent.Children.FirstOrDefault(c =>
-          string.Equals(c.FirstName, entity.StudentFirstName, StringComparison.OrdinalIgnoreCase) &&
-          string.Equals(c.LastName, entity.StudentLastName, StringComparison.OrdinalIgnoreCase));
+        currentStudent = newParent.Children.FirstOrDefault(c => entity.StudentId is not null
+          ? c.Id == entity.StudentId
+          : string.Equals(c.FirstName, entity.StudentFirstName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(c.LastName, entity.StudentLastName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(c.TutorGroup, entity.TutorGroup, StringComparison.OrdinalIgnoreCase));
 
         if (currentStudent is null)
         {

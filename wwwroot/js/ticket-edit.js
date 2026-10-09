@@ -1,3 +1,13 @@
+let ticketEditPending = false;
+
+function setTicketEditPending(pending) {
+  ticketEditPending = pending;
+  elements.studentSelect.disabled = pending;
+  elements.parentSelect.disabled = pending;
+  elements.assigneeEditInput.disabled = pending;
+  if (pending) elements.assigneeEditAutocompleteResults.style.display = 'none';
+}
+
 function getTicketChildren() {
   const ticket = getCurrentTicket();
   if (!ticket) return [];
@@ -34,88 +44,92 @@ async function updateTicketTitle() {
 
 async function updateTicketStudent() {
   const ticket = getCurrentTicket();
-  if (!ticket) return;
+  if (!ticket || ticketEditPending) return;
 
-  const [firstName, lastName] = elements.studentSelect.value.split('|');
   const children = getTicketChildren();
-  const student = children.find(child =>
-    child.firstName === firstName && child.lastName === lastName
-  );
+  const student = children.find(child => getStudentSelectionValue(child) === elements.studentSelect.value);
 
-  if (!student) return;
+  if (!student || studentMatchesTicket(student, ticket)) return;
 
   try {
-    const isChanged = ticket.studentFirstName !== firstName || ticket.studentLastName !== lastName;
-    ticket.studentFirstName = firstName;
-    ticket.studentLastName = lastName;
+    setTicketEditPending(true);
+    await apiUpdateTicketStudent(ticket.id, ticket.assigneeEmail, student.firstName, student.lastName, student.tutorGroup, student.id);
+    ticket.studentId = student.id;
+    ticket.studentFirstName = student.firstName;
+    ticket.studentLastName = student.lastName;
     ticket.tutorGroup = student.tutorGroup;
     ticket.parentRelationship = student.parentRelationship;
     renderTicketInList(ticket);
+    if (state.currentTicketId !== ticket.id) return;
     renderStudentInfo(ticket, children);
     renderParentInfo(ticket);
     renderAssigneeInfo(ticket);
     updateMessageControlsState(ticket);
-    if (!isChanged) return;
-    await apiUpdateTicketStudent(ticket.id, ticket.assigneeEmail, firstName, lastName, student.tutorGroup);
   } catch (error) {
     console.error('Failed to update student:', error);
-    elements.studentSelect.value = `${ticket.studentFirstName}|${ticket.studentLastName}`;
+    if (state.currentTicketId !== ticket.id) return;
+    populateStudentSelect(ticket, children);
+  } finally {
+    setTicketEditPending(false);
   }
 }
 
 async function updateTicketParent() {
   const ticket = getCurrentTicket();
-  if (!ticket) return;
+  if (!ticket || ticketEditPending) return;
 
   const [parentName, parentEmail] = elements.parentSelect.value.split('|');
   const ticketParents = getTicketParents();
   const selectedParent = ticketParents.find(parent => parent.name === parentName && parent.email === parentEmail);
 
-  if (!selectedParent) return;
+  if (!selectedParent || ticket.parentName === parentName) return;
 
   try {
-    const isChanged = ticket.parentName !== parentName;
+    setTicketEditPending(true);
+    await apiUpdateTicketParent(ticket.id, ticket.assigneeEmail, parentName);
     ticket.parentName = parentName;
     ticket.parentPhone = selectedParent.phone;
 
     const newChildren = selectedParent.children;
-    const currentStudent = newChildren.find(child =>
-      child.firstName === ticket.studentFirstName && child.lastName === ticket.studentLastName
-    );
+    const currentStudent = newChildren.find(child => studentMatchesTicket(child, ticket));
 
     if (currentStudent) {
       ticket.parentRelationship = currentStudent.parentRelationship;
     } else {
+      ticket.studentId = null;
       ticket.studentFirstName = null;
       ticket.studentLastName = null;
       ticket.tutorGroup = null;
       ticket.parentRelationship = null;
     }
     renderTicketInList(ticket);
+    if (state.currentTicketId !== ticket.id) return;
     populateStudentSelect(ticket, newChildren);
     renderStudentInfo(ticket, newChildren);
     renderParentInfo(ticket);
     renderAssigneeInfo(ticket);
     updateMessageControlsState(ticket);
     elements.salutation.querySelector('span').textContent = getSalutation(parentName);
-    if (!isChanged) return;
-    await apiUpdateTicketParent(ticket.id, ticket.assigneeEmail, parentName);
   } catch (error) {
     console.error('Failed to update parent:', error);
+    if (state.currentTicketId !== ticket.id) return;
     const currentParents = getTicketParents();
     const currentParent = currentParents.find(p => p.name === ticket.parentName);
     if (currentParent) {
       elements.parentSelect.value = `${currentParent.name}|${currentParent.email}`;
     }
+  } finally {
+    setTicketEditPending(false);
   }
 }
 
 async function updateTicketAssignee() {
   const ticket = getCurrentTicket();
-  if (!ticket || !state.activeEditAssignee) return;
+  if (!ticket || ticketEditPending || !state.activeEditAssignee) return;
 
+  const assignee = state.activeEditAssignee;
   const oldAssigneeEmail = ticket.assigneeEmail;
-  const newAssigneeEmail = state.activeEditAssignee.email;
+  const newAssigneeEmail = assignee.email;
 
   if (oldAssigneeEmail === newAssigneeEmail) {
     state.activeEditAssignee = null;
@@ -123,21 +137,26 @@ async function updateTicketAssignee() {
     return;
   }
 
+  state.activeEditAssignee = null;
   try {
-    ticket.assigneeEmail = state.activeEditAssignee.email;
-    ticket.assigneeName = state.activeEditAssignee.name;
-    addConversationEntry(`#assign ${state.activeEditAssignee.name}`);
+    setTicketEditPending(true);
+    state.updating = true;
+    const lastUpdated = await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
+    ticket.assigneeId = assignee.id;
+    ticket.assigneeEmail = assignee.email;
+    ticket.assigneeName = assignee.name;
+    ticket.lastUpdated = lastUpdated;
+    renderTickets(state.activeTab);
+    if (state.currentTicketId !== ticket.id) return;
+    addConversationEntry(`#assign ${assignee.name}`);
     renderTicketInList(ticket);
     renderAssigneeInfo(ticket);
-    state.activeEditAssignee = null;
     updateMessageControlsState(ticket);
-    state.updating = true;
-    ticket.lastUpdated = await apiUpdateTicketAssignee(ticket.id, oldAssigneeEmail, newAssigneeEmail);
-    renderTickets(state.activeTab);
   } catch (error) {
     console.error('Failed to update assignee:', error);
   } finally {
     state.updating = false;
+    setTicketEditPending(false);
   }
 }
 
@@ -189,19 +208,19 @@ function toggleSelectEdit(selectEl, infoSection, getOptions, updateFn) {
 
 function toggleStudentEdit() {
   const ticket = getCurrentTicket();
-  if (!canEditField(ticket, 'student')) return;
+  if (ticketEditPending || !canEditField(ticket, 'student')) return;
   toggleSelectEdit(elements.studentSelect, elements.studentInfoSection, getTicketChildren, updateTicketStudent);
 }
 
 function toggleParentEdit() {
   const ticket = getCurrentTicket();
-  if (!canEditField(ticket, 'parent')) return;
+  if (ticketEditPending || !canEditField(ticket, 'parent')) return;
   toggleSelectEdit(elements.parentSelect, elements.parentInfoSection, getTicketParents, updateTicketParent);
 }
 
 function toggleAssigneeEdit() {
   const ticket = getCurrentTicket();
-  if (!canEditField(ticket, 'assignee')) return;
+  if (ticketEditPending || !canEditField(ticket, 'assignee')) return;
   
   const editContainer = elements.assigneeEditContainer;
   const infoContainer = elements.assigneeInfoSection.querySelector('.info-container');

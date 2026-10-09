@@ -47,13 +47,13 @@ You will need an Azure subscription, permission to manage Entra app registration
     - Upload a file `students.csv` with the following headers and populate it with all students in your school. Where a student has more than one parent, repeat the student details across multiple rows. To correctly represent accented characters in student names, save the file in 'CSV UTF-8' format.
 
         ```csv
-        FirstName,LastName,TutorGroup,Relationship,ParentTitle,ParentFirstName,ParentLastName,ParentEmailAddress,ParentPhoneNumber
+        Id,FirstName,LastName,TutorGroup,Relationship,ParentTitle,ParentFirstName,ParentLastName,ParentEmailAddress,ParentPhoneNumber
         ```
 
     - Upload a file `staff.csv` with the following headers and populate it with all staff who should have access, including administrators. Each `Email` must be unique and match the staff member's Entra user principal name (UPN), which may differ from their email address.
     
         ```csv
-        Email,Title,FirstName,LastName
+        Id,Email,Title,FirstName,LastName
         ```
     
     - Upload a file `blocklist.txt` containing one email address or domain per line that should be blocked from contacting the helpdesk. Emails from these addresses will be ignored with no bounce message sent. This is useful for blocking spam. Registered parents cannot be blocked. You can start by using a blank file.

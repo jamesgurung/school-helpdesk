@@ -9,6 +9,7 @@ public class ChangeAssigneePayload
 public class ChangeStudentPayload
 {
   public string AssigneeEmail { get; set; }
+  public int? StudentId { get; set; }
   public string StudentFirst { get; set; }
   public string StudentLast { get; set; }
   public string StudentTutorGroup { get; set; }

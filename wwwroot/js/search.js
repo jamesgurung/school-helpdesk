@@ -1,3 +1,6 @@
+const ticketSearchStudents = new Map();
+const ticketSearchStaff = new Map();
+
 function hideSearchElements(itemName, inputEl, autocompleteEl, containerEl) {
   if (inputEl) inputEl.value = itemName;
   if (autocompleteEl) autocompleteEl.style.display = 'none';
@@ -95,8 +98,10 @@ async function loadAllTickets() {
   if (state.allTicketsLoading) return state.allTicketsLoading;
 
   state.allTicketsLoading = (async () => {
-    const loadedTickets = await apiGetAllTickets();
-    mergeTickets(loadedTickets);
+    const result = await apiGetTicketSearch();
+    mergeTickets(result.tickets);
+    result.students.forEach(student => ticketSearchStudents.set(student.id, student));
+    result.staff.forEach(person => ticketSearchStaff.set(person.id, person));
     state.allTicketsLoaded = true;
     updateOpenTicketsBadge();
   })();
@@ -136,7 +141,8 @@ function getStudentName(ticket) {
 }
 
 function getStudentSearchValue(ticket) {
-  return [ticket.studentFirstName, ticket.studentLastName, ticket.tutorGroup].map(o => normalise(o || '')).join('|');
+  return ticket.studentId != null ? `id:${ticket.studentId}`
+    : `name:${[ticket.studentFirstName, ticket.studentLastName, ticket.tutorGroup].map(o => normalise(o || '')).join('|')}`;
 }
 
 function getStudentDetail(ticket) {
@@ -149,7 +155,20 @@ function getParentSearchValue(ticket) {
 }
 
 function getAssigneeSearchValue(ticket) {
-  return [ticket.assigneeName, ticket.assigneeEmail].map(o => normalise(o || '')).join('|');
+  return ticket.assigneeId != null ? `id:${ticket.assigneeId}`
+    : `name:${[ticket.assigneeName, ticket.assigneeEmail].map(o => normalise(o || '')).join('|')}`;
+}
+
+function getLatestTicketSnapshots(idProperty) {
+  const snapshots = new Map();
+  for (const ticket of tickets) {
+    if (ticket[idProperty] == null) continue;
+    const existing = snapshots.get(ticket[idProperty]);
+    if (!existing || ticket.created > existing.created || (ticket.created === existing.created && +ticket.id > +existing.id)) {
+      snapshots.set(ticket[idProperty], ticket);
+    }
+  }
+  return snapshots;
 }
 
 function getParentStudents(parentValue) {
@@ -186,10 +205,15 @@ function filterTicketSearchOptions(query) {
 
   if (normalisedQuery.length < 3) return [];
 
+  const studentSnapshots = getLatestTicketSnapshots('studentId');
+  const assigneeSnapshots = getLatestTicketSnapshots('assigneeId');
   for (const ticket of tickets) {
-    const studentName = getStudentName(ticket);
+    const student = ticketSearchStudents.get(ticket.studentId);
+    const studentSnapshot = studentSnapshots.get(ticket.studentId) || ticket;
+    const studentName = student ? getFullName(student.firstName, student.lastName) : getStudentName(studentSnapshot);
+    const tutorGroup = student?.tutorGroup ?? studentSnapshot.tutorGroup;
     if (matchesWordBeginning(studentName, normalisedQuery)) {
-      addTicketSearchOption(options, seen, 'student', getStudentSearchValue(ticket), studentName, `Student in ${ticket.tutorGroup || 'unknown tutor group'}`);
+      addTicketSearchOption(options, seen, 'student', getStudentSearchValue(ticket), studentName, `Student in ${tutorGroup || 'unknown tutor group'}`);
       if (options.length >= maxOptions) break;
     }
 
@@ -201,9 +225,13 @@ function filterTicketSearchOptions(query) {
       if (options.length >= maxOptions) break;
     }
 
-    if (ticket.assigneeName && (matchesWordBeginning(ticket.assigneeName, normalisedQuery) ||
-      matchesWordBeginning(ticket.assigneeEmail, normalisedQuery))) {
-      addTicketSearchOption(options, seen, 'assignee', getAssigneeSearchValue(ticket), ticket.assigneeName, 'Tickets assigned to staff member');
+    const person = ticketSearchStaff.get(ticket.assigneeId);
+    const assigneeSnapshot = assigneeSnapshots.get(ticket.assigneeId) || ticket;
+    const assigneeName = person?.name ?? assigneeSnapshot.assigneeName;
+    const assigneeEmail = person?.email ?? assigneeSnapshot.assigneeEmail;
+    if (assigneeName && (matchesWordBeginning(assigneeName, normalisedQuery) ||
+      matchesWordBeginning(assigneeEmail, normalisedQuery))) {
+      addTicketSearchOption(options, seen, 'assignee', getAssigneeSearchValue(ticket), assigneeName, 'Tickets assigned to staff member');
       if (options.length >= maxOptions) break;
     }
   }
@@ -417,7 +445,7 @@ function selectParent(parent) {
   updateStudentOptions(parent.children);
   if (parent.children && parent.children.length === 1) {
     const child = parent.children[0];
-    const studentValue = `${child.firstName}|${child.lastName}|${child.tutorGroup}`;
+    const studentValue = getStudentSelectionValue(child);
     elements.studentSelectInput.value = studentValue;
     updateParentRelationshipDisplay(child.parentRelationship);
     setTimeout(() => {
@@ -439,7 +467,7 @@ function updateStudentOptions(children) {
 
   children.forEach(child => {
     const option = document.createElement('option');
-    option.value = `${child.firstName}|${child.lastName}|${child.tutorGroup}`;
+    option.value = getStudentSelectionValue(child);
     option.textContent = `${child.firstName} ${child.lastName} (${child.tutorGroup})`;
     elements.studentSelectInput.appendChild(option);
   });

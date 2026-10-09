@@ -99,6 +99,7 @@ public static class BlobService
 
     School.Instance.StaffByEmail = staff.ToDictionary(s => s.Email, s => new Staff
     {
+      Id = s.Id,
       Email = s.Email,
       Name = $"{s.Title} {s.FirstName[0]} {s.LastName}",
       FirstName = s.FirstName
@@ -107,6 +108,7 @@ public static class BlobService
     var studentsByParent = students
       .Select(s => new
       {
+        s.Id,
         s.FirstName,
         s.LastName,
         s.TutorGroup,
@@ -125,7 +127,7 @@ public static class BlobService
           Name = name,
           Email = first.ParentEmailAddress,
           Phone = first.ParentPhoneNumber,
-          Children = g.Select(s => new Student { FirstName = s.FirstName, LastName = s.LastName, TutorGroup = s.TutorGroup, ParentRelationship = s.Relationship }).ToList()
+          Children = g.Select(s => new Student { Id = s.Id, FirstName = s.FirstName, LastName = s.LastName, TutorGroup = s.TutorGroup, ParentRelationship = s.Relationship }).ToList()
         };
       }).ToList();
 

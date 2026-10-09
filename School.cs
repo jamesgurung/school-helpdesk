@@ -32,6 +32,7 @@ public class School
 
 public class CsvStudent
 {
+  public int? Id { get; set; }
   public string FirstName { get; set; }
   public string LastName { get; set; }
   public string TutorGroup { get; set; }
@@ -45,6 +46,7 @@ public class CsvStudent
 
 public class CsvStaff
 {
+  public int? Id { get; set; }
   public string Email { get; set; }
   public string Title { get; set; }
   public string FirstName { get; set; }
@@ -61,6 +63,7 @@ public class Parent
 
 public class Student
 {
+  public int? Id { get; set; }
   public string FirstName { get; set; }
   public string LastName { get; set; }
   public string TutorGroup { get; set; }
@@ -69,6 +72,7 @@ public class Student
 
 public class Staff
 {
+  public int? Id { get; set; }
   public string Email { get; set; }
   public string Name { get; set; }
   [JsonIgnore]

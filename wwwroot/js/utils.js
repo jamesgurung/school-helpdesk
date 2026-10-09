@@ -35,6 +35,16 @@ function getFullName(firstName, lastName) {
   return `${firstName} ${lastName}`;
 }
 
+function getStudentSelectionValue(student) {
+  return student.id != null ? `id:${student.id}` : `name:${student.firstName}|${student.lastName}|${student.tutorGroup}`;
+}
+
+function studentMatchesTicket(student, ticket) {
+  return ticket.studentId != null
+    ? student.id === ticket.studentId
+    : student.firstName === ticket.studentFirstName && student.lastName === ticket.studentLastName && student.tutorGroup === ticket.tutorGroup;
+}
+
 function updateParentRelationshipDisplay(relationship) {
   elements.parentRelationshipDisplay.textContent = relationship ? ` (${relationship})` : '';
 }

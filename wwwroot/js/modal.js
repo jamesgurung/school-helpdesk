@@ -48,17 +48,15 @@ async function createNewTicket() {
     return;
   }
 
-  const [firstName, lastName, tutorGroup] = studentValue.split('|');
-
-  const selectedChild = state.activeParent.children.find(child =>
-    child.firstName === firstName && child.lastName === lastName
-  );
+  const selectedChild = state.activeParent.children.find(child => getStudentSelectionValue(child) === studentValue);
+  if (!selectedChild) return;
 
   const newTicketData = {
     title,
-    studentFirstName: firstName,
-    studentLastName: lastName,
-    tutorGroup,
+    studentId: selectedChild.id,
+    studentFirstName: selectedChild.firstName,
+    studentLastName: selectedChild.lastName,
+    tutorGroup: selectedChild.tutorGroup,
     assigneeName: assignee.name,
     assigneeEmail: assignee.email,
     parentName: state.activeParent.name,

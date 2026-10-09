@@ -77,8 +77,7 @@ function setupTicketCreation() {
   elements.studentSelectInput.addEventListener('change', () => {
     const val = elements.studentSelectInput.value;
     if (state.activeParent && val) {
-      const [firstName, lastName] = val.split('|');
-      const child = state.activeParent.children.find(c => c.firstName === firstName && c.lastName === lastName);
+      const child = state.activeParent.children.find(c => getStudentSelectionValue(c) === val);
       updateParentRelationshipDisplay(child?.parentRelationship || '');
     }
   });
