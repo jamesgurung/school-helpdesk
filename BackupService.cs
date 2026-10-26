@@ -81,10 +81,10 @@ public static class BackupService
       var entry = zip.CreateEntry($"tables/{table.Name}.csv", CompressionLevel.SmallestSize);
       await using var entryStream = await entry.OpenAsync(ct);
       await using var writer = new StreamWriter(entryStream);
-      await using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
+      await using var csv = CsvWriter.Create(writer);
 
       WriteHeaders(csv, columns);
-      await csv.NextRecordAsync();
+      await csv.EndRecordAsync(ct);
 
       var isFirstRow = true;
       await foreach (var entity in tableClient.QueryAsync<TableEntity>(cancellationToken: ct))
@@ -100,7 +100,7 @@ public static class BackupService
           csv.WriteField(isFirstRow && types.TryGetValue(column, out var type) ? type : string.Empty);
         }
 
-        await csv.NextRecordAsync();
+        await csv.EndRecordAsync(ct);
         isFirstRow = false;
       }
     }

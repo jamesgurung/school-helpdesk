@@ -3,7 +3,6 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using CsvHelper;
-using CsvHelper.Configuration;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -90,7 +89,14 @@ public static class BlobService
 
   public static async Task LoadConfigAsync()
   {
-    var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture) { Encoding = Encoding.UTF8 };
+    var csvConfig = new CsvReaderOptions
+    {
+      Encoding = Encoding.UTF8,
+      FormatProvider = CultureInfo.InvariantCulture,
+      Separator = ',',
+      MalformedData = CsvMalformedDataHandling.Throw,
+      MissingField = CsvMissingFieldHandling.Throw
+    };
 
     var students = (await ReadCsvAsync<CsvStudent>("students.csv", csvConfig, s => !string.IsNullOrWhiteSpace(s.ParentEmailAddress)))
       .OrderBy(s => s.ParentLastName).ThenBy(s => s.ParentFirstName).ThenBy(s => s.TutorGroup).ThenBy(s => s.LastName).ThenBy(s => s.FirstName).ToList();
@@ -158,8 +164,8 @@ public static class BlobService
     }
     catch (RequestFailedException ex) when (ex.Status == 404)
     {
-      School.Instance.BlockedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-      School.Instance.BlockedDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      School.Instance.BlockedEmails = [with(StringComparer.OrdinalIgnoreCase)];
+      School.Instance.BlockedDomains = [with(StringComparer.OrdinalIgnoreCase)];
     }
   }
 
@@ -174,11 +180,11 @@ public static class BlobService
     await blobClient.UploadAsync(BinaryData.FromString(content), true);
   }
 
-  private static async Task<List<T>> ReadCsvAsync<T>(string blobName, CsvConfiguration config, Func<T, bool> predicate = null)
+  private static async Task<List<T>> ReadCsvAsync<T>(string blobName, CsvReaderOptions config, Func<T, bool> predicate = null)
   {
     using var stream = await configClient.GetBlobClient(blobName).OpenReadAsync();
     using var reader = new StreamReader(stream);
-    using var csv = new CsvReader(reader, config);
+    using var csv = CsvReader.Create(reader, config);
     var records = new List<T>();
     await foreach (var record in csv.GetRecordsAsync<T>())
     {

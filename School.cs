@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using CsvHelper;
+using System.Text.Json.Serialization;
 
 namespace SchoolHelpdesk;
 
@@ -30,7 +31,8 @@ public class School
   public HashSet<string> BlockedDomains { get; set; }
 }
 
-public class CsvStudent
+[CsvRecord]
+public partial class CsvStudent
 {
   public int? Id { get; set; }
   public string FirstName { get; set; }
@@ -44,7 +46,8 @@ public class CsvStudent
   public string ParentPhoneNumber { get; set; }
 }
 
-public class CsvStaff
+[CsvRecord]
+public partial class CsvStaff
 {
   public int? Id { get; set; }
   public string Email { get; set; }
@@ -79,7 +82,8 @@ public class Staff
   public string FirstName { get; set; }
 }
 
-public class Holiday
+[CsvRecord]
+public partial class Holiday
 {
   public DateOnly Start { get; set; }
   public DateOnly End { get; set; }
