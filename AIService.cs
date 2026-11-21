@@ -132,12 +132,14 @@ public static partial class AIService
     var options = new CreateResponseOptions
     {
       Model = _deployment,
-      Instructions = instructions,
       ReasoningOptions = new ResponseReasoningOptions { ReasoningEffortLevel = ResponseReasoningEffortLevel.Low },
       StoredOutputEnabled = false,
       EndUserId = $"helpdesk-{ticketId}"
     };
     if (textOptions is not null) options.TextOptions = textOptions;
+    var developerContent = ResponseContentPart.CreateInputTextPart(instructions);
+    developerContent.Patch.Set("$.prompt_cache_breakpoint.mode"u8, "explicit");
+    options.InputItems.Add(ResponseItem.CreateDeveloperMessageItem([developerContent]));
     options.InputItems.Add(ResponseItem.CreateUserMessageItem(input));
     options.Patch.Set("$.prompt_cache_options.mode"u8, "explicit");
     return options;
